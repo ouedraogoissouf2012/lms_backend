@@ -13,8 +13,8 @@ use Illuminate\Support\Collection;
  *
  * Sorti de l'enrichissement quand celui-ci dépassait la garde de taille (revue
  * d'E3), sans changement de comportement :
- * - identité KLASSCI (`klassci_enseignant_id`) : le compte local qui la porte,
- *   comme avant ;
+ * - identité KLASSCI (`klassci_enseignant_id`) : le compte de l'établissement qui
+ *   porte cette identité d'ENSEIGNANT (#873 : pas le numéro de compte `klassci_id`) ;
  * - sinon, l'auteur local (`enseignant_id`, D72), borné à l'établissement de
  *   l'évaluation.
  *
@@ -41,14 +41,23 @@ final class EnseignantsDesEvaluations
      */
     private function parIdentiteKlassci(Evaluation $evaluation): array
     {
-        $enseignant = User::where('klassci_id', $evaluation->klassci_enseignant_id)->first();
+        // #873 : dans l'espace des ENSEIGNANTS KLASSCI, celui de la colonne lue
+        // (`KlassciEnseignantIdResolver`), et dans l'école de l'évaluation. `klassci_id` est le
+        // numéro de COMPTE KLASSCI, un autre espace : le même nombre y désigne un autre compte.
+        $enseignant = $evaluation->institution_id === null ? null : User::query()->withoutGlobalScope('institution')
+            ->where('institution_id', $evaluation->institution_id)
+            ->where('klassci_enseignant_id', $evaluation->klassci_enseignant_id)
+            ->first();
 
         if ($enseignant === null) {
             return ['enseignant' => null, 'enseignant_nom' => 'Enseignant #'.$evaluation->klassci_enseignant_id];
         }
 
         return [
-            'enseignant' => ['id' => $enseignant->klassci_id, 'nom' => $enseignant->name, 'email' => $enseignant->email],
+            // L'identité par laquelle il a été trouvé, celle de l'évaluation : l'espace des
+            // enseignants KLASSCI, jamais nul ici. `klassci_id` (un autre espace) l'était
+            // pour un enseignant qui n'a que son identité d'enseignant (#873).
+            'enseignant' => ['id' => $enseignant->klassci_enseignant_id, 'nom' => $enseignant->name, 'email' => $enseignant->email],
             'enseignant_nom' => $enseignant->name,
         ];
     }

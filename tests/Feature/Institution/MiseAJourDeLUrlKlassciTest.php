@@ -22,7 +22,8 @@ use Tests\TestCase;
  * URL, et `''` devient `null` (ConvertEmptyStringsToNull). La règle de mise à
  * jour doit donc l'accepter, sans cesser de refuser une URL invalide.
  *
- * Vider l'URL ne change ni le mode (sa bascule a sa route, #818) ni le jeton.
+ * Vider l'URL ne change pas le mode (sa bascule a sa route, #818). Le jeton, lui,
+ * s'efface depuis #1213 (décision du user du 22/11).
  * Compte supradmin plateforme, vrai jeton, les deux types d'école.
  */
 final class MiseAJourDeLUrlKlassciTest extends TestCase
@@ -93,8 +94,12 @@ final class MiseAJourDeLUrlKlassciTest extends TestCase
         self::assertSame(self::URL, $this->ligne($ecole)['klassci_api_url']);
     }
 
+    /**
+     * Le jeton, lui, s'efface : décision du user du 22/11 (#1213), qui remplace ce que ce
+     * test affirmait depuis #794. Le détail (raisons, audit) : `LeJetonSEffaceAuDetachementTest`.
+     */
     #[DataProvider('volets')]
-    public function test_vider_l_url_ne_touche_ni_le_mode_ni_le_jeton(string $volet): void
+    public function test_vider_l_url_ne_touche_pas_le_mode_et_efface_le_jeton(string $volet): void
     {
         $ecole = $this->ecole($volet, self::URL);
         $avant = $this->ligne($ecole);
@@ -103,7 +108,7 @@ final class MiseAJourDeLUrlKlassciTest extends TestCase
 
         $apres = $this->ligne($ecole);
         self::assertSame($avant['mode'], $apres['mode']);
-        self::assertSame($avant['klassci_api_token_encrypted'], $apres['klassci_api_token_encrypted']);
+        self::assertNull($apres['klassci_api_token_encrypted']);
     }
 
     /** @param  array<string, mixed>  $charge */

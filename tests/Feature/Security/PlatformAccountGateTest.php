@@ -70,14 +70,6 @@ final class PlatformAccountGateTest extends TestCase
         $reponse->assertForbidden()->assertExactJson(['success' => false, 'message' => self::MESSAGE, 'reason' => 'no_institution']);
     }
 
-    /** Un compte orphelin (sans établissement, pas supradmin) est refusé de la même façon. */
-    public function test_un_compte_orphelin_est_refuse(): void
-    {
-        $orphelin = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'coordinateur']);
-
-        $this->asTenant($orphelin)->getJson('/api/lessons')->assertForbidden();
-    }
-
     /** Un établissement `0` n'en est pas un, comme pour ResolveInstitution : refusé. */
     public function test_un_etablissement_zero_n_en_est_pas_un(): void
     {

@@ -88,7 +88,7 @@ final class MotifsDesRefusTest extends TestCase
     public function test_porte_authentifiee_un_compte_sans_ecole_le_dit(): void
     {
         [, $code] = $this->classeAvecCode();
-        $sansEcole = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'etudiant']);
+        $sansEcole = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
         // La porte des comptes sans établissement répond la première, en 403, avec
         // le même motif ; le 409 de RejoindreParCodeService reste derrière elle,

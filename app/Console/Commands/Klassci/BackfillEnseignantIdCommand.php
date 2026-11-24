@@ -6,6 +6,7 @@ namespace App\Console\Commands\Klassci;
 
 use App\Enums\Role;
 use Illuminate\Console\Command;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -67,10 +68,7 @@ final class BackfillEnseignantIdCommand extends Command
         }
         $dryRun = (bool) $this->option('dry-run');
 
-        $total = DB::table('users')
-            ->whereNotNull('klassci_id')
-            ->whereNull('klassci_enseignant_id')
-            ->count();
+        $total = self::candidats()->count();
 
         $this->info(sprintf(
             'Backfilling klassci_enseignant_id for %d candidate users (chunk=%d%s)',
@@ -89,9 +87,7 @@ final class BackfillEnseignantIdCommand extends Command
         $updated = 0;
         $skipped = 0;
 
-        DB::table('users')
-            ->whereNotNull('klassci_id')
-            ->whereNull('klassci_enseignant_id')
+        self::candidats()
             ->orderBy('id')
             ->chunkById($chunkSize, function ($users) use (&$updated, &$skipped, $dryRun, $bar) {
                 foreach ($users as $u) {
@@ -118,6 +114,17 @@ final class BackfillEnseignantIdCommand extends Command
         $this->info(($dryRun ? '[dry-run] ' : '')."Updated {$updated} / {$total} users (skipped {$skipped} — no enseignant_id in blob).");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Les comptes KLASSCI sans identité d'enseignant : ceux que le backfill peut compléter. Une
+     * requête NEUVE à chaque appel, pour le décompte puis pour le parcours.
+     */
+    private static function candidats(): Builder
+    {
+        return DB::table('users')
+            ->whereNotNull('klassci_id')
+            ->whereNull('klassci_enseignant_id');
     }
 
     /**

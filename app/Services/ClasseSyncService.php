@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Services\Classe\ClasseEnvelope;
 use App\Services\Roster\RosterAuthorityFactory;
 use App\Services\Sync\Classes\AucuneReconciliation;
+use App\Services\Sync\Classes\CapaciteKlassci;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Services\Sync\Classes\ClasseStudentsSynchronizer;
 use App\Services\Sync\Classes\KlassciClassesFetcher;
@@ -275,7 +276,7 @@ final class ClasseSyncService
                 'libelle' => $libelle,
                 'code' => $klasseData['code'] ?? null,
                 'description' => $klasseData['description'] ?? null,
-                'effectif' => $klasseData['places_totales'] ?? $klasseData['places'] ?? $klasseData['effectif'] ?? 0,
+                'effectif' => CapaciteKlassci::de($klasseData),
                 'filiere_id' => $filiereId,
                 'niveau_id' => $niveauId,
                 'annee_universitaire_id' => $klasseData['annee_universitaire_id'] ?? null,

@@ -60,8 +60,9 @@ final class MethodSizeGuardTest extends TestCase
      * Les méthodes de `app/` que le garde corrigé a fait apparaître tiennent sous 40 lignes.
      *
      * `KlassciHttpClient::executeHttp` (44) les a rejointes après la fusion de #1477, qui
-     * travaillait ce fichier ; `BackfillEnseignantIdCommand::handle` (49) est ramenée sous 40
-     * par #1457, et rejoindra ce test après sa fusion.
+     * travaillait ce fichier. `BackfillEnseignantIdCommand::handle` (49) a été raccourcie par
+     * #1457, mesurée avec l'ANCIEN garde : le garde corrigé la trouvait encore à 41 lignes.
+     * `candidats()` l'a ramenée sous 40, après la fusion de #1457.
      *
      * Chemins RELATIFS, depuis la racine, comme la CI les passe : la baseline des dettes
      * tolérées est indexée par `app/…::méthode`. Un chemin absolu la contourne, et
@@ -73,6 +74,7 @@ final class MethodSizeGuardTest extends TestCase
             'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php',
             'app/Services/Seances/SeanceVisioEnricher.php',
             'app/Services/Klassci/KlassciHttpClient.php',
+            'app/Console/Commands/Klassci/BackfillEnseignantIdCommand.php',
         ]);
 
         $this->assertSame(0, $code, $sortie);

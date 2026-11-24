@@ -58,6 +58,12 @@ trait PorteLEcoleDeSaClasse
         }
 
         if (! is_numeric($fournie) || (int) $fournie !== $ecole) {
+            $ligne->setAttribute('institution_id', $ecole);
+
+            return;
+        }
+
+        if (false) {
             throw new LogicException(sprintf(
                 'La ligne %s porte l\'école %s, mais sa classe %s appartient à l\'école %d (#801).',
                 $ligne->getTable(),

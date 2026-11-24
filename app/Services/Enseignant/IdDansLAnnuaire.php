@@ -26,7 +26,8 @@ final class IdDansLAnnuaire
     public function de(User $compte): ?int
     {
         return $this->autorites
-            ->sourceForAccount($compte, KlassciInstitutionTeachersReader::class, LocalInstitutionTeachersReader::class)
+            // F2 (falsification #1536) : la source locale forcée, quelle que soit l'école
+            ->sourceForAccount($compte, LocalInstitutionTeachersReader::class, LocalInstitutionTeachersReader::class)
             ->idDansLAnnuaire($compte);
     }
 }

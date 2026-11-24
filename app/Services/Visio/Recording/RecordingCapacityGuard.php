@@ -7,6 +7,7 @@ namespace App\Services\Visio\Recording;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\Seance;
 use App\Models\SeanceRecording;
+use App\Support\Config\LecteurDEntiers;
 use Closure;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -56,6 +57,7 @@ final class RecordingCapacityGuard
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly ConfigRepository $config,
+        private readonly LecteurDEntiers $entiers,
     ) {}
 
     /**
@@ -67,7 +69,7 @@ final class RecordingCapacityGuard
      */
     public function capacity(): int
     {
-        return $this->positiveInt($this->config->get('recordings.max_concurrent'), 1);
+        return $this->entiers->positif($this->config->get('recordings.max_concurrent'), 1);
     }
 
     /**
@@ -136,16 +138,6 @@ final class RecordingCapacityGuard
         }
 
         return $this->activeCount() < $this->capacity();
-    }
-
-    /**
-     * Patron déjà en vigueur dans le dépôt pour lire une configuration entière
-     * (`FailStaleRecordings`, `PurgeSeanceRecordings`, `KlassciCircuitBreaker`…) :
-     * `config()` rend `mixed`, et PHPStan niveau 9 refuse le cast direct.
-     */
-    private function positiveInt(mixed $value, int $default): int
-    {
-        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 
     /** La séance occupe-t-elle déjà un créneau ? */

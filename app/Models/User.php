@@ -69,11 +69,12 @@ class User extends Authenticatable implements CanResetPasswordContract
     /**
      * Relation: Classes où l'utilisateur est inscrit (pivot classe_etudiant).
      *
-     * @return BelongsToMany<Classe, $this>
+     * @return BelongsToMany<Classe, $this, ClasseEtudiant>
      */
     public function classes(): BelongsToMany
     {
         return $this->belongsToMany(Classe::class, 'classe_etudiant')
+            ->using(ClasseEtudiant::class)
             ->withPivot('date_inscription', 'statut', 'annee_universitaire_id')
             ->withTimestamps();
     }

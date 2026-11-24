@@ -11,10 +11,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
-use Stringable;
 use Tests\Concerns\ActsAsTenantUser;
+use Tests\Support\Log\JournalRelu;
 use Tests\TestCase;
 
 /**
@@ -147,24 +146,5 @@ final class LeJetonSaisiEstEnregistreTest extends TestCase
     private function ligne(Institution $ecole): array
     {
         return (array) DB::table('institutions')->where('id', $ecole->id)->first();
-    }
-}
-
-/**
- * Journal d'essai : garde chaque entrée, message et contexte, pour qu'on la relise.
- */
-final class JournalRelu extends AbstractLogger
-{
-    /** @var list<string> */
-    public array $lignes = [];
-
-    /**
-     * @param  mixed  $level
-     * @param  string|Stringable  $message
-     * @param  array<array-key, mixed>  $context
-     */
-    public function log($level, $message, array $context = []): void
-    {
-        $this->lignes[] = $message.' '.json_encode($context);
     }
 }

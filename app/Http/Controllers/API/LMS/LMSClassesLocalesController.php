@@ -10,6 +10,7 @@ use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ListerClassesLocalesRequest;
 use App\Models\Classe;
+use App\Services\Catalogue\CapaciteDeClasse;
 use App\Services\Catalogue\ClassesLocalesQuery;
 use Illuminate\Http\JsonResponse;
 
@@ -20,9 +21,9 @@ use Illuminate\Http\JsonResponse;
  * Elle rend le code avec la classe, ce qui suffit à le RELIRE — aucun appel de
  * plus, et surtout aucune régénération, qui invaliderait le code déjà dicté.
  *
- * Pas d'`effectif` : pour une classe locale, cette colonne vaut toujours 0 —
- * seul le synchroniseur KLASSCI la tient. L'exposer ferait afficher un zéro
- * faux.
+ * `effectif` est la CAPACITÉ de la classe (#1115, #1358), que l'école déclare à la
+ * création et règle par `PUT /classes/{classe}/capacite` : `null` quand elle n'est pas
+ * renseignée (colonne à 0), jamais un zéro qui se lirait « aucune place ».
  */
 final class LMSClassesLocalesController extends Controller
 {
@@ -61,6 +62,7 @@ final class LMSClassesLocalesController extends Controller
             'libelle' => $classe->libelle,
             'code' => $classe->code,
             'training_session_id' => $classe->training_session_id,
+            'effectif' => CapaciteDeClasse::lue($classe),
             'code_inscription' => $this->codeInscription($classe),
         ];
     }

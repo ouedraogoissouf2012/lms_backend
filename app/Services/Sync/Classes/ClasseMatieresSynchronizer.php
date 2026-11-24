@@ -146,16 +146,27 @@ final class ClasseMatieresSynchronizer
     /**
      * Le lien classe ↔ matière, idempotent : le cycle de synchronisation tourne
      * toutes les cinq minutes et ne doit rien empiler.
+     *
+     * #759 — UNE instruction, tranchée par la base sur `unique(classe_id, matiere_id)`
+     * (`ON DUPLICATE KEY UPDATE`, `ON CONFLICT … DO UPDATE`). `updateOrInsert` faisait
+     * `exists()` puis `insert()` : deux écritures concurrentes passaient toutes deux la
+     * lecture, et la seconde levait une violation d'unicité. Un lien existant ne change
+     * que d'`updated_at` : son école est celle de sa classe.
      */
     private function link(Classe $classe, Matiere $matiere): void
     {
-        DB::table('classe_matiere')->updateOrInsert(
-            [
+        $maintenant = now();
+
+        DB::table('classe_matiere')->upsert(
+            [[
                 'classe_id' => $classe->id,
                 'matiere_id' => $matiere->id,
                 'institution_id' => $classe->institution_id,
-            ],
-            ['updated_at' => now()],
+                'created_at' => $maintenant,
+                'updated_at' => $maintenant,
+            ]],
+            ['classe_id', 'matiere_id'],
+            ['updated_at'],
         );
     }
 

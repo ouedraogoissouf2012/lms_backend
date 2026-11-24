@@ -96,29 +96,6 @@ class MatiereEnseignant extends Model
     }
 
     /**
-     * Assigner un enseignant à une matière
-     *
-     * @param  int  $klassciMatiereId
-     * @param  int  $klassciEnseignantId
-     * @param  int|null  $createdBy
-     * @return self
-     */
-    public static function assignEnseignant($klassciMatiereId, $klassciEnseignantId, $createdBy = null)
-    {
-        return self::updateOrCreate(
-            [
-                'klassci_matiere_id' => $klassciMatiereId,
-                'klassci_enseignant_id' => $klassciEnseignantId,
-                'annee_universitaire_id' => null, // Pour l'instant, année courante
-            ],
-            [
-                'status' => 'active',
-                'created_by' => $createdBy,
-            ]
-        );
-    }
-
-    /**
      * Retirer un enseignant d'une matière
      *
      * @param  int  $klassciMatiereId

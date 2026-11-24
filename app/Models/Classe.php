@@ -65,11 +65,12 @@ class Classe extends Model implements MirroredFromKlassci
     /**
      * Relation: Matières enseignées dans cette classe
      *
-     * @return BelongsToMany<Matiere, $this>
+     * @return BelongsToMany<Matiere, $this, ClasseMatiere>
      */
     public function matieres(): BelongsToMany
     {
         return $this->belongsToMany(Matiere::class, 'classe_matiere')
+            ->using(ClasseMatiere::class)
             ->withPivot('enseignant_id', 'coefficient', 'heures_cours', 'heures_td', 'heures_tp')
             ->withTimestamps();
     }
@@ -77,11 +78,12 @@ class Classe extends Model implements MirroredFromKlassci
     /**
      * Relation: Étudiants inscrits dans cette classe
      *
-     * @return BelongsToMany<User, $this>
+     * @return BelongsToMany<User, $this, ClasseEtudiant>
      */
     public function etudiants(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'classe_etudiant')
+            ->using(ClasseEtudiant::class)
             ->withPivot('date_inscription', 'statut', 'annee_universitaire_id')
             ->withTimestamps();
     }
@@ -89,7 +91,7 @@ class Classe extends Model implements MirroredFromKlassci
     /**
      * Relation: Étudiants actifs uniquement
      *
-     * @return BelongsToMany<User, $this>
+     * @return BelongsToMany<User, $this, ClasseEtudiant>
      */
     public function etudiantsActifs(): BelongsToMany
     {
@@ -137,10 +139,12 @@ class Classe extends Model implements MirroredFromKlassci
     }
 
     /**
-     * Vérifie si la classe est complète
+     * #1115 — `effectif` est une capacité, que seules les adhésions ACTIVES occupent ; 0 = non renseignée, sans limite
      */
     public function isComplete(): bool
     {
-        return $this->getEffectifActuel() >= $this->effectif;
+        $capacite = $this->effectif;
+
+        return $capacite > 0 && $this->getEffectifActuel() >= $capacite;
     }
 }

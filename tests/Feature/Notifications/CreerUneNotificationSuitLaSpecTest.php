@@ -104,12 +104,15 @@ final class CreerUneNotificationSuitLaSpecTest extends TestCase
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
     }
 
+    /**
+     * Seul le supradmin existe sans école : un compte d'école ne se crée pas sans elle (#1181).
+     * Le destinataire sans école est donc le supradmin lui-même, comme dans #801.
+     */
     public function test_le_supradmin_et_un_destinataire_sans_ecole_rendent_le_422_a_motif(): void
     {
         $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
-        $sansEcole = User::factory()->create(['institution_id' => null, 'role' => 'etudiant']);
 
-        $reponse = $this->asTenant($supradmin)->postJson('/api'.self::CHEMIN, $this->charge($sansEcole));
+        $reponse = $this->asTenant($supradmin)->postJson('/api'.self::CHEMIN, $this->charge($supradmin));
 
         $reponse->assertUnprocessable()->assertJsonPath('reason', 'recipient_without_institution');
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');

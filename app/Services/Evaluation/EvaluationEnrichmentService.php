@@ -77,16 +77,10 @@ class EvaluationEnrichmentService
      */
     private function catalogueKlassci(string $userToken): array
     {
-        try {
-            $klassciClasses = $this->klassciService->getClasses();
-            $klassciMatieres = $userToken === ''
-                ? ['data' => []]
-                : $this->klassciService->getMatieres($userToken);
-        } catch (\RuntimeException $e) {
-            $this->journal->error('Erreur enrichissement évaluations', $e);
-
-            return [[], []];
-        }
+        $klassciClasses = $this->klassciService->getClasses();
+        $klassciMatieres = $userToken === ''
+            ? ['data' => []]
+            : $this->klassciService->getMatieres($userToken);
 
         return [self::parId($klassciClasses['data'] ?? null), self::parId($klassciMatieres['data'] ?? null)];
     }

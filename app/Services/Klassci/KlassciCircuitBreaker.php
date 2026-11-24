@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use App\Support\Config\LecteurDEntiers;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Support\Carbon;
 use Psr\Log\LoggerInterface;
 
@@ -36,6 +38,8 @@ final class KlassciCircuitBreaker
         private readonly CacheRepository $cache,
         private readonly KlassciTargetResolver $target,
         private readonly LoggerInterface $logger,
+        private readonly ConfigRepository $config,
+        private readonly LecteurDEntiers $entiers,
     ) {}
 
     public function isOpen(): bool
@@ -141,29 +145,22 @@ final class KlassciCircuitBreaker
 
     private function enabled(): bool
     {
-        return (bool) config('services.klassci.circuit_breaker_enabled', true);
+        return (bool) $this->config->get('services.klassci.circuit_breaker_enabled', true);
     }
 
     private function failureThreshold(): int
     {
-        return self::positiveIntConfig('services.klassci.circuit_breaker_failures', 3);
+        return $this->entiers->positif($this->config->get('services.klassci.circuit_breaker_failures'), 3);
     }
 
     private function cooldownSeconds(): int
     {
-        return self::positiveIntConfig('services.klassci.circuit_breaker_cooldown', 30);
+        return $this->entiers->positif($this->config->get('services.klassci.circuit_breaker_cooldown'), 30);
     }
 
     private function failureWindowSeconds(): int
     {
-        return self::positiveIntConfig('services.klassci.circuit_breaker_window', 60);
-    }
-
-    private static function positiveIntConfig(string $key, int $default): int
-    {
-        $value = config($key, $default);
-
-        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
+        return $this->entiers->positif($this->config->get('services.klassci.circuit_breaker_window'), 60);
     }
 
     private function intFromCache(string $key): ?int

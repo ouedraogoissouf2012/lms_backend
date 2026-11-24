@@ -8,6 +8,7 @@ use App\Exceptions\BusinessException;
 use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClasseRequest;
+use App\Services\Catalogue\CapaciteDeClasse;
 use App\Services\Catalogue\LocalClasseCreator;
 use Illuminate\Http\JsonResponse;
 
@@ -39,7 +40,7 @@ final class LMSClasseWriteController extends Controller
             'id' => $classe->getKey(),
             'libelle' => $classe->libelle,
             'code' => $classe->code,
-            'effectif' => $classe->effectif,
+            'effectif' => CapaciteDeClasse::lue($classe),
         ], 'Classe créée.', 201);
     }
 }

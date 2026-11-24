@@ -89,6 +89,22 @@ final class FiltreEnseignantDeLaGestionTest extends TestCase
         self::assertSame([731], $this->seancesFiltrees($ecole, 9100));
     }
 
+    /**
+     * #873 — `teacher_id` est lu dans l'espace ENSEIGNANT seul. Le numéro de COMPTE KLASSCI de
+     * B (`klassci_id`, un autre espace) ne désigne pas B : sinon un id local égal à ce numéro,
+     * que l'ancien repli de l'annuaire rendait, listait les séances de B.
+     */
+    public function test_le_numero_de_compte_klassci_d_un_enseignant_ne_le_designe_pas(): void
+    {
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $b = $this->enseignant($ecole, 700);
+        $b->forceFill(['klassci_id' => 555])->save();
+        $this->seance($ecole, 741, 700, null);
+
+        self::assertSame([], $this->seancesFiltrees($ecole, 555), 'Le numéro de compte KLASSCI a désigné l\'enseignant.');
+        self::assertSame([741], $this->seancesFiltrees($ecole, 700));
+    }
+
     /** @return list<int> les identifiants KLASSCI des séances listées, triés */
     private function seancesFiltrees(Institution $ecole, int $teacherId): array
     {

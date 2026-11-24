@@ -4074,7 +4074,7 @@ components:
               example: "token_string_here"
             user:
               type: object
-              description: "Le compte connecte : trois identifiants, chacun dans son espace (#1409)."
+              description: "Le compte connecte : ses identifiants, chacun dans son espace (#1409, #1536)."
               properties:
                 id:
                   type: integer
@@ -4091,6 +4091,14 @@ components:
                     (`/proxy/enseignants`, `/lms/enseignants`) et de l'enseignant d'une
                     evaluation (#873) ; null hors enseignant KLASSCI, et en ecole
                     autonome.
+                id_dans_l_annuaire:
+                  type: integer
+                  nullable: true
+                  description: |
+                    #1536 : l'`id` que l'annuaire des enseignants de son ecole
+                    (`/proxy/enseignants`) emet pour ce compte. Le client y reconnait sa
+                    propre fiche sans connaitre le mode de l'ecole (#805). null pour un
+                    compte qui n'est pas enseignant, ou que l'annuaire ecarte.
 
     User:
       type: object
@@ -4106,6 +4114,13 @@ components:
           type: integer
           nullable: true
           description: "Identite d'ENSEIGNANT KLASSCI (#1409) ; null hors enseignant KLASSCI."
+        id_dans_l_annuaire:
+          type: integer
+          nullable: true
+          description: |
+            #1536 : l'`id` que l'annuaire des enseignants de son ecole emet pour ce compte ;
+            null hors enseignant, ou si l'annuaire l'ecarte. Present dans les reponses qui
+            decrivent le compte CONNECTE (`/auth/me`), absent ailleurs.
         email:
           type: string
           example: "user@example.com"

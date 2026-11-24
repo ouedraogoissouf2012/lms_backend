@@ -122,6 +122,28 @@ final class UnCompteDEcoleAToujoursUneEcoleTest extends TestCase
         }
     }
 
+    /**
+     * La garde compare le rôle STRICTEMENT : sous MySQL, la collation de `users.role` ignore la
+     * casse, et un filtre SQL laisserait un `SUPRADMIN` sans école hors du compte.
+     */
+    public function test_la_garde_compte_une_variante_de_casse_sans_ecole(): void
+    {
+        try {
+            $this->migration()->down();
+            DB::table('users')->insert($this->compte('SUPRADMIN') + ['institution_id' => null]);
+
+            try {
+                $this->migration()->up();
+                self::fail('La garde devait compter le compte « SUPRADMIN » sans école.');
+            } catch (RuntimeException $annulation) {
+                self::assertStringContainsString('1 compte(s)', $annulation->getMessage());
+            }
+        } finally {
+            DB::table('users')->whereNull('institution_id')->delete();
+            $this->migration()->up();
+        }
+    }
+
     /** @return array<string, mixed> */
     private function compte(string $role): array
     {

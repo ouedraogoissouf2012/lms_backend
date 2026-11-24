@@ -27,9 +27,13 @@ final class GardeDesComptesSansEcole
     /** @throws RuntimeException s'il existe un compte d'école sans école */
     public function exigerAucunCompteDEcoleSansEcole(): void
     {
+        // Le rôle se compare en PHP, strictement : sous MySQL, la collation de `users.role`
+        // ignore la casse, et un `whereNotIn` laisserait un `SUPRADMIN` sans école hors du compte.
+        // Les comptes sans école sont une poignée (le seul supradmin en production).
         $compte = $this->db->connection()->table('users')
             ->whereNull('institution_id')
-            ->where(static fn ($role) => $role->whereNull('role')->orWhereNotIn('role', Role::Supradmin->aliases()))
+            ->pluck('role')
+            ->reject(static fn (mixed $role): bool => in_array($role, Role::Supradmin->aliases(), true))
             ->count();
 
         if ($compte > 0) {

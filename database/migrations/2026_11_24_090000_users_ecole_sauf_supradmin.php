@@ -25,8 +25,19 @@ return new class extends Migration
 {
     private const CONTRAINTE = 'users_ecole_sauf_supradmin';
 
-    /** `COALESCE` : un rôle NULL rendrait la condition « inconnue », et un CHECK la laisse passer. */
-    private const CONDITION = "(COALESCE(%s.role, '') = 'supradmin' OR %s.institution_id IS NOT NULL)";
+    /**
+     * `COALESCE` : un rôle NULL rendrait la condition « inconnue », et un CHECK la laisse passer.
+     *
+     * Comparaison BINAIRE, comme `isPlatformSupradmin()` (`===`) : sous MySQL, la collation de
+     * `users.role` (`utf8mb4_unicode_ci`) ignore la casse, et `role = 'supradmin'` acceptait
+     * `Supradmin` et `SUPRADMIN` sans école (mesuré : rouge sur la seule jambe MySQL). SQLite
+     * compare déjà en binaire.
+     */
+    private const CONDITION = "(%s = 'supradmin' OR %s.institution_id IS NOT NULL)";
+
+    private const ROLE_SQLITE = "COALESCE(%s.role, '')";
+
+    private const ROLE_MYSQL = "CAST(COALESCE(%s.role, '') AS BINARY)";
 
     public function up(): void
     {
@@ -40,7 +51,7 @@ return new class extends Migration
                     self::CONTRAINTE,
                     $nom,
                     $evenement,
-                    sprintf(self::CONDITION, 'NEW', 'NEW'),
+                    sprintf(self::CONDITION, sprintf(self::ROLE_SQLITE, 'NEW'), 'NEW'),
                 ));
             }
 
@@ -51,7 +62,7 @@ return new class extends Migration
             DB::statement(sprintf(
                 'ALTER TABLE users ADD CONSTRAINT %s CHECK %s',
                 self::CONTRAINTE,
-                sprintf(self::CONDITION, 'users', 'users'),
+                sprintf(self::CONDITION, sprintf(self::ROLE_MYSQL, 'users'), 'users'),
             ));
         }
     }

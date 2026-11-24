@@ -74,7 +74,6 @@ class User extends Authenticatable implements CanResetPasswordContract
     public function classes(): BelongsToMany
     {
         return $this->belongsToMany(Classe::class, 'classe_etudiant')
-            ->using(ClasseEtudiant::class)
             ->withPivot('date_inscription', 'statut', 'annee_universitaire_id')
             ->withTimestamps();
     }

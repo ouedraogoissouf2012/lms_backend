@@ -50,7 +50,7 @@ return new class extends Migration
         app(GardeDesInstitutionsNulles::class)->exigerAucunNull(self::TABLES);
 
         foreach (self::TABLES as $table) {
-            $this->rendre($table, false);
+            // falsification A : la colonne reste facultative
         }
     }
 

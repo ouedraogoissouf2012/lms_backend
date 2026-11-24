@@ -46,7 +46,8 @@ final class BackfillSubmissionInstitutionMigrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->rendreFacultative('evaluations', 'evaluation_submissions');
+        // `evaluation_questions` aussi : la question d'une évaluation héritée est sans école.
+        $this->rendreFacultative('evaluations', 'evaluation_questions', 'evaluation_submissions');
     }
 
     protected function tearDown(): void

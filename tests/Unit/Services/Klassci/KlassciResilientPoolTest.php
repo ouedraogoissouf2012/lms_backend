@@ -11,6 +11,7 @@ use App\Services\Klassci\KlassciResilientPool;
 use App\Services\Klassci\KlassciTargetResolver;
 use App\Services\Klassci\KlassciTransportRetry;
 use App\Services\Klassci\PoolTarget;
+use App\Support\Config\LecteurDEntiers;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -231,7 +232,7 @@ final class KlassciResilientPoolTest extends TestCase
         $cible = Mockery::mock(KlassciTargetResolver::class);
         $cible->shouldReceive('baseUrl')->andReturn('https://klassci.test/api/lms');
 
-        return new KlassciCircuitBreaker(Cache::store('array'), $cible, new NullLogger);
+        return new KlassciCircuitBreaker(Cache::store('array'), $cible, new NullLogger, config(), new LecteurDEntiers);
     }
 
     private function pool(HttpFactory $http, ?KlassciCircuitBreaker $breaker = null): KlassciResilientPool

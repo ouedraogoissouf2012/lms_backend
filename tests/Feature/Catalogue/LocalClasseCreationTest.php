@@ -6,11 +6,11 @@ namespace Tests\Feature\Catalogue;
 
 use App\Enums\InstitutionMode;
 use App\Exceptions\BusinessException;
+use App\Exceptions\CodeDeClasseDejaEmploye;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Services\Catalogue\LocalClasseCreator;
 use App\Services\TenantManager;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -98,7 +98,8 @@ final class LocalClasseCreationTest extends TestCase
         $this->pourTenant(InstitutionMode::Standalone);
         $this->creer(['libelle' => 'Groupe A', 'code' => 'BUR-A']);
 
-        $this->expectException(QueryException::class);
+        // #1521 : la violation devient un refus de saisie nommé, pas une panne SQL.
+        $this->expectException(CodeDeClasseDejaEmploye::class);
 
         $this->creer(['libelle' => 'Un autre groupe A', 'code' => 'BUR-A']);
     }

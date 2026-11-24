@@ -24,6 +24,8 @@ enum RecordingFailureReason: string
 {
     // Rattachement de la vidéo à une leçon (SeanceRecordingAttachmentResolver).
     case MissingKlassciMatiereId = 'missing_klassci_matiere_id';
+    // Une séance d'école autonome sans matière locale (#1483).
+    case MissingLocalMatiereId = 'missing_local_matiere_id';
     case MatiereNotFound = 'matiere_not_found';
     case LessonNotFound = 'lesson_not_found';
     case AmbiguousLesson = 'ambiguous_lesson';

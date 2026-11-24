@@ -11,6 +11,8 @@ use App\Models\SchoolRegistrationRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 /**
@@ -420,5 +422,51 @@ final class ValidateSchoolRequestTest extends TestCase
             'password' => 'MotDePasseSolide#2026',
             'password_confirmation' => 'MotDePasseSolide#2026',
         ])->assertStatus(410);
+    }
+
+    /**
+     * #839 — consommé, périmé ou inconnu : le MÊME 410, au caractère près.
+     *
+     * Les trois tests précédents figent le statut de chaque état ; c'est le CORPS
+     * qui porte la décision (ADR-803-02, encart du 2026-11-23). Un message propre à
+     * un état dirait à un inconnu qu'un lien a existé pour cette valeur, et la CI
+     * resterait verte sur les seuls statuts.
+     */
+    public function test_les_trois_jetons_morts_rendent_le_meme_corps(): void
+    {
+        $consomme = $this->jetonValide($this->demandeEnAttente());
+        $this->activation($consomme)->assertOk();
+        $perime = $this->jetonValide(SchoolRegistrationRequest::factory()->create([
+            'email_demandeur' => 'binta@ecole-839.ci',
+            'slug_souhaite' => 'ecole-839',
+        ]));
+        ActivationToken::query()->update(['expires_at' => now()->subDay()]);
+
+        $corps = array_map(
+            fn (string $jeton): string => (string) $this->activation($jeton)->assertStatus(410)->getContent(),
+            ['consommé' => $consomme, 'périmé' => $perime, 'inconnu' => 'jeton-qui-n-existe-pas'],
+        );
+
+        self::assertCount(1, array_unique($corps), 'Les trois états ne rendent pas le même corps : '.json_encode($corps));
+    }
+
+    private function jetonValide(SchoolRegistrationRequest $demande): string
+    {
+        $url = (string) $this->withHeaders($this->enteteSupradmin())
+            ->postJson($this->routeValidation($demande))
+            ->assertOk()
+            ->json('data.activation_url');
+
+        return $this->jetonDepuis($url);
+    }
+
+    /** @return TestResponse<Response> */
+    private function activation(string $jeton): TestResponse
+    {
+        return $this->sansCompte()->postJson('/api/activation', [
+            'token' => $jeton,
+            'password' => 'MotDePasseSolide#2026',
+            'password_confirmation' => 'MotDePasseSolide#2026',
+        ]);
     }
 }

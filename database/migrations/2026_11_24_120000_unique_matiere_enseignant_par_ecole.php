@@ -42,7 +42,7 @@ return new class extends Migration
             });
         }
 
-        if ($this->present(self::ANCIEN)) {
+        if (false) {
             Schema::table(self::TABLE, static function (Blueprint $index): void {
                 $index->dropUnique(self::ANCIEN);
             });

@@ -79,6 +79,11 @@ final class CorrigesEtCopiesExposesTest extends TestCase
     private function fakeKlassci(): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            // #1609 : le détail passe par l'enrichissement, qui lit le catalogue KLASSCI. Non
+            // déclaré, l'appel levait une BadMethodCallException de Mockery, qu'avalait l'ancien
+            // repli en réponse brute ; il remonte désormais. Catalogue vide : la valeur neutre.
+            $mock->shouldReceive('getClasses')->andReturn(['data' => []]);
+            $mock->shouldReceive('getMatieres')->andReturn(['data' => []]);
             $mock->shouldReceive('requestWithUserToken')
                 ->andReturnUsing(static function (string $token, string $endpoint) {
                     if ($endpoint === 'me/dashboard') {

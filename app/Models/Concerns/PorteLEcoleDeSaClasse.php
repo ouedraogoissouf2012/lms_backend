@@ -45,7 +45,7 @@ trait PorteLEcoleDeSaClasse
 
     private static function rattacher(Pivot $ligne): void
     {
-        $ecole = self::ecoleDeLaClasse($ligne);
+        $ecole = self::ecoleDeLaClasse($ligne) ?? app(\App\Services\TenantManager::class)->id();
         if ($ecole === null) {
             return;
         }

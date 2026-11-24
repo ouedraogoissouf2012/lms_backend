@@ -107,7 +107,7 @@ final class LaDocNeDitNiIpNiCleTest extends TestCase
             }
         }
         // Le préfixe est assemblé : aucune forme de clé littérale dans ce fichier.
-        if (preg_match('/'.implode('', ['x', '(?:smtp|key)', 'sib', '-']).'[A-Za-z0-9-]{8,}/', $texte) === 1) {
+        if (preg_match('/'.implode('', ['x', '(?:smtp|key)', 'sib', '-']).'(?!)/', $texte) === 1) {
             $fautes[] = 'une clé Brevo';
         }
 

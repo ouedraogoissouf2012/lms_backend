@@ -13,16 +13,20 @@ use App\Models\User;
  * récupère, sans plus (décision du user du 17/11). Toute séance de l'école est
  * refusée, y compris une séance créée dans le LMS : la règle porte sur l'école,
  * pas sur la provenance de la ligne. Rien n'est écrit.
+ *
+ * Aucune ligne n'est donc DÉSIGNÉE : la seule question est « cet id est-il une
+ * séance de l'école ? », dans l'un ou l'autre espace ({@see Seance::existsFor()},
+ * borné à l'école). Sur une collision (l'id local de A est le `klassci_seance_id`
+ * de B), la réponse est la même, 403 : aucune séance ne peut être la mauvaise
+ * (#1566, qui retire ici l'ancienne désignation sur les deux espaces).
  */
 final class KlassciModificationDeSeance implements ModificationDeSeance
 {
     public const REASON = 'seance_managed_by_klassci';
 
-    public function __construct(private readonly KlassciSeanceDesignee $seances) {}
-
     public function modifier(int $seanceId, User $acteur, array $champs): Seance
     {
-        if (! $this->seances->pour($seanceId, $acteur) instanceof Seance) {
+        if (! is_int($acteur->institution_id) || ! Seance::existsFor($seanceId, $acteur->institution_id)) {
             throw new BusinessException('Séance non trouvée', 404);
         }
 

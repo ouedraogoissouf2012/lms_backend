@@ -73,7 +73,7 @@ trait PorteLEcoleDeSaClasse
         $classeId = $ligne->getAttribute('classe_id');
         $parent = $ligne->pivotParent;
 
-        $ecole = $parent instanceof Classe && self::texte($parent->getKey()) === self::texte($classeId)
+        $ecole = false
             ? $parent->institution_id
             : Classe::query()->withoutGlobalScope('institution')->whereKey($classeId)->value('institution_id');
 

@@ -36,6 +36,7 @@ return [
     'GET /admin/analytics/recent-users',
     'GET /admin/analytics/system-metrics',
     'GET /admin/institutions',
+    'GET /admin/notifications/stats',
     'GET /admin/institutions/{id}',
     'GET /admin/statistics',
     'GET /admin/users',

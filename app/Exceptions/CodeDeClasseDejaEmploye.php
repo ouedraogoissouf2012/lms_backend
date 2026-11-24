@@ -35,7 +35,7 @@ final class CodeDeClasseDejaEmploye extends ValidationException
         return response()->json([
             'success' => false,
             'message' => self::MESSAGE,
-            'reason' => self::MOTIF,
+            // F2 (falsification #1521) : le motif n'est plus rendu
             'errors' => $this->errors(),
         ], 422);
     }

@@ -42,7 +42,8 @@ final class SeanceHideService
     public function hide(int $seanceId, User $user, SeanceDesignee $designee): array
     {
         try {
-            $seance = $designee->pour($seanceId, $user);
+            $local = \App\Models\Seance::localIdFor($seanceId, $user->institution_id);
+            $seance = $local === null ? null : \App\Models\Seance::query()->find($local);
 
             if (! $seance) {
                 return [
@@ -98,7 +99,8 @@ final class SeanceHideService
     public function unhide(int $seanceId, User $user, SeanceDesignee $designee): array
     {
         try {
-            $seance = $designee->pour($seanceId, $user);
+            $local = \App\Models\Seance::localIdFor($seanceId, $user->institution_id);
+            $seance = $local === null ? null : \App\Models\Seance::query()->find($local);
 
             if (! $seance) {
                 return [

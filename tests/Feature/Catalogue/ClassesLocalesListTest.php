@@ -78,11 +78,11 @@ final class ClassesLocalesListTest extends TestCase
         self::assertSame('BUR7K2', $classe->fresh()?->code_inscription);
     }
 
-    public function test_la_charge_ne_porte_pas_d_effectif(): void
+    public function test_la_charge_ne_porte_jamais_un_effectif_a_zero(): void
     {
-        // `classes.effectif` n'est tenu que par le synchroniseur KLASSCI : pour
-        // une classe locale il vaut 0, toujours. L'exposer, c'est afficher un
-        // zéro faux (règle front #376).
+        // Depuis #1358, `effectif` est la CAPACITÉ que l'école règle (#1115). Non
+        // renseignée, la colonne vaut 0 : la charge rend `null`, jamais un zéro
+        // qui se lirait « aucune place » (règle front #376, gardée).
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique');
 
@@ -91,8 +91,10 @@ final class ClassesLocalesListTest extends TestCase
             ->json('data.0');
 
         self::assertIsArray($ligne);
-        self::assertArrayNotHasKey('effectif', $ligne);
-        self::assertSame(['id', 'libelle', 'code', 'training_session_id', 'code_inscription'], array_keys($ligne));
+        // `array_key_exists` et non `??` : `??` prend une valeur nulle pour une clé absente.
+        self::assertTrue(array_key_exists('effectif', $ligne), 'La clé effectif est absente.');
+        self::assertNull($ligne['effectif'], 'Une capacité non renseignée sort en null.');
+        self::assertSame(['id', 'libelle', 'code', 'training_session_id', 'effectif', 'code_inscription'], array_keys($ligne));
     }
 
     // ───────────────────────── LA garde de ce fichier
@@ -300,6 +302,9 @@ final class ClassesLocalesListTest extends TestCase
         return Classe::factory()->create([
             'institution_id' => $ecole->getKey(),
             'klassci_id' => null,
+            // La capacité d'une classe locale créée sans la déclarer (#1358) : la fabrique
+            // en tirerait une au hasard, celle d'une classe KLASSCI.
+            'effectif' => 0,
             'libelle' => $libelle,
             'code_inscription' => $code,
             'code_inscription_revoque_le' => $retire ? now() : null,

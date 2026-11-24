@@ -112,6 +112,9 @@ Route::prefix('auth')->group(function () {
         ->middleware(['institution.header', 'throttle:mot-de-passe']);
     // #1306 : plus de `/reset-password`. Le lien de réinitialisation est le jeton
     // d'activation (#808), consommé par `POST /activation`.
+    // F1 (falsification #1306) : la route revient
+    Route::post('/reset-password', [PasswordResetController::class, 'forgot'])
+        ->middleware(['institution.header', 'throttle:mot-de-passe']);
 });
 
 // ============================================

@@ -38,6 +38,12 @@ Le jeton d'activation :
 > `ValidateSchoolRequestTest::test_les_trois_jetons_morts_rendent_le_meme_corps` fige le
 > CORPS. Jusque-là, les tests ne figeaient que le statut, et un message propre à un état
 > serait resté vert.
+>
+> **Précision du 2026-11-24 (#1306).** Le même `POST /activation` consomme aussi le lien de
+> **réinitialisation** (#808). L'action commune devient donc « demandez-en un nouveau à
+> votre administrateur, ou depuis « Mot de passe oublié » » : le texte du 410 le dit, et il
+> reste UN pour les trois jetons morts. Le broker de réinitialisation Laravel, qui doublait
+> ce mécanisme sans jamais servir, est retiré.
 
 La règle `UniqueEmailInInstitution` reçoit l'institution cible **explicitement**, par une sœur de `forCreationBy(?User $acteur)` — l'appel actuel est en `CreateUserRequest.php:46` — prenant l'`Institution` en argument. Le comportement *fail-closed* n'est pas assoupli.
 

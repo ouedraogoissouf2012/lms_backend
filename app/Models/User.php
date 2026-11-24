@@ -7,8 +7,6 @@ use App\Models\Concerns\InteractsWithRoles;
 use App\Models\Concerns\LienKlassciDuCompte;
 use App\Models\Traits\BelongsToInstitution;
 use Database\Factories\UserFactory;
-use Illuminate\Auth\Passwords\CanResetPassword;
-use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,10 +31,10 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $deleted_at Soft delete (#566) — suppression LOGIQUE :
  *                                   dossier académique préservé, restauré à la re-sync KLASSCI.
  */
-class User extends Authenticatable implements CanResetPasswordContract
+class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use BelongsToInstitution, CanResetPassword, HasApiTokens, HasFactory, InteractsWithRoles, LienKlassciDuCompte, Notifiable, SoftDeletes;
+    use BelongsToInstitution, HasApiTokens, HasFactory, InteractsWithRoles, LienKlassciDuCompte, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'klassci_id', 'name', 'email', 'phone', 'password',

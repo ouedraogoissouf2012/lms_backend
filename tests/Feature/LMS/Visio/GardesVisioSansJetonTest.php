@@ -111,7 +111,8 @@ final class GardesVisioSansJetonTest extends TestCase
     private static function presence(Seance $seance): array
     {
         return [
-            'seance_cours_id' => $seance->id,
+            // #1566 : l'id de l'espace de l'école, celui qu'envoie l'écran (KLASSCI s'il existe).
+            'seance_cours_id' => $seance->klassci_seance_id ?? $seance->id,
             'date' => '2026-10-30',
             'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
         ];

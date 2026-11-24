@@ -100,11 +100,9 @@ final class SingleMirroredIdentifierResolverTest extends TestCase
      * `Modele::localIdFor($id, $institutionId)`.
      */
     private const HERITEES = [
-        // PR 6 — masquage etudiant, consequence bornee a un etudiant
-        'app/Services/Seances/Mutations/SeanceHideService.php',
-        // PR 7 — presences : la route expose des emails
-        'app/Services/Attendances/VideoSessionAttendancesSyncer.php',
-        // PR 4 — forme INVERSEE, au coeur de la chaine visio
+        // Le masquage et les presences en sont sortis avec #1566 : ils recoivent la
+        // seance designee dans l'espace de l'ecole (SeanceDesigneeStrictement).
+        // PR 4 — forme INVERSEE, au coeur de la chaine visio (#1588)
         'app/Services/Seances/SeanceVisioEnricher.php',
     ];
 

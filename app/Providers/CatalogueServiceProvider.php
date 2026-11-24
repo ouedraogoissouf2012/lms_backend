@@ -7,7 +7,6 @@ namespace App\Providers;
 use App\Services\Attendances\KlassciSeanceSansLigneLocale;
 use App\Services\Attendances\LocalSeanceSansLigneLocale;
 use App\Services\Attendances\SeanceSansLigneLocale;
-use App\Services\Catalogue\CatalogueAuthority;
 use App\Services\Catalogue\InstitutionStructureReader;
 use App\Services\Catalogue\KlassciInstitutionStructureReader;
 use App\Services\Catalogue\LocalInstitutionStructureReader;
@@ -140,21 +139,16 @@ final class CatalogueServiceProvider extends ServiceProvider
      * La closure est évaluée À LA RÉSOLUTION, donc après `ResolveInstitution`.
      * Un singleton capturerait le premier tenant résolu et le rejouerait pour
      * tous les suivants : sous Octane comme en suite PHPUnit, le conteneur
-     * survit entre requêtes, et une fuite de singleton ici laisserait un
-     * établissement KLASSCI écrire un catalogue local — pas un défaut de
-     * performance, une fuite entre établissements (épique #697, art. 3).
+     * survit entre requêtes, et une source figée servirait l'école d'une autre
+     * (épique #697, art. 3). Le contrôleur reçoit la source par sa MÉTHODE, pas par
+     * son constructeur : Laravel garde le contrôleur sur l'objet Route.
+     *
+     * Le DROIT d'écrire le catalogue local n'est plus lié ici (#1142) : il se lit
+     * par `RosterAuthorityFactory::catalogueForInstitution()`, au moment de l'appel
+     * (`PorteDuCatalogueLocal`, #1128).
      */
     public function register(): void
     {
-        $this->app->bind(
-            CatalogueAuthority::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)->catalogueForCurrentTenant(),
-        );
-
-        // Même règle pour les sources : `bind()`, résolu à chaque demande. Le
-        // contrôleur les reçoit par sa MÉTHODE, pas par son constructeur —
-        // Laravel garde le contrôleur sur l'objet Route, et une source reçue à
-        // la construction resterait celle de la première école servie.
         foreach (self::SOURCES as $port => [$klassci, $local]) {
             $this->app->bind(
                 $port,

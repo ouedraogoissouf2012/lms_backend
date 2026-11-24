@@ -226,7 +226,6 @@ class DemoDataSeeder extends Seeder
         $category = ForumCategory::firstOrCreate(['name' => 'Questions Générales'], [
             'description' => 'Posez vos questions sur les cours',
             'order' => 1,
-            'institution_id' => $institution->id,
         ]);
 
         $topic1 = ForumTopic::firstOrCreate(['title' => 'Comment débuter en programmation ?'], [

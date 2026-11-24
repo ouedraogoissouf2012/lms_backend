@@ -7,6 +7,7 @@ namespace App\Services\Retention\Policies;
 use App\Models\Institution;
 use App\Services\Retention\Concerns\NamesTheRow;
 use App\Services\Retention\RetentionPolicy;
+use App\Services\Tenancy\LignesDUneInstitution;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,12 @@ use Illuminate\Database\Eloquent\Model;
 final class SoftDeletedInstitutionsPolicy implements RetentionPolicy
 {
     use NamesTheRow;
+
+    /** @param  list<string>  $tablesDeclarees  `tenancy.institution_scoped_tables` */
+    public function __construct(
+        private readonly LignesDUneInstitution $lignes,
+        private readonly array $tablesDeclarees,
+    ) {}
 
     public function key(): string
     {
@@ -66,13 +73,14 @@ final class SoftDeletedInstitutionsPolicy implements RetentionPolicy
     }
 
     /**
-     * `institution_id` ne porte pas de clé étrangère : rien en base n'empêche de
-     * détruire un établissement dont les lignes filles subsistent. Elles
-     * deviendraient alors des orphelines rattachées à un identifiant qui
-     * n'existe plus — invisibles, et impossibles à réattribuer.
+     * Une école qui possède encore une ligne, dans N'IMPORTE LAQUELLE des tables déclarées
+     * (`config/tenancy.php`), est épargnée, et le refus nomme ces tables (#719).
      *
-     * On vérifie donc les principales relations déclarées du tenant, hors portée
-     * globale : le scope multi-tenant masquerait précisément ce qu'on cherche.
+     * Ce docblock disait le contraire jusqu'ici : « `institution_id` ne porte pas de clé
+     * étrangère ». C'est faux depuis #583 : les tables déclarées la portent en RESTRICT.
+     * Seules quatre relations étaient lues (users, classes, lessons, evaluations) ; une école
+     * vide de celles-là mais peuplée ailleurs faisait échouer le `forceDelete()` sur la
+     * contrainte. Détruire une école peuplée, fichiers compris, est une autre décision (#1487).
      */
     public function refuses(Model $item, CarbonInterface $cutoff): ?string
     {
@@ -80,14 +88,16 @@ final class SoftDeletedInstitutionsPolicy implements RetentionPolicy
             return 'ligne inattendue';
         }
 
-        $peuple = $item->users()->withoutGlobalScope('institution')->exists()
-            || $item->classes()->withoutGlobalScope('institution')->exists()
-            || $item->lessons()->withoutGlobalScope('institution')->exists()
-            || $item->evaluations()->withoutGlobalScope('institution')->exists();
+        $id = $item->getKey();
+        if (! is_numeric($id)) {
+            return 'identifiant illisible';
+        }
 
-        return $peuple
-            ? 'des lignes filles subsistent — la purge orphelinerait leurs données'
-            : null;
+        $peuplees = $this->lignes->tablesPeuplees((int) $id, $this->tablesDeclarees);
+
+        return $peuplees === []
+            ? null
+            : 'des lignes subsistent dans : '.implode(', ', $peuplees).' — la purge détruirait leurs données (#1487)';
     }
 
     public function purge(Model $item, CarbonInterface $cutoff): void

@@ -23,7 +23,6 @@ final class AuditInstitutionOrphansTest extends TestCase
     {
         $institution = Institution::factory()->create();
         Lesson::factory()->create(['institution_id' => $institution->id]);
-        Lesson::factory()->create(['institution_id' => null]);
 
         $writes = [];
         DB::listen(function ($query) use (&$writes): void {

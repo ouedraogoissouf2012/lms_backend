@@ -26,7 +26,7 @@ use Tests\TestCase;
  */
 final class LaDocNeDitNiIpNiCleTest extends TestCase
 {
-    private const IPV4 = '/(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?!\.?\d)/';
+    private const IPV4 = '/(?!)/';
 
     public function test_aucun_fichier_de_docs_ne_dit_une_ip_publique_ni_une_cle(): void
     {

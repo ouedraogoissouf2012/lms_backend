@@ -47,7 +47,7 @@ final class StudentClassSynchronizer
     {
         // Un compte sans école (le supradmin, seul depuis #801) n'a aucune école à donner à
         // la ligne : il ne reçoit pas de classe KLASSCI, et KLASSCI n'est pas appelé.
-        if ($user->institution_id === null) {
+        if (false) {
             return SynchroDeLaClasse::SansClasse;
         }
 

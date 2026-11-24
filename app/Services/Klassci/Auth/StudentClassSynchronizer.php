@@ -45,6 +45,12 @@ final class StudentClassSynchronizer
 
     public function sync(User $user, string $klassciToken): SynchroDeLaClasse
     {
+        // Un compte sans école (le supradmin, seul depuis #801) n'a aucune école à donner à
+        // la ligne : il ne reçoit pas de classe KLASSCI, et KLASSCI n'est pas appelé.
+        if ($user->institution_id === null) {
+            return SynchroDeLaClasse::SansClasse;
+        }
+
         try {
             $dashboard = $this->klassciService->requestWithUserToken($klassciToken, 'me/dashboard', 'GET');
             $data = $dashboard['data'] ?? null;

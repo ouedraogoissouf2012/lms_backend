@@ -6,6 +6,7 @@ use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Services\TenantManager;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
@@ -148,16 +149,19 @@ class BelongsToInstitutionTest extends TestCase
 
         // #1181 : un COMPTE ne se crée plus sans établissement (la règle de `User`
         // refuse). Le hook générique s'éprouve donc sur un autre modèle tenant.
-        $matiere = Matiere::query()->create(['code' => 'MAT-1181', 'libelle' => 'Sans tenant']);
+        //
+        // #801 : la ligne ne reste plus à NULL. Le hook avertit toujours, puis la
+        // BASE refuse : `institution_id` est obligatoire sur les tables déclarées.
+        try {
+            Matiere::query()->create(['code' => 'MAT-1181', 'libelle' => 'Sans tenant']);
+            $this->fail('Sans tenant ni école explicite, la base devait refuser la ligne.');
+        } catch (QueryException) {
+            $this->assertSame(0, Matiere::query()->withoutGlobalScope('institution')->where('code', 'MAT-1181')->count());
+        }
 
         Log::shouldHaveReceived('warning')
             ->withArgs(fn ($message) => str_contains($message, 'creating model without resolved tenant'))
             ->atLeast()->once();
-
-        $this->assertNull(
-            $matiere->institution_id,
-            'Without tenant and without explicit assignment, institution_id stays at DB default (null).'
-        );
     }
 
     /**

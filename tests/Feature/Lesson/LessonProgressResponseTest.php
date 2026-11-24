@@ -9,7 +9,7 @@ use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -29,6 +29,7 @@ use Tests\TestCase;
  */
 final class LessonProgressResponseTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -69,7 +70,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_get_progress_missing_lesson_returns_404_error_envelope(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->getJson('/api/lessons/999999/progress');
 
@@ -79,7 +80,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_get_progress_as_student_returns_success_with_data_only(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->getJson("/api/lessons/{$this->lesson->id}/progress");
 
@@ -92,7 +93,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_get_progress_as_teacher_keeps_root_statistics_key(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->getJson("/api/lessons/{$this->lesson->id}/progress");
 
@@ -113,7 +114,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_update_progress_missing_lesson_returns_404_error_envelope(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->postJson('/api/lessons/999999/progress', ['progress_percentage' => 50]);
 
@@ -123,7 +124,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_update_progress_returns_success_with_message_and_data(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->postJson(
             "/api/lessons/{$this->lesson->id}/progress",
@@ -142,7 +143,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_mark_complete_missing_lesson_returns_404_error_envelope(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->postJson('/api/lessons/999999/complete');
 
@@ -152,7 +153,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_mark_complete_returns_success_with_message_and_data(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/complete");
 
@@ -168,7 +169,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_rate_missing_lesson_returns_404_error_envelope(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->postJson('/api/lessons/999999/rating', ['rating' => 4]);
 
@@ -178,7 +179,7 @@ final class LessonProgressResponseTest extends TestCase
 
     public function test_rate_returns_success_with_message_and_data(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->postJson(
             "/api/lessons/{$this->lesson->id}/rating",

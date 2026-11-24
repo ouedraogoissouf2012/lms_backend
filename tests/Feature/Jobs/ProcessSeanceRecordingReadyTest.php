@@ -15,9 +15,11 @@ use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\SeanceRecording;
 use App\Models\User;
+use App\Services\Roster\RosterAuthorityFactory;
 use App\Services\TenantManager;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentGuard;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentResolver;
+use App\Services\Visio\Recording\TitreDEnregistrement;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,6 +190,8 @@ final class ProcessSeanceRecordingReadyTest extends TestCase
         return new SeanceRecordingAttachmentResolver(
             new NullLogger,
             app(SeanceRecordingAttachmentGuard::class),
+            new TitreDEnregistrement,
+            app(RosterAuthorityFactory::class),
         );
     }
 }

@@ -9,7 +9,6 @@ use App\Models\Classe;
 use App\Services\Seances\KlassciPayload;
 use App\Services\TenantManager;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Database\Query\Builder;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -22,7 +21,7 @@ use Psr\Log\LoggerInterface;
  * - Les absents se jugent sur la liste REÇUE : un élève listé dont l'écriture a
  *   échoué n'est pas absent.
  * - Écriture CONDITIONNELLE (`statut = actif`), bornée à la classe et aux lignes de
- *   l'établissement courant ou héritées sans établissement, jamais celles d'un autre.
+ *   l'établissement courant, jamais celles d'un autre (#801 : plus de ligne sans école).
  * - Jamais de suppression : l'élève qui revient dans la liste repasse `actif` par
  *   l'upsert ({@see ClasseStudentsSynchronizer}).
  * - Un élève sans identifiant KLASSCI (inscrit avant une bascule du mode autonome
@@ -56,9 +55,8 @@ final class ReconciliationKlassci implements ReconciliationDesInscriptions
         $desactivees = $this->db->table('classe_etudiant')
             ->where('classe_id', $classe->id)
             ->where('statut', ClasseEtudiantStatut::Actif->value)
-            ->where(static fn (Builder $ligne): Builder => $ligne
-                ->where('institution_id', $institutionId)
-                ->orWhereNull('institution_id'))
+            // #801 : plus de ligne sans école ; seules celles de l'école courante.
+            ->where('institution_id', $institutionId)
             ->whereIn('user_id', $this->db->table('users')
                 ->select('id')
                 ->whereNotNull('klassci_id')

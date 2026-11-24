@@ -31,11 +31,16 @@ final class InstitutionForeignKeyTest extends TestCase
         Lesson::factory()->create(['institution_id' => 999999]);
     }
 
-    public function test_null_institution_id_is_accepted(): void
+    /**
+     * Ce test affirmait l'INVERSE (« un `institution_id` nul est accepté »), le comportement
+     * d'avant #801. Une ligne sans école échappait aux uniques par école : plusieurs NULL sont
+     * admis dans un index unique.
+     */
+    public function test_null_institution_id_is_rejected(): void
     {
-        $lesson = Lesson::factory()->create(['institution_id' => null]);
+        $this->expectException(QueryException::class);
 
-        self::assertDatabaseHas('lessons', ['id' => $lesson->id, 'institution_id' => null]);
+        Lesson::factory()->create(['institution_id' => null]);
     }
 
     public function test_deleting_institution_with_children_is_blocked_by_restrict(): void

@@ -401,21 +401,24 @@ final class EvaluationLearnerReachTest extends TestCase
 
     /**
      * Sans établissement, le filtre ne devient pas `institution_id IS NULL` : un
-     * compte sans établissement ne lit pas une copie ORPHELINE (sans
-     * établissement, sur une évaluation sans établissement) qui porte son
-     * identifiant KLASSCI. La porte des comptes sans école refuse d'abord (#984) ;
+     * compte sans établissement ne lit pas une copie qui porte son identifiant
+     * KLASSCI (avant #801, une copie ORPHELINE, sans établissement ; depuis, une
+     * copie d'école, la seule forme possible). La porte des comptes sans école refuse d'abord (#984) ;
      * le `1 = 0` (ADR-792-01) reste la défense en profondeur, éprouvée en
      * unitaire par EvaluationSubmissionOwnedByTest.
      */
     public function test_sans_etablissement_une_copie_orpheline_reste_introuvable(): void
     {
         $this->disableKlassciMiddleware();
+        // #801 : une évaluation ou une copie sans établissement n'existe plus. Elles
+        // sont portées par une école ; le compte, lui, n'en a aucune, et ne lit rien.
+        $ecole = Institution::factory()->create();
         $orpheline = Evaluation::factory()->create([
-            'institution_id' => null, 'klassci_classe_id' => self::CLASSE, 'status' => 'terminee', 'is_published' => true,
+            'institution_id' => $ecole->id, 'klassci_classe_id' => self::CLASSE, 'status' => 'terminee', 'is_published' => true,
         ]);
         EvaluationSubmission::create([
             'evaluation_id' => $orpheline->id, 'klassci_etudiant_id' => self::KLASSCI_ID, 'attempt' => 1,
-            'status' => 'soumis', 'submitted_at' => now()->subDays(8), 'institution_id' => null,
+            'status' => 'soumis', 'submitted_at' => now()->subDays(8), 'institution_id' => $ecole->id,
         ]);
         // #1181 : une donnée héritée que la règle du modèle interdit désormais.
         $sansEtablissement = User::factory()->sansEtablissement()->createQuietly([

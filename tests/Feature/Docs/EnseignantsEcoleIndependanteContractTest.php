@@ -91,6 +91,12 @@ final class EnseignantsEcoleIndependanteContractTest extends TestCase
             {
                 throw new QueryException('sqlite', 'select 1', [], new PDOException('database is locked'));
             }
+
+            /** #1536 : hors de ce test, qui ne lit que l'annuaire et la liste. */
+            public function idDansLAnnuaire(User $compte): ?int
+            {
+                return null;
+            }
         });
         $coordinateur = $this->membre($this->ecole(), 'coordinateur');
 

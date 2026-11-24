@@ -11,6 +11,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Catalogue\PorteDuCatalogueLocal;
+use App\Services\Enseignant\IdDansLAnnuaire;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
@@ -35,6 +36,7 @@ final class LoginOrchestrator
         private readonly RosterAuthorityFactory $rosterAuthorities,
         private readonly PorteDuCatalogueLocal $catalogue,
         private readonly KlassciConfigResolver $cibles,
+        private readonly IdDansLAnnuaire $idDansLAnnuaire,
     ) {}
 
     public function attemptLocal(string $username, string $password): ?JsonResponse
@@ -59,6 +61,7 @@ final class LoginOrchestrator
             $institution,
             $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
             $this->catalogue->ouvertePour($institution),
+            $this->idDansLAnnuaire->de($user),
         );
     }
 
@@ -174,6 +177,7 @@ final class LoginOrchestrator
             $tenant,
             $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
             $this->catalogue->ouvertePour($institution),
+            $this->idDansLAnnuaire->de($localUser),
         );
     }
 }

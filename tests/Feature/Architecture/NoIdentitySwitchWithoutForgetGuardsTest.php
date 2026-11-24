@@ -41,12 +41,23 @@ use Tests\TestCase;
  * mémoïsation y est inoffensive. Elle a migré vers `asTenant()` pour lever
  * l'ambiguïté, pas pour corriger un défaut.
  *
- * Le dépôt est donc sain sur ce point, parce que #709 a introduit
- * `ActsAsTenantUser` et que sept fichiers l'emploient déjà.
+ * > **Correction du 2026-11-23 (#691).** Ce commentaire concluait « le dépôt est
+ * > donc sain sur ce point ». **La mesure l'a démenti.** Une sonde à l'exécution
+ * > (#1419) a relevé 12 tests dont une requête était servie sous une autre identité
+ * > que celle envoyée. Par exemple, dans `AdminAnalyticsCacheIsolationTest`, l'école
+ * > B était servie comme le coordinateur de A. Cette garde ne pouvait pas les voir :
+ * > elle lit la forme d'une méthode de test, et l'identité y change dans une méthode
+ * > d'aide (`callSystemMetricsAs()`). Rejoués sous leur vraie identité, les 12 sont
+ * > restés verts : justes par accident.
+ * >
+ * > Le défaut est désormais impossible par construction : `Tests\TestCase::call()`
+ * > purge le garde quand l'en-tête `Authorization` change de compte. Cette garde
+ * > reste, comme filet de lecture : elle signale la forme du risque, et non sa
+ * > preuve.
  *
- * Cette garde ne corrige rien — elle **empêche le retour**. C'est sa seule
- * raison d'être, et elle suffit : le défaut est invisible par construction, ne
- * fait rougir aucun test, et n'apparaît qu'en relisant ligne à ligne.
+ * Cette garde ne corrige rien — elle **empêche le retour** de la forme. Le défaut
+ * est invisible par construction, ne fait rougir aucun test, et n'apparaît qu'en
+ * relisant ligne à ligne ou en le mesurant à l'exécution.
  *
  * La leçon vaut d'être écrite : un signal non vérifié aurait fait réécrire onze
  * tests corrects. L'issue demandait de « prouver le faux négatif avant de

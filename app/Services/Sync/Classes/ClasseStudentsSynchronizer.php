@@ -162,7 +162,7 @@ final class ClasseStudentsSynchronizer
                 'role' => Role::Etudiant->value,
                 'password' => bcrypt(bin2hex(random_bytes(16))), // Password aléatoire
                 // L'école de la CLASSE, explicitement : plus d'héritage du tenant (#801).
-                'institution_id' => $ecole,
+
             ]);
 
             $this->logger->info('Nouvel étudiant créé', [

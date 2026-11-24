@@ -38,7 +38,7 @@ trait InteractsWithRoles
             }
         };
         static::creating($regle);
-        static::updating($regle);
+
     }
 
     /**

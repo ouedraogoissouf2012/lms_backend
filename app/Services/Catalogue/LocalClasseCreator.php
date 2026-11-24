@@ -73,8 +73,8 @@ final class LocalClasseCreator
                 // en inventer un la rendrait indiscernable d'une classe miroitée.
                 'klassci_id' => null,
             ]);
-        } catch (UniqueConstraintViolationException) {
-            throw CodeDeClasseDejaEmploye::surLeCode();
+        } catch (UniqueConstraintViolationException $violation) {
+            throw $violation; // F1 (falsification #1521) : plus d'attrape
         }
     }
 

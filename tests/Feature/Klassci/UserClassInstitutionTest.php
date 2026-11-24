@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve;
 use App\Services\Klassci\Auth\StudentClassSynchronizer;
+use App\Services\Klassci\Auth\SynchroDeLaClasse;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
 use App\Services\Visio\Recording\SeanceRecordingAccessService;
@@ -123,22 +124,35 @@ final class UserClassInstitutionTest extends TestCase
         );
     }
 
-    public function test_un_compte_sans_etablissement_laisse_la_colonne_nulle(): void
+    /**
+     * On ne devine pas : un compte hors établissement — le supradmin, le seul depuis #801 —
+     * ne fournit aucune école à recopier. Il ne reçoit donc AUCUNE classe KLASSCI : la ligne
+     * serait sans école, ce que `user_classes` refuse désormais. Ce test affirmait avant
+     * « la colonne reste nulle » ; le NOT NULL de #801 rend ce résultat impossible.
+     *
+     * Le décompte des lignes seul ne prouvait RIEN : sans le retour anticipé, l'écriture à NULL
+     * échoue, `sync()` rattrape l'erreur et rend `Echec`, et la table reste vide (falsification
+     * E de #1530, verte). Le test affirme donc le résultat `SansClasse` et qu'AUCUN appel n'est
+     * parti vers KLASSCI, compté.
+     */
+    public function test_un_compte_sans_etablissement_ne_recoit_aucune_classe(): void
     {
-        // On ne devine pas : un compte hors établissement — un supradmin — ne
-        // fournit aucune valeur à recopier.
-        // #1181 : une donnée héritée que la règle du modèle interdit désormais.
-        $orphelin = User::factory()->sansEtablissement()->createQuietly([
-            'institution_id' => null,
-            'role' => 'etudiant',
-        ]);
+        $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
+        $appels = 0;
+        $proxy = Mockery::mock(KlassciProxyService::class);
+        $proxy->shouldReceive('requestWithUserToken')->andReturnUsing(static function () use (&$appels): array {
+            $appels++;
+
+            return ['data' => ['classe' => ['id' => 44, 'name' => 'Classe 44']]];
+        });
 
         app(TenantManager::class)->reset();
-        $this->synchroniser($orphelin, 44);
+        $resultat = (new StudentClassSynchronizer($proxy, new NullLogger, app(CaughtExceptionLog::class), DB::connection(), app(MiroirDeLaClasseDeLEleve::class)))
+            ->sync($supradmin, 'jeton-klassci');
 
-        self::assertNull(
-            DB::table('user_classes')->where('user_id', $orphelin->id)->value('institution_id')
-        );
+        self::assertSame(SynchroDeLaClasse::SansClasse, $resultat);
+        self::assertSame(0, $appels, 'KLASSCI ne doit pas être appelé pour un compte sans école.');
+        self::assertSame(0, DB::table('user_classes')->where('user_id', $supradmin->id)->count());
     }
 
     private function synchroniser(User $user, int $klassciClasseId): void

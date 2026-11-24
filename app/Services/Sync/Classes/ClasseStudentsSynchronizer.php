@@ -59,8 +59,7 @@ use Psr\Log\LoggerInterface;
  * l'ancien `(classe_id, user_id, annee_universitaire_id)` ne contraignait rien,
  * la colonne d'année n'étant jamais écrite. La recherche d'existence doit donc
  * coller EXACTEMENT à cet index : y ajouter `institution_id` ferait manquer une
- * ligne héritée à `institution_id` NULL, et l'insertion suivante serait rejetée
- * par la contrainte. La garde tenant de PR #173 n'est pas perdue pour autant —
+ * ligne d'une AUTRE école, et l'insertion suivante serait rejetée par la contrainte. La garde tenant de PR #173 n'est pas perdue pour autant —
  * elle est déplacée sur la ligne LUE ({@see belongsToTenant()}) : un
  * rattachement absent est réparé, celui d'une autre institution n'est JAMAIS
  * réécrit. Une course perdue se solde par un rejet de la BASE, non plus par un
@@ -225,9 +224,8 @@ final class ClasseStudentsSynchronizer
         }
 
         $this->db->table('classe_etudiant')->where($match)->update([
-            // Répare le rattachement d'une ligne héritée à `institution_id` NULL.
-            // Jamais une ré-affectation : le cas « autre institution » est écarté
-            // au-dessus.
+            // Une ligne de CETTE école (vérifié au-dessus) : jamais une ré-affectation,
+            // le cas « autre institution » est écarté.
             'institution_id' => $institutionId,
             'annee_universitaire_id' => $classe->annee_universitaire_id,
             'statut' => ClasseEtudiantStatut::Actif->value,
@@ -240,10 +238,10 @@ final class ClasseStudentsSynchronizer
      *
      * FAIL-SECURE (garde de PR #173, conservée sous une autre forme) : la
      * correspondance ne peut plus inclure `institution_id` — elle doit coller à
-     * l'index unique `(classe_id, user_id)` (#541), sans quoi une ligne héritée à
-     * `institution_id` NULL serait manquée et l'insertion suivante rejetée. La
-     * vérification tenant est donc faite ICI, sur la ligne lue : on répare un
-     * rattachement ABSENT, on ne réécrit JAMAIS celui d'une autre institution.
+     * l'index unique `(classe_id, user_id)` (#541). La vérification tenant est donc
+     * faite ICI, sur la ligne lue : une ligne de CETTE école est mise à jour (statut,
+     * année), celle d'une autre institution n'est JAMAIS réécrite. Depuis #801, une
+     * ligne sans école n'existe plus : elle n'est plus « réparée ».
      * Une telle ligne est une anomalie (une classe n'appartient qu'à un tenant) :
      * on la signale et on n'y touche pas.
      */
@@ -251,7 +249,8 @@ final class ClasseStudentsSynchronizer
     {
         $owner = $enrollment->institution_id ?? null;
 
-        if ($owner === null || (int) $owner === $institutionId) {
+        // #801 : `institution_id` est obligatoire ; une ligne sans école n'existe plus.
+        if (is_numeric($owner) && (int) $owner === $institutionId) {
             return true;
         }
 

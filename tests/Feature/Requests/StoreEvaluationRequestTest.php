@@ -5,7 +5,7 @@ namespace Tests\Feature\Requests;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -20,6 +20,7 @@ use Tests\TestCase;
  */
 class StoreEvaluationRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -58,7 +59,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_teacher_can_create_evaluation(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 901,
@@ -77,7 +78,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_create_with_description(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 902,
@@ -97,7 +98,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_create_with_questions(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 903,
@@ -125,7 +126,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_titre_trimmed(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 904,
@@ -144,7 +145,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_coordinator_cannot_create(): void
     {
-        Sanctum::actingAs($this->coordinator);
+        $this->asTenant($this->coordinator);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 905,
@@ -163,7 +164,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_student_cannot_create(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 906,
@@ -199,7 +200,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_missing_titre(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 908,
@@ -218,7 +219,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_missing_type(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 909,
@@ -237,7 +238,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_missing_duration(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 910,
@@ -256,7 +257,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_invalid_type(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 911,
@@ -276,7 +277,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_titre_too_short(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 912,
@@ -296,7 +297,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_duration_exceeds_limit(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 913,
@@ -316,7 +317,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_question_missing_type(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 914,
@@ -341,7 +342,7 @@ class StoreEvaluationRequestTest extends TestCase
      */
     public function test_invalid_question_type(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_evaluation_id' => 915,

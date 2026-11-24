@@ -154,6 +154,7 @@ final class IntegrityConstraintsTest extends TestCase
     private function insertAttendance(array $references): void
     {
         DB::table('esbtp_attendance')->insert($references + [
+            'institution_id' => DB::table('seances')->where('id', $references['seance_id'])->value('institution_id'),
             'is_validated' => true,
             'created_at' => now(),
             'updated_at' => now(),
@@ -190,6 +191,7 @@ final class IntegrityConstraintsTest extends TestCase
         DB::table('classe_etudiant')->insert([
             'classe_id' => $classeId,
             'user_id' => $userId,
+            'institution_id' => DB::table('classes')->where('id', $classeId)->value('institution_id'),
             'statut' => 'actif',
             'created_at' => now(),
             'updated_at' => now(),

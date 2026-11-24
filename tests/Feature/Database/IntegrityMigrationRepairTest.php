@@ -175,6 +175,7 @@ final class IntegrityMigrationRepairTest extends TestCase
         DB::table('evaluation_submissions')->insert([
             'evaluation_id' => $evaluationId,
             'klassci_etudiant_id' => $klassciEtudiantId,
+            'institution_id' => DB::table('evaluations')->where('id', $evaluationId)->value('institution_id'),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

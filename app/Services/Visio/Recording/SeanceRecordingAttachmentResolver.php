@@ -6,11 +6,11 @@ namespace App\Services\Visio\Recording;
 
 use App\Enums\RecordingFailureReason;
 use App\Models\Chapter;
-use App\Models\Classe;
+use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\Seance;
-use App\Models\User;
+use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -19,6 +19,8 @@ final class SeanceRecordingAttachmentResolver
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly SeanceRecordingAttachmentGuard $guard,
+        private readonly TitreDEnregistrement $titres,
+        private readonly RosterAuthorityFactory $autorites,
     ) {}
 
     public function attachReadyRecording(
@@ -27,19 +29,18 @@ final class SeanceRecordingAttachmentResolver
         ?string $title = null,
         string $provider = 'external',
     ): RecordingAttachmentResult {
-        if ($seance->klassci_matiere_id === null) {
-            return $this->fail($seance, RecordingFailureReason::MissingKlassciMatiereId, ['recording_url' => $recordingUrl]);
-        }
+        $cibles = $this->ciblesDe($seance);
 
-        $matiere = $this->resolveMatiere($seance);
-        if ($matiere === null) {
-            return $this->fail($seance, RecordingFailureReason::MatiereNotFound, [
+        $matiere = $cibles->matiere($seance);
+        if ($matiere instanceof RecordingFailureReason) {
+            return $this->fail($seance, $matiere, [
                 'klassci_matiere_id' => $seance->klassci_matiere_id,
+                'matiere_id' => $seance->matiere_id,
                 'recording_url' => $recordingUrl,
             ]);
         }
 
-        $lessons = $this->candidateLessons($seance, $matiere);
+        $lessons = $this->candidateLessons($seance, $matiere, $cibles);
         if ($lessons->isEmpty()) {
             return $this->fail($seance, RecordingFailureReason::LessonNotFound, [
                 'matiere_id' => $matiere->id,
@@ -63,29 +64,35 @@ final class SeanceRecordingAttachmentResolver
         return RecordingAttachmentResult::attached($lesson, $chapter);
     }
 
-    private function resolveMatiere(Seance $seance): ?Matiere
+    /**
+     * Les cibles se choisissent par le MODE de l'école, au seul point de résolution (#1483).
+     * L'école est lue sur la séance : un job n'a pas de tenant. Une école supprimée en douceur
+     * garde son mode.
+     */
+    private function ciblesDe(Seance $seance): CiblesDeLaSeance
     {
-        return Matiere::query()
-            ->where('institution_id', $seance->institution_id)
-            ->where('klassci_id', $seance->klassci_matiere_id)
-            ->first();
+        $ecole = $seance->institution_id === null
+            ? null
+            : Institution::withTrashed()->find($seance->institution_id);
+
+        return $this->autorites->sourceForInstitution($ecole, KlassciCiblesDeLaSeance::class, LocaleCiblesDeLaSeance::class);
     }
 
     /**
      * @return Collection<int, Lesson>
      */
-    private function candidateLessons(Seance $seance, Matiere $matiere): Collection
+    private function candidateLessons(Seance $seance, Matiere $matiere, CiblesDeLaSeance $cibles): Collection
     {
         $query = Lesson::query()
             ->where('institution_id', $seance->institution_id)
             ->where('matiere_id', $matiere->id);
 
-        $classe = $this->resolveClasse($seance);
+        $classe = $cibles->classe($seance);
         if ($classe !== null) {
             $query->where('classe_id', $classe->id);
         }
 
-        $teacherIds = $this->teacherCandidateIds($seance);
+        $teacherIds = $cibles->enseignants($seance);
 
         if ($teacherIds !== null) {
             // Enseignant DÉCLARÉ mais introuvable localement : aucun candidat.
@@ -102,68 +109,6 @@ final class SeanceRecordingAttachmentResolver
         return $query->orderBy('id')->get();
     }
 
-    private function resolveClasse(Seance $seance): ?Classe
-    {
-        if ($seance->klassci_classe_id === null) {
-            return null;
-        }
-
-        return Classe::query()
-            ->where('institution_id', $seance->institution_id)
-            ->where('klassci_id', $seance->klassci_classe_id)
-            ->first();
-    }
-
-    /**
-     * Les `users.id` LOCAUX de l'enseignant de la séance.
-     *
-     * ## Le défaut corrigé (#707)
-     *
-     * Cette méthode renvoyait `[$klassciTeacherId]` — l'identifiant **KLASSCI
-     * brut** — puis y ajoutait les `users.id` **locaux**, et le tout était
-     * confronté à `lessons.enseignant_id`. **Deux espaces d'identifiants dans la
-     * même comparaison.**
-     *
-     * Or `lessons.enseignant_id` est un `users.id` local : six FormRequests le
-     * comparent à `$user->id`, et `Lesson` déclare
-     * `belongsTo(User::class, 'enseignant_id')`. Seul le commentaire de la
-     * migration disait le contraire — c'était la source de la confusion.
-     *
-     * Conséquence : si un collègue portait un `users.id` égal au
-     * `klassci_enseignant_id` de la séance, et enseignait la même matière à la
-     * même classe, l'enregistrement était publié **dans son cours**, visible par
-     * ses étudiants.
-     *
-     * ## Les trois états, distingués
-     *
-     * - `null` — aucun enseignant déclaré sur la séance : pas de contrainte.
-     * - `[]` — enseignant déclaré mais **introuvable** localement. L'appelant
-     *   doit conclure `lesson_not_found`, jamais lever la contrainte.
-     * - liste non vide — les `users.id` locaux correspondants.
-     *
-     * @return list<int>|null
-     */
-    private function teacherCandidateIds(Seance $seance): ?array
-    {
-        if ($seance->klassci_enseignant_id === null) {
-            return null;
-        }
-
-        $localIds = User::query()
-            ->where('institution_id', $seance->institution_id)
-            ->where('klassci_enseignant_id', (int) $seance->klassci_enseignant_id)
-            ->pluck('id');
-
-        $ids = [];
-        foreach ($localIds as $id) {
-            if (is_numeric($id)) {
-                $ids[] = (int) $id;
-            }
-        }
-
-        return array_values(array_unique($ids));
-    }
-
     private function upsertVideoChapter(
         Seance $seance,
         Lesson $lesson,
@@ -173,13 +118,16 @@ final class SeanceRecordingAttachmentResolver
     ): Chapter {
         $chapter = $this->existingRecordingChapter($seance, $lesson) ?? new Chapter;
         $isNew = ! $chapter->exists;
+        // Lu AVANT le `fill`, qui remplace les notes où le titre automatique est gardé (#854).
+        $automatique = $this->titres->automatique($seance, $title);
+        $titre = $this->titres->retenu($chapter, $seance, $automatique);
 
         $chapter->fill([
             'lesson_id' => $lesson->id,
             'matiere_id' => $lesson->matiere_id,
             'enseignant_id' => $lesson->enseignant_id,
             'institution_id' => $lesson->institution_id,
-            'title' => $title ?? $this->defaultTitle($seance),
+            'title' => $titre,
             'description' => 'Visio recording attached automatically.',
             'content_type' => 'video',
             'content' => null,
@@ -187,7 +135,7 @@ final class SeanceRecordingAttachmentResolver
             'video_provider' => $provider,
             'allow_download' => false,
             'autoplay_video' => false,
-            'notes_enseignant' => $this->recordingNotes($seance),
+            'notes_enseignant' => $this->recordingNotes($seance) + [TitreDEnregistrement::NOTE => $automatique],
         ]);
 
         if ($isNew) {
@@ -236,13 +184,6 @@ final class SeanceRecordingAttachmentResolver
         $maxOrder = Chapter::query()->where('lesson_id', $lesson->id)->max('order');
 
         return (is_numeric($maxOrder) ? (int) $maxOrder : 0) + 1;
-    }
-
-    private function defaultTitle(Seance $seance): string
-    {
-        $label = $seance->titre ?: 'Seance '.$seance->klassci_seance_id;
-
-        return 'Recording - '.$label;
     }
 
     /**

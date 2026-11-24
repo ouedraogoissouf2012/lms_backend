@@ -7,7 +7,7 @@ namespace App\Services\Catalogue;
 use App\Exceptions\BusinessException;
 use App\Exceptions\CodeDeClasseDejaEmploye;
 use App\Models\Classe;
-use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -73,7 +73,7 @@ final class LocalClasseCreator
                 // en inventer un la rendrait indiscernable d'une classe miroitée.
                 'klassci_id' => null,
             ]);
-        } catch (UniqueConstraintViolationException) {
+        } catch (QueryException) { // F3 (falsification #1521) : toute erreur SQL
             throw CodeDeClasseDejaEmploye::surLeCode();
         }
     }

@@ -73,7 +73,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'Updated Title',
         ]);
 
@@ -91,7 +91,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'New Title',
             'description' => 'New description',
             'video_url' => 'https://youtube.com/watch?v=123',
@@ -118,7 +118,7 @@ class UpdateChapterRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
         $originalDescription = $this->chapter->description;
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'Only Title Changed',
         ]);
 
@@ -135,7 +135,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => '   Trimmed   ',
         ]);
 
@@ -151,7 +151,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->student);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'Student Attempt',
         ]);
 
@@ -170,7 +170,7 @@ class UpdateChapterRequestTest extends TestCase
 
         Sanctum::actingAs($otherTeacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'Unauthorized',
         ]);
 
@@ -190,7 +190,7 @@ class UpdateChapterRequestTest extends TestCase
 
         Sanctum::actingAs($otherTeacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'Cross-Tenant',
         ]);
 
@@ -202,7 +202,7 @@ class UpdateChapterRequestTest extends TestCase
      */
     public function test_unauthenticated_cannot_update(): void
     {
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'No Token',
         ]);
 
@@ -216,7 +216,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => 'ab',
         ]);
 
@@ -231,7 +231,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'title' => str_repeat('a', 256),
         ]);
 
@@ -246,7 +246,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/chapters/{$this->chapter->id}", [
+        $response = $this->putJson("/api/chapters/{$this->chapter->id}", [
             'video_url' => 'not-a-url',
         ]);
 
@@ -261,7 +261,7 @@ class UpdateChapterRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson('/api/chapters/99999', [
+        $response = $this->putJson('/api/chapters/99999', [
             'title' => 'Ghost',
         ]);
 

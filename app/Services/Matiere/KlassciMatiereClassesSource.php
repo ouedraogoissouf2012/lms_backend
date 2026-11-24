@@ -11,6 +11,7 @@ use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Support\Logging\CaughtExceptionLog;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -58,6 +59,7 @@ final class KlassciMatiereClassesSource
         private readonly TeacherDashboardClasses $dashboardClasses,
         private readonly ClasseMatieresSynchronizer $matieresSynchronizer,
         private readonly CaughtExceptionLog $journal,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -109,7 +111,32 @@ final class KlassciMatiereClassesSource
             return [];
         }
 
-        return $this->classesPortantLaMatiere($details, $klassciMatiereId, $institutionId);
+        return $this->classesPortantLaMatiere($details, $klassciMatiereId, $institutionId, $this->complet($klassciClasseIds, $details));
+    }
+
+    /**
+     * #758 — le pool omet les classes en échec (transport, 4xx/5xx, disjoncteur).
+     * Un résultat amputé reste une liste juste à RENDRE, mais il ne doit jamais
+     * alimenter le miroir : au tour suivant, la jambe miroir répondrait non vide, et
+     * la troncature deviendrait l'état local pour toujours.
+     *
+     * @param  list<int>  $demandees
+     * @param  array<int|string, mixed>  $details
+     */
+    private function complet(array $demandees, array $details): bool
+    {
+        $manquantes = array_values(array_diff($demandees, array_map('intval', array_keys($details))));
+        if ($manquantes === []) {
+            return true;
+        }
+
+        $this->logger->warning('Classes de la matière — détails KLASSCI incomplets : miroir non alimenté', [
+            'demandees' => count($demandees),
+            'recues' => count($details),
+            'manquantes' => $manquantes,
+        ]);
+
+        return false;
     }
 
     /**
@@ -135,9 +162,10 @@ final class KlassciMatiereClassesSource
      * et proposer une classe inutilisable, c'est proposer une erreur.
      *
      * @param  array<int|string, mixed>  $details
+     * @param  bool  $alimenterLeMiroir  faux pour un résultat amputé (#758)
      * @return array<int, array{id: int, nom: string}>
      */
-    private function classesPortantLaMatiere(array $details, int $klassciMatiereId, int $institutionId): array
+    private function classesPortantLaMatiere(array $details, int $klassciMatiereId, int $institutionId, bool $alimenterLeMiroir): array
     {
         $porteuses = [];
 
@@ -158,15 +186,18 @@ final class KlassciMatiereClassesSource
         foreach ($this->localesParKlassciId(array_keys($porteuses), $institutionId) as $klassciId => $locale) {
             $classes[] = ['id' => (int) $locale->id, 'nom' => (string) ($locale->libelle ?? 'N/A')];
 
+            if (! $alimenterLeMiroir) {
+                continue;
+            }
+
             // Le miroir est un effet de bord OPPORTUNISTE sur un chemin de
             // LECTURE, et il est le seul endroit du diff qui ecrit.
             //
-            // `ClasseMatieresSynchronizer::link()` fait `exists()` puis
-            // `insert()` sans atomicite, sous un unique (classe_id, matiere_id) :
-            // deux requetes concurrentes levent 1062 ou 1213. Sans ce garde, la
-            // QueryException traverse le service jusqu'au controleur, qui la
-            // classe en panne KLASSCI et rend 500 — sur une page deja
-            // entierement calculee, et sans meme un log d'erreur.
+            // Une panne d'ecriture (#759 : `link()` n'etait pas atomique sous
+            // l'unique (classe_id, matiere_id) ; toute autre panne de base) ne
+            // doit pas couter la page : sans ce garde, la QueryException traverse
+            // le service jusqu'au controleur, qui la classe en panne KLASSCI et
+            // rend 500 — sur une page deja entierement calculee.
             //
             // Les deux appelants historiques de `sync()` sont, eux, deja
             // enveloppes (ClasseSyncService). Celui-ci est le premier sur un GET.

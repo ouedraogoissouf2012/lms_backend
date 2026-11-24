@@ -9,21 +9,24 @@ use App\Models\Institution;
 use App\Services\Catalogue\CatalogueAuthority;
 use App\Services\Catalogue\KlassciCatalogueAuthority;
 use App\Services\Catalogue\LocalCatalogueAuthority;
-use App\Services\TenantManager;
+use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * #848 — qui a le droit d'écrire le catalogue pédagogique.
  *
- * Même forme que la résolution du roster, et pour les mêmes raisons : le mode
- * est DÉCLARÉ, il se résout à la liaison — donc après `ResolveInstitution` —
- * et l'absence de tenant rend l'autorité la plus restrictive.
+ * Le mode est DÉCLARÉ, et l'absence d'établissement rend l'autorité la plus
+ * restrictive. Ce qui se joue ici est une frontière d'écriture : si un établissement
+ * branché à KLASSCI pouvait créer une classe locale, la synchronisation suivante
+ * n'aurait aucun moyen de savoir laquelle fait foi. C'est la cause racine de #673,
+ * et elle a déjà été payée une fois.
  *
- * Ce qui se joue ici est une frontière d'écriture : si un établissement branché
- * à KLASSCI pouvait créer une classe locale, la synchronisation suivante
- * n'aurait aucun moyen de savoir laquelle fait foi. C'est la cause racine de
- * #673, et elle a déjà été payée une fois.
+ * #1142 — le droit se lit par `RosterAuthorityFactory::catalogueForInstitution()`, au
+ * moment de l'appel (`PorteDuCatalogueLocal`, #1128). La liaison de conteneur
+ * `CatalogueAuthority` et `catalogueForCurrentTenant()` n'avaient plus aucun
+ * consommateur : elles sont retirées, et ce test, qui les résolvait, est reciblé sur
+ * la fabrique pour garder la couverture de la règle du mode.
  *
  * @see docs/adr/2026-09-18-848-01-catalogue-pedagogique-local.md
  */
@@ -33,11 +36,7 @@ final class CatalogueAuthorityResolutionTest extends TestCase
 
     public function test_un_etablissement_klassci_n_ecrit_pas_son_catalogue(): void
     {
-        $this->pourTenant(Institution::factory()->create([
-            'mode' => InstitutionMode::Klassci,
-        ]));
-
-        $autorite = app(CatalogueAuthority::class);
+        $autorite = $this->autoritePour(Institution::factory()->create(['mode' => InstitutionMode::Klassci]));
 
         self::assertInstanceOf(KlassciCatalogueAuthority::class, $autorite);
         self::assertFalse($autorite->allowsLocalCatalogue());
@@ -45,11 +44,7 @@ final class CatalogueAuthorityResolutionTest extends TestCase
 
     public function test_un_etablissement_autonome_ecrit_son_catalogue(): void
     {
-        $this->pourTenant(Institution::factory()->create([
-            'mode' => InstitutionMode::Standalone,
-        ]));
-
-        $autorite = app(CatalogueAuthority::class);
+        $autorite = $this->autoritePour(Institution::factory()->create(['mode' => InstitutionMode::Standalone]));
 
         self::assertInstanceOf(LocalCatalogueAuthority::class, $autorite);
         self::assertTrue($autorite->allowsLocalCatalogue());
@@ -59,50 +54,55 @@ final class CatalogueAuthorityResolutionTest extends TestCase
     {
         // Le mode est une INTENTION. Le dériver de `klassci_api_url IS NULL`
         // ferait d'une faute de saisie une ouverture d'écriture, en silence.
-        $this->pourTenant(Institution::factory()->create([
+        $autorite = $this->autoritePour(Institution::factory()->create([
             'mode' => InstitutionMode::Klassci,
             'klassci_api_url' => null,
         ]));
 
-        self::assertFalse(app(CatalogueAuthority::class)->allowsLocalCatalogue());
+        self::assertFalse($autorite->allowsLocalCatalogue());
     }
 
     public function test_une_url_presente_ne_retire_pas_le_droit_a_un_autonome(): void
     {
         // Réciproque : la liaison réseau et l'intention sont orthogonales.
-        $this->pourTenant(Institution::factory()->create([
+        $autorite = $this->autoritePour(Institution::factory()->create([
             'mode' => InstitutionMode::Standalone,
             'klassci_api_url' => 'https://exemple.klassci.com/api/lms',
         ]));
 
-        self::assertTrue(app(CatalogueAuthority::class)->allowsLocalCatalogue());
+        self::assertTrue($autorite->allowsLocalCatalogue());
     }
 
-    public function test_la_resolution_suit_le_tenant_et_ne_se_fige_pas(): void
+    public function test_la_resolution_suit_l_etablissement_et_ne_se_fige_pas(): void
     {
-        // `bind()` et jamais `singleton()` : un job traverse plusieurs tenants
-        // dans la même instance. Figé, le second hériterait du droit du premier
-        // — une fuite entre établissements, pas un défaut de performance.
-        $klassci = Institution::factory()->create(['mode' => InstitutionMode::Klassci]);
-        $autonome = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
+        // Un job traverse plusieurs établissements dans la même instance. Figé, le
+        // second hériterait du droit du premier : une fuite entre établissements.
+        $fabrique = app(RosterAuthorityFactory::class);
 
-        $this->pourTenant($klassci);
-        self::assertInstanceOf(KlassciCatalogueAuthority::class, app(CatalogueAuthority::class));
-
-        $this->pourTenant($autonome);
-        self::assertInstanceOf(LocalCatalogueAuthority::class, app(CatalogueAuthority::class));
+        self::assertInstanceOf(KlassciCatalogueAuthority::class, $fabrique->catalogueForInstitution(Institution::factory()->create(['mode' => InstitutionMode::Klassci])));
+        self::assertInstanceOf(LocalCatalogueAuthority::class, $fabrique->catalogueForInstitution(Institution::factory()->create(['mode' => InstitutionMode::Standalone])));
     }
 
-    public function test_sans_tenant_resolu_aucune_ecriture_locale(): void
+    public function test_sans_etablissement_aucune_ecriture_locale(): void
     {
         // Fail-secure : un job, une route publique, une commande de console.
-        app(TenantManager::class)->reset();
-
-        self::assertFalse(app(CatalogueAuthority::class)->allowsLocalCatalogue());
+        self::assertFalse($this->autoritePour(null)->allowsLocalCatalogue());
     }
 
-    private function pourTenant(Institution $institution): void
+    /** #1142 — plus aucune liaison de conteneur : le droit ne se lit que par la fabrique. */
+    public function test_aucune_liaison_de_conteneur_pour_l_autorite_du_catalogue(): void
     {
-        app(TenantManager::class)->set($institution);
+        self::assertFalse(app()->bound(CatalogueAuthority::class));
+    }
+
+    /** #1142 — plus de résolution par le tenant courant : le droit se lit pour un établissement donné. */
+    public function test_la_fabrique_ne_resout_plus_par_le_tenant_courant(): void
+    {
+        self::assertFalse(method_exists(RosterAuthorityFactory::class, 'catalogueForCurrentTenant'));
+    }
+
+    private function autoritePour(?Institution $institution): CatalogueAuthority
+    {
+        return app(RosterAuthorityFactory::class)->catalogueForInstitution($institution);
     }
 }

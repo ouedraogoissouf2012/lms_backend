@@ -33,12 +33,18 @@ final class NotificationDispatcher
     /**
      * Envoyer une notification à un utilisateur.
      *
+     * `institution_id` est posé EXPLICITEMENT, comme dans {@see sendToMany()} : l'école du
+     * destinataire, sinon le tenant. Sans lui, le hook de `BelongsToInstitution` ne lisait que le
+     * tenant ambiant, absent d'un job : 8 notifications `visio_starting` d'enseignants sont
+     * restées sans école en production (#801).
+     *
      * @param  array<string, mixed>  $data
      */
     public function send(User $user, string $type, string $title, string $message, array $data = []): Notification
     {
         return Notification::create([
             'user_id' => $user->id,
+            'institution_id' => $user->institution_id ?? $this->tenant->id(),
             'type' => $type,
             'title' => $title,
             'message' => $message,

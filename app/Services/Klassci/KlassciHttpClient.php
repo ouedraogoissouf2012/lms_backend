@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Klassci;
 
 use App\Exceptions\KlassciUnavailableException;
+use App\Support\Config\LecteurDEntiers;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Psr\Log\LoggerInterface;
-use Psr\Log\LogLevel;
 
 /**
  * PERF-02 (issue #137) — Client HTTP unifié pour KLASSCI.
@@ -42,12 +43,6 @@ use Psr\Log\LogLevel;
  */
 final class KlassciHttpClient
 {
-    /**
-     * Frontière 4xx/5xx : à partir de ce status, l'échec est une panne serveur
-     * KLASSCI (error) ; en-dessous c'est une réponse client attendue (warning).
-     */
-    private const SERVER_ERROR_THRESHOLD = 500;
-
     private readonly int $timeout;
 
     private readonly int $connectTimeout;
@@ -60,10 +55,12 @@ final class KlassciHttpClient
         private readonly LoggerInterface $logger,
         private readonly KlassciCircuitBreaker $circuitBreaker,
         private readonly KlassciTransportRetry $retry,
+        ConfigRepository $reglages,
+        LecteurDEntiers $entiers,
     ) {
-        $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS);
-        $this->timeout = self::positiveIntConfig('services.klassci.timeout', 5);
-        $this->sslVerify = (bool) config('services.klassci.ssl_verify', true);
+        $this->connectTimeout = $entiers->positif($reglages->get('services.klassci.connect_timeout'), KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS);
+        $this->timeout = $entiers->positif($reglages->get('services.klassci.timeout'), 5);
+        $this->sslVerify = (bool) $reglages->get('services.klassci.ssl_verify', true);
     }
 
     /**
@@ -129,25 +126,8 @@ final class KlassciHttpClient
         $response = $this->sendWithRetries($request, $method, $url, $data, $endpoint, $logSuffix);
 
         if ($response->failed()) {
-            $status = $response->status();
-
-            // Un 4xx (403 autorisation, 404 introuvable, 429 throttle) est une
-            // réponse ATTENDUE côté client, pas une panne : warning, jamais error.
-            // Seul un 5xx (panne KLASSCI réelle) reste un error. Contexte réduit à
-            // status + endpoint — le body n'est NI loggé NI exposé dans l'exception
-            // (issue #256 : 239 Mo de logs sur des 403/429 répétés avec body complet).
-            $level = $status >= self::SERVER_ERROR_THRESHOLD ? LogLevel::ERROR : LogLevel::WARNING;
-            $this->logger->log($level, "KLASSCI API Error{$logSuffix}", [
-                'status' => $status,
-                'endpoint' => $endpoint,
-            ]);
-
-            if ($status >= self::SERVER_ERROR_THRESHOLD) {
-                $this->circuitBreaker->reportFailure();
-                throw KlassciUnavailableException::upstreamFailure($status);
-            }
-
-            throw new \RuntimeException("Erreur API KLASSCI: {$status}", $status);
+            // 4xx en warning, 5xx en error et au disjoncteur ; jamais le body (#256).
+            EchecHttpKlassci::rejeter($response, $endpoint, $logSuffix, $this->logger, $this->circuitBreaker);
         }
 
         $result = $this->decodeSuccessfulBody($response, $method, $endpoint);
@@ -289,12 +269,5 @@ final class KlassciHttpClient
             'DELETE' => $request->delete($url),
             default => throw new \InvalidArgumentException("Méthode HTTP non supportée: {$method}"),
         };
-    }
-
-    private static function positiveIntConfig(string $key, int $default): int
-    {
-        $value = config($key, $default);
-
-        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

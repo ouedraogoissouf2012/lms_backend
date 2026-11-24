@@ -214,7 +214,8 @@ class DemoDataSeeder extends Seeder
         ];
 
         foreach ($notifications as $notifData) {
-            Notification::create($notifData);
+            // L'école posée ici : un seeder n'a pas de tenant, et la ligne restait sans école (#801).
+            Notification::create($notifData + ['institution_id' => $institution->id]);
         }
 
         echo "   ✓ 3 notifications créées\n\n";
@@ -225,20 +226,24 @@ class DemoDataSeeder extends Seeder
         $category = ForumCategory::firstOrCreate(['name' => 'Questions Générales'], [
             'description' => 'Posez vos questions sur les cours',
             'order' => 1,
+            'institution_id' => $institution->id,
         ]);
 
         $topic1 = ForumTopic::firstOrCreate(['title' => 'Comment débuter en programmation ?'], [
             'user_id' => $etudiant1->id,
             'content' => 'Bonjour, je suis nouveau en programmation. Par où commencer ?',
+            'institution_id' => $institution->id,
         ]);
 
         ForumPost::firstOrCreate(['topic_id' => $topic1->id, 'user_id' => $enseignant1->id], [
             'content' => 'Bienvenue ! Je vous recommande de commencer par le cours "Introduction à la Programmation" et de pratiquer régulièrement.',
+            'institution_id' => $institution->id,
         ]);
 
         $topic2 = ForumTopic::firstOrCreate(['title' => 'Aide sur les matrices'], [
             'user_id' => $etudiant2->id,
             'content' => 'J\'ai du mal à comprendre les opérations matricielles. Quelqu\'un peut m\'aider ?',
+            'institution_id' => $institution->id,
         ]);
 
         echo "   ✓ Forum créé avec 2 topics\n\n";

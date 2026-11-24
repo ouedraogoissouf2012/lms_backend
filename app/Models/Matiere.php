@@ -50,11 +50,12 @@ class Matiere extends Model implements MirroredFromKlassci
     /**
      * Relation: Classes qui enseignent cette matière
      *
-     * @return BelongsToMany<Classe, $this>
+     * @return BelongsToMany<Classe, $this, ClasseMatiere>
      */
     public function classes(): BelongsToMany
     {
         return $this->belongsToMany(Classe::class, 'classe_matiere')
+            ->using(ClasseMatiere::class)
             ->withPivot('enseignant_id', 'coefficient', 'heures_cours', 'heures_td', 'heures_tp')
             ->withTimestamps();
     }

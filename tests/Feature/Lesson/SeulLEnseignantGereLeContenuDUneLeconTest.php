@@ -222,7 +222,7 @@ final class SeulLEnseignantGereLeContenuDUneLeconTest extends TestCase
             'publier la leçon' => ['POST', "/api/lessons/$lecon/publish", []],
             'dépublier la leçon' => ['POST', "/api/lessons/{$c['publiee']->id}/unpublish", []],
             'créer un chapitre' => ['POST', "/api/lessons/$lecon/chapters", ['titre' => 'Les tableaux']],
-            'modifier le chapitre' => ['PATCH', "/api/chapters/$chapitre", ['title' => 'Les tableaux, revus']],
+            'modifier le chapitre' => ['PUT', "/api/chapters/$chapitre", ['title' => 'Les tableaux, revus']],
             'supprimer le chapitre' => ['DELETE', "/api/chapters/$chapitre", []],
             'restaurer le chapitre' => ['POST', "/api/chapters/{$c['corbeille']->id}/restore", []],
             'déposer un fichier' => ['POST', "/api/chapters/$chapitre/upload?async=1", [

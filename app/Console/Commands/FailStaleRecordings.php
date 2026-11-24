@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\Visio\Recording\StaleRecordingFailer;
+use App\Support\Config\LecteurDEntiers;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Psr\Log\LoggerInterface;
@@ -33,12 +34,13 @@ final class FailStaleRecordings extends Command
         ConfigRepository $config,
         StaleRecordingFailer $failer,
         LoggerInterface $logger,
+        LecteurDEntiers $entiers,
     ): int {
-        $chunkSize = $this->positiveInt($config->get('recordings.purge_chunk_size'), 100);
+        $chunkSize = $entiers->positif($config->get('recordings.purge_chunk_size'), 100);
 
-        $processingMinutes = $this->positiveInt($config->get('recordings.stale_processing_minutes'), 30);
-        $graceMinutes = $this->positiveInt($config->get('recordings.stale_recording_grace_minutes'), 15);
-        $maxHours = $this->positiveInt($config->get('recordings.max_recording_hours'), 6);
+        $processingMinutes = $entiers->positif($config->get('recordings.stale_processing_minutes'), 30);
+        $graceMinutes = $entiers->positif($config->get('recordings.stale_recording_grace_minutes'), 15);
+        $maxHours = $entiers->positif($config->get('recordings.max_recording_hours'), 6);
 
         $processingCutoff = now()->subMinutes($processingMinutes);
         $visioEndedBefore = now()->subMinutes($graceMinutes);
@@ -59,10 +61,5 @@ final class FailStaleRecordings extends Command
         $this->line(json_encode($context, JSON_THROW_ON_ERROR));
 
         return self::SUCCESS;
-    }
-
-    private function positiveInt(mixed $value, int $default): int
-    {
-        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

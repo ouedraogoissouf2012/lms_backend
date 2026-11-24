@@ -8,16 +8,21 @@ use App\Models\Seance;
 use App\Models\User;
 
 /**
- * La séance que désigne une route de gestion (`DELETE /lms/seances/{id}`,
- * `POST /lms/seances/{id}/deactivate-visio`) : même route, autre source
- * (ADR-EI-01), l'espace d'identifiants suivant le mode déclaré de l'école
- * (ADR-760-01, amendement EI-02). #933.
+ * Le contrat d'une désignation de séance : la séance de l'école du compte que
+ * désigne un identifiant, ou null. Les services qui agissent sur une séance
+ * (suppression, masquage, présences de la visio, désactivation) le reçoivent de
+ * leur appelant.
  *
- * - École en mode KLASSCI : {@see KlassciSeanceDesignee}.
- * - École en mode autonome : {@see LocalSeanceDesignee}, l'id local seulement.
+ * Deux implémentations, une par espace d'identifiants (ADR-1154-01) :
+ * - {@see LocalSeanceDesignee} : l'id local seulement, la porte locale et l'école
+ *   autonome ;
+ * - {@see KlassciSeanceDesigneeStricte} : l'id KLASSCI seulement, l'école KLASSCI.
  *
- * Liée par `CatalogueServiceProvider::SOURCES` ; le contrôleur la reçoit par sa
- * MÉTHODE (Laravel garde le contrôleur sur l'objet Route).
+ * Les routes la reçoivent sous {@see SeanceDesigneeStrictement}, liée au mode de
+ * l'école par `CatalogueServiceProvider::SOURCES`, par leur MÉTHODE (Laravel garde le
+ * contrôleur sur l'objet Route). L'ancienne désignation sur les deux espaces,
+ * le local d'abord (#933), est retirée par #1566 : sur une collision, elle désignait
+ * la mauvaise séance.
  */
 interface SeanceDesignee
 {

@@ -23,7 +23,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('notifications')
-            ->whereNull('institution_id')
+            ->whereRaw('1 = 0')
             ->whereExists(static fn (Builder $compte): Builder => $compte->from('users')
                 ->whereColumn('users.id', 'notifications.user_id')
                 ->whereNotNull('users.institution_id'))

@@ -319,12 +319,14 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
 
     public function test_sans_etablissement_la_source_locale_ne_trouve_aucune_evaluation(): void
     {
-        // Revue d'E3 : `where('institution_id', null)` deviendrait `IS NULL` et
-        // viserait les évaluations sans établissement. Un compte sans
-        // établissement ne trouve rien.
-        $sansEcole = $this->membre($this->ecole(), 'enseignant');
+        // Revue d'E3 : `where('institution_id', null)` deviendrait `IS NULL`. Un
+        // compte sans établissement ne trouve rien. #801 : une évaluation sans
+        // établissement n'existe plus ; elle est portée par une école, même celle
+        // d'où vient ce compte, et il ne la trouve toujours pas.
+        $ecole = $this->ecole();
+        $sansEcole = $this->membre($ecole, 'enseignant');
         $sansEcole->forceFill(['institution_id' => null])->save();
-        $orpheline = Evaluation::factory()->create(['institution_id' => null, 'enseignant_id' => $sansEcole->getKey()]);
+        $orpheline = Evaluation::factory()->create(['institution_id' => $ecole->getKey(), 'enseignant_id' => $sansEcole->getKey()]);
         app(TenantManager::class)->reset();
 
         $reponse = app(LocalEvaluationResultsReader::class)->getResultsByClass((int) $orpheline->getKey(), $sansEcole);

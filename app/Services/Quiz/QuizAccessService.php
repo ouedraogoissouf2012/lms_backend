@@ -93,12 +93,11 @@ final class QuizAccessService
      * global scope `institution` retiré.
      *
      * L'unique `quiz_attempts_quiz_id_user_id_attempt_number_unique` ne connaît
-     * pas `institution_id`. Or la colonne a été ajoutée nullable et **sans
-     * backfill** (`2026_02_11_000002`), puis laissée nullable à dessein (#583) :
-     * toute tentative antérieure est invisible au scope dès qu'un tenant est
-     * résolu, alors que l'index continue de la faire respecter. `max + 1`
-     * re-proposait alors un numéro déjà pris → **409 définitif** (même défaut
-     * qu'en #540).
+     * pas `institution_id` : la numérotation lit donc ce que l'INDEX voit, hors scope.
+     * Le motif d'origine (des tentatives héritées à `institution_id` NULL, invisibles
+     * au scope mais vues par l'index, d'où un `max + 1` déjà pris et un 409 définitif,
+     * même défaut qu'en #540) n'existe plus : #801 rend la colonne obligatoire. La
+     * lecture hors scope reste la bonne : c'est celle de la contrainte qui tranche.
      *
      * Sans risque cross-tenant : le filtre est ancré sur `quiz_id`, déjà
      * rattaché à une seule institution.

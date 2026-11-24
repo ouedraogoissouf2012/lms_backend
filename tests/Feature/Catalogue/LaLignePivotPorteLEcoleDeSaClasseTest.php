@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Services\TenantManager;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -109,17 +110,28 @@ final class LaLignePivotPorteLEcoleDeSaClasseTest extends TestCase
         $classe->etudiants()->syncWithoutDetaching([$eleve->id => ['institution_id' => Institution::factory()->create()->id]]);
     }
 
-    /** Aucun repli sur le tenant : une classe sans école ne prête pas celle du tenant. */
+    /**
+     * Aucun repli sur le tenant : une classe sans école ne prête pas celle du tenant.
+     *
+     * #801 (PR 2) : une classe sans école ne peut plus exister en BASE. Elle est donc éprouvée EN
+     * MÉMOIRE : l'école se lit sur la classe chargée (`pivotParent`), dont on efface l'école sans
+     * l'enregistrer. Sans repli, la ligne reste sans école et la base la refuse ; un repli sur le
+     * tenant l'aurait écrite avec l'école du tenant.
+     */
     public function test_une_classe_sans_ecole_ne_prend_pas_celle_du_tenant(): void
     {
         $tenant = Institution::factory()->create();
-        $classe = Classe::factory()->create(['institution_id' => null]);
+        $classe = Classe::factory()->create(['institution_id' => $tenant->id]);
         $matiere = Matiere::factory()->create(['institution_id' => $tenant->id]);
         $this->app->make(TenantManager::class)->set($tenant);
+        $classe->institution_id = null;
 
-        $classe->matieres()->attach($matiere->id);
-
-        self::assertNull($this->ecoleDe('classe_matiere', 'matiere_id', $classe, $matiere->id));
+        try {
+            $classe->matieres()->attach($matiere->id);
+            self::fail('Sans école dérivée, la base devait refuser la ligne.');
+        } catch (QueryException) {
+            self::assertNull($this->ecoleDe('classe_matiere', 'matiere_id', $classe, $matiere->id));
+        }
     }
 
     /**

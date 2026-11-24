@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use App\Models\Classe;
+use App\Services\TenantManager;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use LogicException;
 
@@ -77,7 +78,7 @@ trait PorteLEcoleDeSaClasse
             ? $parent->institution_id
             : Classe::query()->withoutGlobalScope('institution')->whereKey($classeId)->value('institution_id');
 
-        return is_numeric($ecole) ? (int) $ecole : null;
+        return is_numeric($ecole) ? (int) $ecole : app(TenantManager::class)->id();
     }
 
     private static function texte(mixed $valeur): string

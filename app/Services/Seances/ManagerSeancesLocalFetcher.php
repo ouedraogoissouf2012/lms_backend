@@ -86,9 +86,11 @@ final class ManagerSeancesLocalFetcher
     }
 
     /**
-     * Par l'id d'enseignant KLASSCI, puis à défaut par l'id d'utilisateur KLASSCI,
-     * que le repli de l'annuaire rend (`LocalTeacherDirectory`). Toujours dans
-     * l'établissement du gestionnaire ; sans établissement, aucun.
+     * Par l'id d'enseignant KLASSCI SEUL, l'espace que l'annuaire rend, KLASSCI comme
+     * son repli local (`LocalTeacherDirectory`, #873). Le numéro de compte KLASSCI
+     * (`klassci_id`) est un autre espace : le même nombre y désignerait un autre
+     * enseignant. Toujours dans l'établissement du gestionnaire ; sans établissement,
+     * aucun.
      */
     private function enseignant(User $gestion, int $teacherId): ?User
     {
@@ -96,18 +98,10 @@ final class ManagerSeancesLocalFetcher
             return null;
         }
 
-        foreach (['klassci_enseignant_id', 'klassci_id'] as $identite) {
-            $enseignant = User::query()
-                ->where('institution_id', $gestion->institution_id)
-                ->whereIn('role', Role::Enseignant->aliases())
-                ->where($identite, $teacherId)
-                ->first();
-
-            if ($enseignant !== null) {
-                return $enseignant;
-            }
-        }
-
-        return null;
+        return User::query()
+            ->where('institution_id', $gestion->institution_id)
+            ->whereIn('role', Role::Enseignant->aliases())
+            ->where('klassci_enseignant_id', $teacherId)
+            ->first();
     }
 }

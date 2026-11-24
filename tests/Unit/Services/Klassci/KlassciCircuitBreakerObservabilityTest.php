@@ -6,6 +6,7 @@ namespace Tests\Unit\Services\Klassci;
 
 use App\Services\Klassci\KlassciCircuitBreaker;
 use App\Services\Klassci\KlassciTargetResolver;
+use App\Support\Config\LecteurDEntiers;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -145,7 +146,7 @@ final class KlassciCircuitBreakerObservabilityTest extends TestCase
         $target = Mockery::mock(KlassciTargetResolver::class);
         $target->shouldReceive('baseUrl')->andReturn('https://klassci.test');
 
-        return new KlassciCircuitBreaker(Cache::store('array'), $target, $journal);
+        return new KlassciCircuitBreaker(Cache::store('array'), $target, $journal, config(), new LecteurDEntiers);
     }
 }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Exceptions\KlassciEtablissementIntrouvableException;
+use App\Exceptions\KlassciUnavailableException;
 use App\Http\Presenters\AuthResponsePresenter;
 use App\Models\Institution;
 use App\Models\User;
@@ -68,13 +69,26 @@ final class LoginOrchestrator
             return $this->presenter->invalidCredentials();
         }
 
+        $panne = null;
         foreach ($matchingTenants as $tenant) {
-            $payload = $this->klassciAuthClient->attemptLogin($tenant['api_base_url'], $username, $password);
+            try {
+                $payload = $this->klassciAuthClient->attemptLogin($tenant['api_base_url'], $username, $password);
+            } catch (KlassciUnavailableException $e) {
+                $panne = $e;
+
+                continue;
+            }
             if ($payload === null) {
                 continue;
             }
 
             return $this->buildKlassciSuccessResponse($payload, $tenant);
+        }
+
+        // #687 — une école trouvée qui n'a pas pu juger le mot de passe : seul un refus
+        // de TOUTES vaut « identifiants incorrects ». Sinon, c'est une panne (503).
+        if ($panne !== null) {
+            throw $panne;
         }
 
         $this->auditLogger->logAuthEvent('login_failed', null, ['username' => $username]);
@@ -103,7 +117,12 @@ final class LoginOrchestrator
 
         $tenantUrl = rtrim($cible, '/');
 
-        $payload = $this->klassciAuthClient->attemptLogin($tenantUrl, $username, $password);
+        try {
+            $payload = $this->klassciAuthClient->attemptLogin($tenantUrl, $username, $password);
+        } catch (KlassciUnavailableException) {
+            // #687 — le compte est déjà authentifié en local : une panne garde le repli.
+            $payload = null;
+        }
         if ($payload === null) {
             $this->logger->warning('Renouvellement token KLASSCI impossible, fallback local', [
                 'user_id' => $user->id,

@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\AuthorizesSeanceDeletion;
-use App\Services\Seances\SeanceDesignee;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -29,10 +29,10 @@ final class DeleteSeanceRequest extends FormRequest
     use AuthorizesSeanceDeletion;
 
     /**
-     * La séance dans l'espace de l'école (#933) : la même source que le service
-     * qui supprime, résolue à chaque requête.
+     * La séance dans l'espace de l'école, et lui seul (#933, #1154 étape C) : la même source
+     * que le service qui supprime, résolue à chaque requête.
      */
-    public function authorize(SeanceDesignee $designee, VisioActorAuthorization $auteurs): bool
+    public function authorize(SeanceDesigneeStrictement $designee, VisioActorAuthorization $auteurs): bool
     {
         return $this->autoriseLaSuppression($designee, $auteurs);
     }

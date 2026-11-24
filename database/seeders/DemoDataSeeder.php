@@ -215,7 +215,7 @@ class DemoDataSeeder extends Seeder
 
         foreach ($notifications as $notifData) {
             // L'école posée ici : un seeder n'a pas de tenant, et la ligne restait sans école (#801).
-            Notification::create($notifData + ['institution_id' => $institution->id]);
+            Notification::create($notifData);
         }
 
         echo "   ✓ 3 notifications créées\n\n";

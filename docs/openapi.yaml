@@ -11931,6 +11931,7 @@ paths:
                 required:
                   - success
                   - message
+                  - data
                 properties:
                   success:
                     type: boolean
@@ -11939,6 +11940,8 @@ paths:
                   message:
                     type: string
                     example: "Notification envoyée"
+                  data:
+                    type: object
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '401':

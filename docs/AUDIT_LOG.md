@@ -10,7 +10,7 @@ et les investigations de sécurité.
 | Modèles sensibles (`Evaluation`, `EvaluationSubmission`, `QuizAttempt`) | `create`, `update`, `delete` |
 | Authentification (`LoginOrchestrator`, `AuthController`) | `login`, `logout`, `login_failed` |
 | Enregistrements visio (`SeanceRecordingControlService`) | `visio_recording_start`, `visio_recording_stop`, `visio_recording_read` |
-| Écoles (`InstitutionCrudService`) | `institution.mode_changed`, `institution.soft_deleted` |
+| Écoles (`InstitutionCrudService`) | `institution.mode_changed`, `institution.soft_deleted`, `institution.klassci_token_erased` (#1213 ; `after.raison` : `url_videe`, `url_changee` ou `bascule_autonome`, jamais la valeur) |
 | Comptes (`UserDeletionService`) | `user.soft_deleted` |
 | Rétention (`RetentionRunner`) | `recording.purged`, `institution.purged`, `user.purged`, `chapter.purged`, `audit-logs.purged.bulk` |
 

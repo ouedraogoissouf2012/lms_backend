@@ -45,17 +45,11 @@ final class BackfillRoleCommand extends Command
 
     public function handle(): int
     {
-        $chunkSize = (int) $this->option('chunk');
-        $dryRun = (bool) $this->option('dry-run');
-
-        // Borne supérieure : 10 000 protège contre une exhaustion mémoire si un
-        // opérateur passe `--chunk=1000000` par erreur (chargement de 1M users
-        // en mémoire d'un coup). 10k préserve la RAM même sur containers 512 MB.
-        if ($chunkSize < 1 || $chunkSize > 10000) {
-            $this->error("Chunk size must be between 1 and 10000, got: {$chunkSize}");
-
+        $chunkSize = $this->tailleDeLot();
+        if ($chunkSize === null) {
             return self::FAILURE;
         }
+        $dryRun = (bool) $this->option('dry-run');
 
         $total = DB::table('users')->whereNotNull('klassci_id')->count();
 
@@ -94,5 +88,27 @@ final class BackfillRoleCommand extends Command
         $this->info(($dryRun ? '[dry-run] ' : '')."Updated {$updated} / {$total} users.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * `--chunk`, ou `null` après avoir dit pourquoi il est refusé.
+     *
+     * Borne supérieure : 10 000 protège contre une exhaustion mémoire si un
+     * opérateur passe `--chunk=1000000` par erreur (chargement de 1M users
+     * en mémoire d'un coup). 10k préserve la RAM même sur containers 512 MB.
+     *
+     * `filter_var`, pas `(int)` : `5abc` deviendrait 5 en silence (#1429).
+     */
+    private function tailleDeLot(): ?int
+    {
+        $saisie = $this->option('chunk');
+        $taille = filter_var($saisie, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 10000]]);
+        if ($taille === false) {
+            $this->error('Chunk size must be between 1 and 10000, got: '.(is_string($saisie) ? $saisie : 'nothing'));
+
+            return null;
+        }
+
+        return $taille;
     }
 }

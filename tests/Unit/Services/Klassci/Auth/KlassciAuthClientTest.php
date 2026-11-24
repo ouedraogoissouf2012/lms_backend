@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -67,7 +68,7 @@ final class KlassciAuthClientTest extends TestCase
      * `Http::post()` peut throw ConnectionException. Avant fix, le code original
      * appelait `->successful()` SANS le try/catch ni le check `instanceof Response`.
      */
-    public function test_returns_null_on_connection_exception_without_crashing(): void
+    public function test_connection_exception_is_a_klassci_outage_not_a_refusal(): void
     {
         // Mock direct car Http::fake() ne supporte pas ConnectionException dans le post() direct
         $http = Mockery::mock(HttpFactory::class);
@@ -82,9 +83,14 @@ final class KlassciAuthClientTest extends TestCase
         $logger = Mockery::spy(LoggerInterface::class);
         $client = new KlassciAuthClient($http, $logger);
 
-        $result = $client->attemptLogin('https://down.klassci.test', 'user', 'pwd');
-
-        self::assertNull($result);
+        // #687 — une panne de transport n'est pas un refus : `null` ferait répondre
+        // « identifiants incorrects » à un compte existant. Elle lève la panne (503).
+        try {
+            $client->attemptLogin('https://down.klassci.test', 'user', 'pwd');
+            self::fail('Une panne de transport doit lever KlassciUnavailableException.');
+        } catch (KlassciUnavailableException $panne) {
+            self::assertInstanceOf(ConnectionException::class, $panne->getPrevious(), 'La cause réseau reste chaînée, pour le journal.');
+        }
 
         // Logger doit avoir capturé le warning sans leak du password
         $logger->shouldHaveReceived('warning')

@@ -65,8 +65,14 @@ final class LocalClasseMatiereLinker
         $classe = $this->saClasse($classeId, $institution);
         $this->saMatiere($matiereId, $institution);
 
+        // L'école explicitement : le pivot ne passe pas par `BelongsToInstitution`, et la ligne
+        // s'écrivait sans elle (#801). `ClasseMatiere` la dériverait de la classe ; elle est
+        // posée ici quand même, là où l'écrivain la connaît.
         $classe->matieres()->syncWithoutDetaching([
-            $matiereId => ['enseignant_id' => $this->formateur($enseignantId, $institution)],
+            $matiereId => [
+                'enseignant_id' => $this->formateur($enseignantId, $institution),
+                'institution_id' => $institution,
+            ],
         ]);
 
         return $classe;

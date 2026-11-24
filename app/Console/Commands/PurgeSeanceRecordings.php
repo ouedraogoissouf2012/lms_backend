@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\SeanceRecording;
 use App\Services\Visio\Recording\RecordingRetentionResult;
 use App\Services\Visio\Recording\SeanceRecordingRetentionService;
+use App\Support\Config\LecteurDEntiers;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Psr\Log\LoggerInterface;
@@ -24,6 +25,7 @@ final class PurgeSeanceRecordings extends Command
         ConfigRepository $config,
         SeanceRecordingRetentionService $retention,
         LoggerInterface $logger,
+        LecteurDEntiers $entiers,
     ): int {
         $dryRun = (bool) $this->option('dry-run');
         $apply = (bool) $this->option('apply');
@@ -33,8 +35,8 @@ final class PurgeSeanceRecordings extends Command
             return self::INVALID;
         }
 
-        $days = $this->positiveInt($config->get('recordings.retention_days'), 365);
-        $chunkSize = $this->positiveInt($config->get('recordings.purge_chunk_size'), 100);
+        $days = $entiers->positif($config->get('recordings.retention_days'), 365);
+        $chunkSize = $entiers->positif($config->get('recordings.purge_chunk_size'), 100);
         $cutoff = now()->subDays($days);
         $result = new RecordingRetentionResult;
 
@@ -88,10 +90,5 @@ final class PurgeSeanceRecordings extends Command
         $this->line(json_encode($context, JSON_THROW_ON_ERROR));
 
         return $result->failed === 0 ? self::SUCCESS : self::FAILURE;
-    }
-
-    private function positiveInt(mixed $value, int $default): int
-    {
-        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

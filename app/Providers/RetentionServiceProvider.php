@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\Chapter\ChapterRetentionService;
+use App\Services\Retention\JournalDePurge;
+use App\Services\Retention\JournalDePurgeEnBase;
 use App\Services\Retention\Policies\AuditLogsPolicy;
 use App\Services\Retention\Policies\SeanceRecordingsPolicy;
 use App\Services\Retention\Policies\SoftDeletedInstitutionsPolicy;
@@ -12,7 +14,10 @@ use App\Services\Retention\Policies\SoftDeletedUsersPolicy;
 use App\Services\Retention\Policies\TrashedChaptersPolicy;
 use App\Services\Retention\RetentionPolicy;
 use App\Services\Retention\RetentionRegistry;
+use App\Services\Tenancy\InstitutionIntegrityInspector;
+use App\Services\Tenancy\LignesDUneInstitution;
 use App\Services\Visio\Recording\SeanceRecordingRetentionService;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -44,9 +49,17 @@ final class RetentionServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // #719 : le journal de conformité de toute purge, et ce qu'une école possède encore,
+        // lu par l'inspecteur d'intégrité existant (pas un second inspecteur).
+        $this->app->bind(JournalDePurge::class, JournalDePurgeEnBase::class);
+        $this->app->bind(LignesDUneInstitution::class, InstitutionIntegrityInspector::class);
+
         $this->app->bind(RetentionRegistry::class, fn ($app): RetentionRegistry => new RetentionRegistry([
             new SoftDeletedUsersPolicy,
-            new SoftDeletedInstitutionsPolicy,
+            new SoftDeletedInstitutionsPolicy(
+                $app->make(LignesDUneInstitution::class),
+                $this->tablesDeclarees(),
+            ),
             new AuditLogsPolicy,
             // Ces deux-là enveloppent un service métier existant : la logique de
             // destruction reste chez lui, la politique ne fait que la présenter
@@ -55,5 +68,13 @@ final class RetentionServiceProvider extends ServiceProvider
             new SeanceRecordingsPolicy($app->make(SeanceRecordingRetentionService::class)),
             new TrashedChaptersPolicy($app->make(ChapterRetentionService::class)),
         ]));
+    }
+
+    /** @return list<string> `tenancy.institution_scoped_tables`, la source unique (#583). */
+    private function tablesDeclarees(): array
+    {
+        $tables = $this->app->make(ConfigRepository::class)->get('tenancy.institution_scoped_tables', []);
+
+        return is_array($tables) ? array_values(array_filter($tables, 'is_string')) : [];
     }
 }

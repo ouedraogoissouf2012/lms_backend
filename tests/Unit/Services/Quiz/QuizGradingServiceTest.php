@@ -39,13 +39,13 @@ final class QuizGradingServiceTest extends TestCase
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         $correct = QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'A',
             'is_correct' => true,
             'order' => 1,
         ]);
         QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'B',
             'is_correct' => false,
             'order' => 2,
@@ -60,13 +60,13 @@ final class QuizGradingServiceTest extends TestCase
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'A',
             'is_correct' => true,
             'order' => 1,
         ]);
         $wrong = QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'B',
             'is_correct' => false,
             'order' => 2,
@@ -91,7 +91,7 @@ final class QuizGradingServiceTest extends TestCase
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'A',
             'is_correct' => true,
             'order' => 1,
@@ -116,7 +116,7 @@ final class QuizGradingServiceTest extends TestCase
     {
         $question = QuizQuestion::factory()->trueFalse()->create();
         QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'Vrai',
             'is_correct' => true,
             'order' => 1,
@@ -150,7 +150,7 @@ final class QuizGradingServiceTest extends TestCase
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         $correct = QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'A',
             'is_correct' => true,
             'order' => 1,
@@ -165,9 +165,9 @@ final class QuizGradingServiceTest extends TestCase
     public function check_answer_multiple_response_returns_true_only_on_exact_set_match(): void
     {
         $question = QuizQuestion::factory()->create(['type' => 'multiple_response']);
-        $a = QuizAnswer::create(['question_id' => $question->id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
-        $b = QuizAnswer::create(['question_id' => $question->id, 'answer_text' => 'B', 'is_correct' => true, 'order' => 2]);
-        QuizAnswer::create(['question_id' => $question->id, 'answer_text' => 'C', 'is_correct' => false, 'order' => 3]);
+        $a = QuizAnswer::create(['question_id' => $question->id, 'institution_id' => $question->institution_id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
+        $b = QuizAnswer::create(['question_id' => $question->id, 'institution_id' => $question->institution_id, 'answer_text' => 'B', 'is_correct' => true, 'order' => 2]);
+        QuizAnswer::create(['question_id' => $question->id, 'institution_id' => $question->institution_id, 'answer_text' => 'C', 'is_correct' => false, 'order' => 3]);
         $question->load('answers');
 
         // Exact correct set → true
@@ -185,13 +185,13 @@ final class QuizGradingServiceTest extends TestCase
     {
         $question = QuizQuestion::factory()->trueFalse()->create();
         $correct = QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'Vrai',
             'is_correct' => true,
             'order' => 1,
         ]);
         $wrong = QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'Faux',
             'is_correct' => false,
             'order' => 2,
@@ -219,7 +219,7 @@ final class QuizGradingServiceTest extends TestCase
     {
         $question = QuizQuestion::factory()->multipleChoice()->create(['points' => 5]);
         $correct = QuizAnswer::create([
-            'question_id' => $question->id,
+            'question_id' => $question->id, 'institution_id' => $question->institution_id,
             'answer_text' => 'A',
             'is_correct' => true,
             'order' => 1,
@@ -233,8 +233,8 @@ final class QuizGradingServiceTest extends TestCase
     public function calculate_points_returns_zero_when_incorrect_or_requires_manual(): void
     {
         $mc = QuizQuestion::factory()->multipleChoice()->create(['points' => 5]);
-        QuizAnswer::create(['question_id' => $mc->id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
-        $wrong = QuizAnswer::create(['question_id' => $mc->id, 'answer_text' => 'B', 'is_correct' => false, 'order' => 2]);
+        QuizAnswer::create(['question_id' => $mc->id, 'institution_id' => $mc->institution_id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
+        $wrong = QuizAnswer::create(['question_id' => $mc->id, 'institution_id' => $mc->institution_id, 'answer_text' => 'B', 'is_correct' => false, 'order' => 2]);
         $mc->load('answers');
 
         $essay = QuizQuestion::factory()->create(['type' => 'essay', 'points' => 5]);
@@ -250,9 +250,9 @@ final class QuizGradingServiceTest extends TestCase
     {
         $quiz = Quiz::factory()->create(['passing_score' => 50]);
         $q1 = QuizQuestion::factory()->multipleChoice()->create(['quiz_id' => $quiz->id, 'points' => 10]);
-        $a1 = QuizAnswer::create(['question_id' => $q1->id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
+        $a1 = QuizAnswer::create(['question_id' => $q1->id, 'institution_id' => $q1->institution_id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
         $q2 = QuizQuestion::factory()->multipleChoice()->create(['quiz_id' => $quiz->id, 'points' => 10]);
-        $a2 = QuizAnswer::create(['question_id' => $q2->id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
+        $a2 = QuizAnswer::create(['question_id' => $q2->id, 'institution_id' => $q2->institution_id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
 
         $attempt = QuizAttempt::factory()->create([
             'quiz_id' => $quiz->id,
@@ -290,7 +290,7 @@ final class QuizGradingServiceTest extends TestCase
     {
         $quiz = Quiz::factory()->create(['passing_score' => 50]);
         $q1 = QuizQuestion::factory()->multipleChoice()->create(['quiz_id' => $quiz->id, 'points' => 10]);
-        $a1 = QuizAnswer::create(['question_id' => $q1->id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
+        $a1 = QuizAnswer::create(['question_id' => $q1->id, 'institution_id' => $q1->institution_id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
 
         $attempt = QuizAttempt::factory()->create([
             'quiz_id' => $quiz->id,

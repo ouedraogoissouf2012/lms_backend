@@ -4,7 +4,9 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use App\Rules\NotificationActionUrl;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -46,6 +48,13 @@ use Illuminate\Support\Facades\Auth;
  */
 final class CreateNotificationRequest extends FormRequest
 {
+    /** Le motif nommé d'un destinataire sans école (#801). */
+    public const MOTIF_SANS_ECOLE = 'recipient_without_institution';
+
+    private const MESSAGE_SANS_ECOLE = 'Ce destinataire n\'appartient à aucune école : il ne reçoit pas de notification.';
+
+    private bool $destinataireSansEcole = false;
+
     /**
      * Authorize: role + tenant isolation (supradmin bypass).
      */
@@ -126,6 +135,42 @@ final class CreateNotificationRequest extends FormRequest
                 new NotificationActionUrl,
             ],
         ];
+    }
+
+    /**
+     * Un destinataire sans école est refusé (#801).
+     *
+     * Seul le supradmin plateforme n'a pas d'école, et il ne voit aucun contenu pédagogique : il
+     * n'a rien à recevoir par ce canal. L'accepter écrivait la seule notification légitimement
+     * sans `institution_id`, et interdisait de rendre la colonne obligatoire.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->has('user_id')) {
+                return;
+            }
+
+            $destinataire = User::query()->withoutGlobalScope('institution')->find($this->integer('user_id'));
+            if ($destinataire !== null && $destinataire->institution_id === null) {
+                $this->destinataireSansEcole = true;
+                $validator->errors()->add('user_id', self::MESSAGE_SANS_ECOLE);
+            }
+        });
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        if ($this->destinataireSansEcole) {
+            throw new HttpResponseException(response()->json([
+                'success' => false,
+                'message' => self::MESSAGE_SANS_ECOLE,
+                'reason' => self::MOTIF_SANS_ECOLE,
+                'errors' => $validator->errors()->toArray(),
+            ], 422));
+        }
+
+        parent::failedValidation($validator);
     }
 
     /**

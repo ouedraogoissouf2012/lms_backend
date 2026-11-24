@@ -29,10 +29,11 @@ final class SchoolRegistrationRequestController extends Controller
      * L'endpoint est anonyme : rendre un id offrirait de quoi énumérer les
      * dossiers, et rendre le statut confirmerait qu'une adresse a déjà déposé.
      *
-     * Elle ne promet pas non plus de courriel. Le produit n'a aucun canal
-     * d'envoi — `config/mail.php:17` vaut `log` et `app/` ne contient ni
-     * `Mail::` ni `->notify()`. Annoncer un message qui n'arrivera jamais est
-     * exactement le défaut tracé en #808 ; on ne le reproduit pas ici.
+     * Elle ne promet pas non plus de courriel : aucun n'est envoyé pour une demande
+     * d'ouverture. Le seul envoi du produit est le lien de réinitialisation du mot
+     * de passe (#1308, `EnvoyerLeLienDeReinitialisation`). Annoncer un message qui
+     * n'arrivera jamais est exactement le défaut tracé en #808 ; on ne le reproduit
+     * pas ici.
      */
     public function store(StoreSchoolRegistrationRequest $request): JsonResponse
     {

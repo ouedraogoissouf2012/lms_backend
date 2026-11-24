@@ -221,8 +221,9 @@ final class ElevePasseSonEvaluationTest extends TestCase
 
     public function test_une_copie_heritee_invisible_fait_remonter_l_erreur_au_lieu_d_un_409(): void
     {
-        // Scénario de la revue d'E2b : une copie héritée `attempt = 1` sans
-        // établissement (invisible pour `ownedBy`), et une copie visible
+        // Scénario de la revue d'E2b : une copie `attempt = 1` invisible pour
+        // `ownedBy` (#801 : une copie sans établissement n'existe plus ; elle est
+        // rangée dans une AUTRE école, autre forme d'anomalie), et une copie visible
         // `attempt = 2` déjà remise. Le compte vaut 1, la tentative créée porte
         // le numéro 2 et entre en conflit avec la copie visible : ce n'est PAS
         // une course gagnée par une autre requête, mais une anomalie de
@@ -230,7 +231,7 @@ final class ElevePasseSonEvaluationTest extends TestCase
         [$eleve, $evaluation] = $this->eleveKlassciEtEvaluationOuverte(['allow_retake' => true, 'max_attempts' => 5]);
         DB::table('evaluation_submissions')->insert([
             'evaluation_id' => $evaluation->getKey(), 'student_id' => null, 'klassci_etudiant_id' => 501,
-            'attempt' => 1, 'status' => 'soumis', 'institution_id' => null,
+            'attempt' => 1, 'status' => 'soumis', 'institution_id' => Institution::factory()->create()->id,
             'created_at' => now(), 'updated_at' => now(),
         ]);
         $this->copie($evaluation, $eleve, 'soumis', ['attempt' => 2, 'klassci_etudiant_id' => 501]);

@@ -6,13 +6,84 @@ use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureKlassciSync;
 use App\Http\Middleware\ResolveInstitution;
 use App\Models\Classe;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Sanctum;
 
 abstract class TestCase extends BaseTestCase
 {
+    /** #691 — l'en-tête `Authorization` qui a fixé l'utilisateur mémorisé par le garde. */
+    private ?string $enteteMemorise = null;
+
+    /**
+     * #691 — le compte de chaque jeton créé PENDANT ce test, sans requête en base.
+     * Propriété d'instance, jamais statique : rien ne survit d'un test à l'autre.
+     *
+     * @var array<int, int>
+     */
+    private array $comptesDesJetons = [];
+
+    /**
+     * #691 — chaque requête est servie sous l'identité qu'elle ENVOIE.
+     *
+     * Le garde Sanctum mémoïse l'utilisateur du premier appel d'un test : une requête
+     * suivante, anonyme ou d'un autre compte, était servie comme le premier, et un test
+     * « X ne peut pas » restait vert sans rien prouver. Le garde est donc purgé AVANT la
+     * requête quand l'en-tête change de COMPTE. Un jeton neuf du même compte ne purge
+     * rien, ni `Sanctum::actingAs()`, qui pose un utilisateur sans en-tête (ses flux
+     * sans école sont légitimes, spec 565). Même esprit que la frontière de requête
+     * neuve de la spec 591 (`simulateFreshRequestBoundary`).
+     *
+     * @param  array<mixed>  $parameters
+     * @param  array<mixed>  $cookies
+     * @param  array<mixed>  $files
+     * @param  array<mixed>  $server
+     */
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
+    {
+        $entete = is_string($server['HTTP_AUTHORIZATION'] ?? null) ? $server['HTTP_AUTHORIZATION'] : null;
+        $garde = $this->app['auth']->guard('sanctum');
+        $memorise = $garde->hasUser() ? $garde->user()?->getAuthIdentifier() : null;
+
+        if ($memorise !== null && $entete !== $this->enteteMemorise && $this->compteDu($entete) !== (int) $memorise) {
+            $this->app['auth']->forgetGuards();
+            $memorise = null;
+        }
+
+        $reponse = parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
+
+        if ($memorise === null) {
+            $this->enteteMemorise = $this->app['auth']->guard('sanctum')->hasUser() ? $entete : null;
+        }
+
+        return $reponse;
+    }
+
+    /** Le compte du jeton envoyé (`Bearer {id}|…`) ; `null` pour un anonyme ou un jeton inconnu. */
+    private function compteDu(?string $entete): ?int
+    {
+        if ($entete === null || preg_match('/^Bearer (\d+)\|/', $entete, $jeton) !== 1) {
+            return null;
+        }
+
+        return $this->comptesDesJetons[(int) $jeton[1]] ?? null;
+    }
+
+    /**
+     * #691 — relève le compte de chaque jeton créé, sur l'application de CE test : le
+     * modèle configuré, car l'application en déclare un dérivé de celui de Sanctum.
+     */
+    private function releverLesJetons(): void
+    {
+        $modele = Sanctum::$personalAccessTokenModel;
+        $modele::created(function (Model $jeton): void {
+            $this->comptesDesJetons[(int) $jeton->getKey()] = (int) $jeton->getAttribute('tokenable_id');
+        });
+    }
+
     /**
      * Le garde s'exécute ICI, et pas dans `setUp()`. La différence décide de
      * tout.
@@ -65,6 +136,7 @@ abstract class TestCase extends BaseTestCase
         }
 
         $this->registerTenantScopeProbe();
+        $this->releverLesJetons();
     }
 
     /**

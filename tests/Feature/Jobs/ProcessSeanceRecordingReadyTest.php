@@ -15,6 +15,7 @@ use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\SeanceRecording;
 use App\Models\User;
+use App\Services\Roster\RosterAuthorityFactory;
 use App\Services\TenantManager;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentGuard;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentResolver;
@@ -190,6 +191,7 @@ final class ProcessSeanceRecordingReadyTest extends TestCase
             new NullLogger,
             app(SeanceRecordingAttachmentGuard::class),
             new TitreDEnregistrement,
+            app(RosterAuthorityFactory::class),
         );
     }
 }

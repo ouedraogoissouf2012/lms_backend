@@ -102,7 +102,7 @@ final class LaDocNeDitNiIpNiCleTest extends TestCase
         $fautes = [];
         preg_match_all(self::IPV4, $texte, $formes);
         foreach ($formes[0] as $forme) {
-            if (filter_var($forme, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_GLOBAL_RANGE) !== false) {
+            if (filter_var($forme, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
                 $fautes[] = 'une adresse IPv4 publique';
             }
         }

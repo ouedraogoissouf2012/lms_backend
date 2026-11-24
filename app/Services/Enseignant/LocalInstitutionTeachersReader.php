@@ -47,7 +47,8 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
     /** L'annuaire local émet l'id LOCAL d'un enseignant (`ligne()`), et ne liste que des enseignants. */
     public function idDansLAnnuaire(User $compte): ?int
     {
-        return $compte->isTeacher() ? self::entier($compte->getKey()) : null;
+        // F1 (falsification #1536) : l'espace inversé, l'identité KLASSCI au lieu de l'id local
+        return $compte->isTeacher() ? self::entier($compte->getAttribute('klassci_enseignant_id')) : null;
     }
 
     /**

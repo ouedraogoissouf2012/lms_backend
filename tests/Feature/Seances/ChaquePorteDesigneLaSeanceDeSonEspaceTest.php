@@ -68,8 +68,8 @@ final class ChaquePorteDesigneLaSeanceDeSonEspaceTest extends TestCase
     #[DataProvider('volets')]
     public function test_les_presences_designent_la_seance_de_l_espace_de_l_ecole(string $volet): void
     {
-        $enseignant = $this->membre('enseignant');
         [$x, $cible] = $this->collision($volet);
+        $enseignant = $this->membre('enseignant');
         $cible->forceFill(['created_by' => $enseignant->id])->save();
 
         $this->presences($enseignant, $x)->assertStatus(403)->assertJsonPath('reason', 'not_enrolled');

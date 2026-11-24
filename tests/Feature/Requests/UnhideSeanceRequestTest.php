@@ -92,6 +92,8 @@ class UnhideSeanceRequestTest extends TestCase
         $ecole = Institution::factory()->standalone()->create();
         $eleve = User::factory()->student()->for($ecole)->create();
         $seance = Seance::factory()->forInstitution($ecole)->create(['klassci_seance_id' => null]);
+        // Le tenant du setUp est l'école KLASSCI : la ligne préparée porte l'école de la séance.
+        $this->app->make(TenantManager::class)->set($ecole);
         SeanceUserHidden::hide($seance->id, $eleve->id);
 
         $this->asTenant($eleve)->postJson("/api/lms/seances/{$seance->id}/unhide")->assertOk();

@@ -8,6 +8,7 @@ use App\Models\Chapter;
 use App\Models\SeanceRecording;
 use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\Visio\Recording\SeanceRecordingRetentionService;
+use App\Support\Config\LecteurDEntiers;
 use App\Support\Logging\CaughtExceptionLog;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -58,6 +59,7 @@ final class ChapterRetentionService
         private readonly DatabaseManager $database,
         private readonly ChapterArtifactStorage $artifacts,
         private readonly CaughtExceptionLog $journal,
+        private readonly LecteurDEntiers $entiers,
     ) {}
 
     /** Date avant laquelle une mise à la corbeille est arrivée à échéance. */
@@ -68,12 +70,12 @@ final class ChapterRetentionService
 
     public function retentionDays(): int
     {
-        return $this->positiveInt($this->config->get('chapters.retention_days'), 30);
+        return $this->entiers->positif($this->config->get('chapters.retention_days'), 30);
     }
 
     public function chunkSize(): int
     {
-        return $this->positiveInt($this->config->get('chapters.purge_chunk_size'), 100);
+        return $this->entiers->positif($this->config->get('chapters.purge_chunk_size'), 100);
     }
 
     /**
@@ -210,10 +212,5 @@ final class ChapterRetentionService
     private function allInstitutions(): Builder
     {
         return Chapter::withoutGlobalScope('institution');
-    }
-
-    private function positiveInt(mixed $value, int $default): int
-    {
-        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

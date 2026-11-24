@@ -6,6 +6,7 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -31,6 +32,9 @@ class UnhideSeanceRequestTest extends TestCase
         $this->student = User::factory()->student()->for($this->institution)->create();
         $this->teacher = User::factory()->teacher()->for($this->institution)->create();
         $this->seance = Seance::factory()->forInstitution($this->institution)->create();
+        // `SeanceUserHidden::hide()` hérite l'école du tenant, que la route pose ; posé ici
+        // pour les lignes que le test prépare sans requête (#801).
+        $this->app->make(TenantManager::class)->set($this->institution);
     }
 
     public function test_unauthenticated_cannot_unhide(): void

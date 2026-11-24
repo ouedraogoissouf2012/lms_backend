@@ -92,6 +92,11 @@ final class InscriptionParCodeService
             throw $refus;
         }
 
+        // Une classe complète refuse AVANT le contrôle d'existence du compte (#1115) :
+        // un compte existant et un compte neuf y reçoivent la même réponse (#914).
+        // Le code est valide : ce refus n'est pas un échec compté.
+        $this->inscriptions->exigerUnePlace($classe);
+
         if ($this->compteExiste($valide, $institution)) {
             // Le compte n'est pas touché, et la réponse est celle d'un compte neuf
             // (#914). L'empreinte jetée paie le coût de hachage de la création.

@@ -178,6 +178,7 @@ final class ValidationSeanceResolueTest extends TestCase
         DB::table('classe_etudiant')->insert([
             'classe_id' => $classe->getKey(),
             'user_id' => $eleve->getKey(),
+            'institution_id' => $classe->institution_id,
             'statut' => 'actif',
             'date_inscription' => now()->toDateString(),
             'created_at' => now(),

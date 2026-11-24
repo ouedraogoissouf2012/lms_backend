@@ -7,6 +7,7 @@ namespace Tests\Unit\Services\Klassci;
 use App\Services\Klassci\KlassciCircuitBreaker;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciTargetResolver;
+use App\Support\Config\LecteurDEntiers;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -175,7 +176,7 @@ final class KlassciCircuitBreakerTest extends TestCase
 
     private function breaker(CacheRepository $cache, ?string $baseUrl): KlassciCircuitBreaker
     {
-        return new KlassciCircuitBreaker($cache, new FakeTargetResolver($baseUrl), new NullLogger);
+        return new KlassciCircuitBreaker($cache, new FakeTargetResolver($baseUrl), new NullLogger, config(), new LecteurDEntiers);
     }
 
     /** Fait franchir le seuil d'ouverture (3 échecs par défaut). */

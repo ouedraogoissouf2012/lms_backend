@@ -33,7 +33,7 @@ final class GardeDesComptesSansEcole
         $compte = $this->db->connection()->table('users')
             ->whereNull('institution_id')
             ->pluck('role')
-            ->reject(static fn (mixed $role): bool => in_array($role, Role::Supradmin->aliases(), true))
+            ->reject(static fn (mixed $role): bool => is_string($role) && strcasecmp($role, 'supradmin') === 0)
             ->count();
 
         if ($compte > 0) {

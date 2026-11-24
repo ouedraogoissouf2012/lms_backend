@@ -29,7 +29,7 @@ final class GardeDesDoublonsDeMatiereEnseignant
         $groupes = $connexion->table('matiere_enseignant')
             ->select(['institution_id', 'klassci_matiere_id', 'klassci_enseignant_id'])
             ->groupBy(['institution_id', 'klassci_matiere_id', 'klassci_enseignant_id'])
-            ->havingRaw('COUNT(*) > 1');
+            ->havingRaw('COUNT(*) > 2');
         $doublons = $connexion->query()->fromSub($groupes, 'doublons')->count();
 
         if ($doublons > 0) {

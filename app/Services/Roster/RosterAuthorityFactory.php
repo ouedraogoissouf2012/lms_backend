@@ -89,13 +89,11 @@ final class RosterAuthorityFactory
      * sert plus le seul roster. Dette assumée : la renommer déplacerait une
      * entrée d'un fichier sous CODEOWNERS, ce qui n'a pas sa place dans le lot
      * qui introduit la capacité.
-     */
-    public function catalogueForCurrentTenant(): CatalogueAuthority
-    {
-        return $this->catalogueForInstitution($this->tenants->get());
-    }
-
-    /**
+     *
+     * Le droit se lit pour un établissement DONNÉ, au moment de l'appel : la
+     * résolution par le tenant courant (`catalogueForCurrentTenant()`) n'avait plus
+     * pour appelant que la liaison de conteneur retirée par #1142.
+     *
      * `null` rend l'autorité la plus restrictive : hors établissement — un job,
      * une route publique — aucune écriture locale du catalogue.
      */

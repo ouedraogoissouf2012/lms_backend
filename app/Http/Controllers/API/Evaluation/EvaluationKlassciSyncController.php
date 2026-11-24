@@ -13,6 +13,7 @@ use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
@@ -51,13 +52,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             // Les copies à synchroniser : une seule règle, celle que compte la liste (D540).
             // Choisies UNE fois : l'envoi et le marquage lisent les mêmes (#1097).
             $copies = $evaluation->submissions()->aSynchroniser()->get();
-            $notes = $copies
-                ->map(static fn (EvaluationSubmission $submission): array => [
-                    'etudiant_id' => $submission->klassci_etudiant_id,
-                    'note' => $submission->note_sur_20,
-                    'commentaire' => $submission->feedback,
-                    'is_absent' => false,
-                ])->all();
+            $notes = $this->notesDe($copies);
 
             // Le lien KLASSCI est acquis : refusé plus haut sinon.
             $teacherToken = $this->authenticatedUser($request)->klassci_token;
@@ -88,13 +83,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 throw KlassciUnavailableException::invalidPayload("evaluations/{$evaluation->klassci_evaluation_id}/notes");
             }
 
-            // Marquer comme synchronisées les copies ENVOYÉES, et elles seules : une copie
-            // en cours, verrouillée ou d'entraînement n'est pas partie (#1097).
-            $evaluation->update(['notes_published' => true]);
-            $evaluation->submissions()->whereKey($copies->modelKeys())->update([
-                'synced_to_klassci' => true,
-                'synced_at' => now(),
-            ]);
+            $this->marquerSynchronisees($evaluation, $copies);
 
             return $this->successResponse($result, 'Notes synchronisées vers KLASSCI');
         } catch (RuntimeException $e) {
@@ -113,6 +102,38 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 'error' => 'Une erreur est survenue.',
             ], 500);
         }
+    }
+
+    /**
+     * Les notes envoyées à KLASSCI, une par copie à synchroniser.
+     *
+     * @param  EloquentCollection<int, EvaluationSubmission>  $copies
+     * @return array<int, array<string, mixed>>
+     */
+    private function notesDe(EloquentCollection $copies): array
+    {
+        return $copies
+            ->map(static fn (EvaluationSubmission $submission): array => [
+                'etudiant_id' => $submission->klassci_etudiant_id,
+                'note' => $submission->note_sur_20,
+                'commentaire' => $submission->feedback,
+                'is_absent' => false,
+            ])->all();
+    }
+
+    /**
+     * Marquer comme synchronisées les copies ENVOYÉES, et elles seules : une copie
+     * en cours, verrouillée ou d'entraînement n'est pas partie (#1097).
+     *
+     * @param  EloquentCollection<int, EvaluationSubmission>  $copies
+     */
+    private function marquerSynchronisees(Evaluation $evaluation, EloquentCollection $copies): void
+    {
+        $evaluation->update(['notes_published' => true]);
+        $evaluation->submissions()->whereKey($copies->modelKeys())->update([
+            'synced_to_klassci' => true,
+            'synced_at' => now(),
+        ]);
     }
 
     /**

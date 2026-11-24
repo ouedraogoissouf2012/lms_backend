@@ -56,7 +56,7 @@ class UpdateEvaluationRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/evaluations/{$this->evaluation->id}", [
+        $response = $this->putJson("/api/evaluations/{$this->evaluation->id}", [
             'titre' => 'Updated Title',
         ]);
 
@@ -68,7 +68,7 @@ class UpdateEvaluationRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/evaluations/{$this->evaluation->id}", [
+        $response = $this->putJson("/api/evaluations/{$this->evaluation->id}", [
             'titre' => 'New Title',
             'description' => 'New description',
             'duree_minutes' => 90,
@@ -85,7 +85,7 @@ class UpdateEvaluationRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/evaluations/{$this->evaluation->id}", [
+        $response = $this->putJson("/api/evaluations/{$this->evaluation->id}", [
             'titre' => 'Only Title',
         ]);
 
@@ -97,7 +97,7 @@ class UpdateEvaluationRequestTest extends TestCase
     {
         Sanctum::actingAs($this->coordinator);
 
-        $response = $this->patchJson("/api/evaluations/{$this->evaluation->id}", [
+        $response = $this->putJson("/api/evaluations/{$this->evaluation->id}", [
             'titre' => 'Coordinator Attempt',
         ]);
 
@@ -107,7 +107,7 @@ class UpdateEvaluationRequestTest extends TestCase
     /** ❌ Unauthenticated */
     public function test_unauthenticated_cannot_update(): void
     {
-        $response = $this->patchJson("/api/evaluations/{$this->evaluation->id}", [
+        $response = $this->putJson("/api/evaluations/{$this->evaluation->id}", [
             'titre' => 'No Token',
         ]);
 
@@ -119,7 +119,7 @@ class UpdateEvaluationRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/evaluations/{$this->evaluation->id}", [
+        $response = $this->putJson("/api/evaluations/{$this->evaluation->id}", [
             'status' => 'invalid_status',
         ]);
 
@@ -131,7 +131,7 @@ class UpdateEvaluationRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson("/api/evaluations/{$this->evaluation->id}", [
+        $response = $this->putJson("/api/evaluations/{$this->evaluation->id}", [
             'titre' => 'ab',
         ]);
 
@@ -143,7 +143,7 @@ class UpdateEvaluationRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
 
-        $response = $this->patchJson('/api/evaluations/99999', [
+        $response = $this->putJson('/api/evaluations/99999', [
             'titre' => 'Ghost',
         ]);
 

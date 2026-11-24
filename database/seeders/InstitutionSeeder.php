@@ -18,10 +18,14 @@ class InstitutionSeeder extends Seeder
     ];
 
     /**
-     * Tables à backfill avec institution_id
+     * Tables à backfill avec institution_id.
+     *
+     * Sans `users` (#801, PR 3) : un compte d'école a toujours une école (la base le garantit),
+     * et le SEUL compte sans école est le supradmin de plateforme. Le rattacher à
+     * `presentation` en ferait un membre de cette école, avec l'accès à ses contenus, contre
+     * la décision du user (le supradmin ne voit aucun contenu pédagogique).
      */
     private array $tables = [
-        'users',
         'classes',
         'matieres',
         'lessons',

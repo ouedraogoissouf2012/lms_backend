@@ -46,7 +46,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des évaluations
     Route::post('evaluations', [EvaluationCrudController::class, 'store']);
-    Route::match(['put', 'patch'], 'evaluations/{id}', [EvaluationCrudController::class, 'update']);
+    Route::put('evaluations/{id}', [EvaluationCrudController::class, 'update']);
     Route::delete('evaluations/{id}', [EvaluationCrudController::class, 'destroy']);
 
     // Publication

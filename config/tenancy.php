@@ -62,4 +62,28 @@ return [
         'classe_matiere',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tables portant institution_id HORS de la liste ci-dessus (#719)
+    |--------------------------------------------------------------------------
+    |
+    | Une table qui porte `institution_id` est, soit déclarée ci-dessus (et porte
+    | sa clé RESTRICT), soit nommée ici avec sa raison. La garde
+    | `LaConfigDesTenantsSuitLeSchemaTest` compare les deux au schéma réel, dans
+    | les deux sens, et exige que chaque exception existe : une exception morte
+    | masquerait une table renommée. Si une table disparaît (par exemple
+    | `password_reset_tokens` avec le volet serveur de #1306), son exception
+    | disparaît avec elle.
+    |
+    */
+
+    'institution_scoped_exceptions' => [
+        'audit_logs' => 'Journal d\'audit : il doit survivre à son école. Aucune clé, purgé par sa propre politique (AuditLogsPolicy).',
+        'imports' => 'Clé en CASCADE : un rapport d\'import n\'a pas de sens sans son école. Purge des fichiers sources : #1487.',
+        'password_reset_tokens' => 'Clé en CASCADE : un jeton de réinitialisation meurt avec son école (volet serveur de #1306).',
+        'school_registration_requests' => 'Clé en SET NULL : la demande d\'inscription d\'une école précède l\'école et lui survit.',
+        'seance_recordings' => 'Rattachée par seance_id en CASCADE ; institution_id n\'y porte pas de clé. Destruction des médias : #1487.',
+        'purge_log' => 'Journal de conformité des purges : clé en SET NULL, il doit survivre à la purge de son sujet (#719).',
+    ],
+
 ];

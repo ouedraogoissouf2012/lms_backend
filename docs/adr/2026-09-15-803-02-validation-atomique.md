@@ -23,6 +23,22 @@ Le jeton d'activation :
 - est stocké **haché**, jamais en clair ;
 - ne révèle rien sur le compte cible dans son URL.
 
+> **Correction du 2026-11-23 (#839).** Cet ADR ne disait pas ce que rend un jeton mort,
+> et frontend_lms#394 a promis trois messages : « Ce lien a déjà servi. », « Ce lien a
+> expiré. », et le formulaire pour un jeton valide. Le backend a tranché l'inverse, et le
+> front l'a suivi. Personne n'a rouvert l'issue, fermée sur une promesse non tenue.
+>
+> **La décision : un jeton inconnu, déjà consommé ou périmé rend le MÊME 410, au
+> caractère près** (`ActivationController::store`, un seul chemin de refus).
+> - Les distinguer dirait à un inconnu qu'un lien a existé pour cette valeur, et donc
+>   qu'un compte l'attend.
+> - Le porteur légitime n'y gagne rien d'actionnable : les trois cas finissent par la
+>   même action, « demandez-en un nouveau à votre administrateur ».
+>
+> `ValidateSchoolRequestTest::test_les_trois_jetons_morts_rendent_le_meme_corps` fige le
+> CORPS. Jusque-là, les tests ne figeaient que le statut, et un message propre à un état
+> serait resté vert.
+
 La règle `UniqueEmailInInstitution` reçoit l'institution cible **explicitement**, par une sœur de `forCreationBy(?User $acteur)` — l'appel actuel est en `CreateUserRequest.php:46` — prenant l'`Institution` en argument. Le comportement *fail-closed* n'est pas assoupli.
 
 Le même mécanisme d'activation s'applique aux comptes créés par import — `app/Services/Import/ImportApplyService.php:69`.
@@ -54,6 +70,17 @@ Il n'existe **aucun canal de courriel** : `config/mail.php:17` vaut `log`, et `a
 3. le titulaire choisit son secret : personne d'autre, jamais, ne l'a connu.
 
 Et surtout : le jour où le courriel existera, **le même jeton part par mail**. Le transport change, le mécanisme non. Choisir le mot de passe transmis obligerait à tout réécrire à ce moment-là.
+
+> **Correction du 2026-11-23 (#839).** « Il n'existe aucun canal de courriel » n'est plus
+> vrai. Depuis #1308 (issue #808), le lien de **réinitialisation** part par courriel :
+> `EnvoyerLeLienDeReinitialisation` → `->notify(new LienDeReinitialisationDuMotDePasse(…))`.
+> Le transport est piloté par `MAIL_MAILER` ; `config/mail.php:17` ne garde `log` qu'en
+> défaut.
+>
+> Le lien d'**activation** décrit ici reste, lui, transmis hors bande par le supradmin :
+> la décision tient, et l'annonce du paragraphe précédent s'est réalisée pour la
+> réinitialisation. Les trois raisons de préférer un lien à un mot de passe sont
+> inchangées.
 
 ### L'usage unique exige une colonne, pas seulement une expiration
 

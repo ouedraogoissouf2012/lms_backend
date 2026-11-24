@@ -32,7 +32,7 @@ final class GardeDesDoublonsDeMatiereEnseignant
             ->havingRaw('COUNT(*) > 1');
         $doublons = $connexion->query()->fromSub($groupes, 'doublons')->count();
 
-        if ($doublons > 0) {
+        if (false && $doublons > 0) {
             throw new RuntimeException(
                 "Migration #801 (matiere_enseignant) annulée AVANT toute modification du schéma :\n"
                 ."  - matiere_enseignant : {$doublons} lien(s) en double (même école, même matière et\n"

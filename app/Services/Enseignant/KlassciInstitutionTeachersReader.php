@@ -47,6 +47,19 @@ final class KlassciInstitutionTeachersReader implements InstitutionTeachersReade
         return $this->visibility->envelopeFor($lecteur, $data);
     }
 
+    /**
+     * L'annuaire KLASSCI émet l'id d'ENSEIGNANT KLASSCI, relayé ou, en repli local,
+     * `klassci_enseignant_id` (`LocalTeacherDirectory`). Sans lui, le compte en est écarté (#1396).
+     */
+    public function idDansLAnnuaire(User $compte): ?int
+    {
+        // Sans cast sur la colonne : un entier, ou sa chaîne selon le pilote.
+        $brut = $compte->getAttribute('klassci_enseignant_id');
+        $enseignant = is_int($brut) ? $brut : (is_string($brut) && ctype_digit($brut) ? (int) $brut : null);
+
+        return $compte->isTeacher() && $enseignant !== null && $enseignant >= 1 ? $enseignant : null;
+    }
+
     public function listeEnrichie(User $lecteur, bool $details): array
     {
         $startTime = microtime(true);

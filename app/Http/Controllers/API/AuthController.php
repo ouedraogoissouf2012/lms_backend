@@ -9,11 +9,10 @@ use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Presenters\AuthResponsePresenter;
 use App\Http\Requests\LoginRequest;
-use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\LoginOrchestrator;
-use App\Services\Klassci\Auth\ProfilAuthMe;
-use App\Services\Klassci\Data\KlassciDataWhitelist;
+use App\Services\Enseignant\IdDansLAnnuaire;
+use App\Services\Klassci\Auth\ProfilKlassciEnDirect;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
@@ -45,8 +44,9 @@ class AuthController extends AuthenticatedController
         private AuthResponsePresenter $presenter,
         private AuditLogger $auditLogger,
         private LoggerInterface $logger,
-        private KlassciDataWhitelist $klassciDataWhitelist,
         private readonly CaughtExceptionLog $journal,
+        private readonly ProfilKlassciEnDirect $profilKlassci,
+        private readonly IdDansLAnnuaire $idDansLAnnuaire,
     ) {}
 
     /**
@@ -111,36 +111,10 @@ class AuthController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
 
-            // #477 (vecteur B) : whitelist du payload KLASSCI LIVE avant exposition
-            // frontend (un KLASSCI compromis ne peut injecter de clés dans la réponse).
-            $userData = $this->klassciDataWhitelist->filter($this->fetchLiveKlassciProfile($user));
-
-            return $this->presenter->profile($user, $userData);
+            // #568, #477 : le profil KLASSCI LIVE, par le jeton du compte, filtré par liste blanche.
+            return $this->presenter->profile($user, $this->profilKlassci->de($user), $this->idDansLAnnuaire->de($user));
         } catch (\Exception) {
             return $this->presenter->profileError();
-        }
-    }
-
-    /**
-     * #568 — Profil KLASSCI LIVE isolé PAR utilisateur : variante user-token-aware
-     * (clé cache dérivée du hash du token). L'ancien `get('auth/me')` cachait sous
-     * une clé tenant-globale → le profil du 1er appelant fuitait à tout le tenant.
-     *
-     * @return array<string, mixed> L'utilisateur lu par {@see ProfilAuthMe}, ou [] si indisponible.
-     */
-    private function fetchLiveKlassciProfile(User $user): array
-    {
-        $klassciToken = $user->klassci_token;
-        if (! is_string($klassciToken) || $klassciToken === '') {
-            return []; // Pas de token perso (auth locale / institution) → pas de profil KLASSCI perso.
-        }
-
-        try {
-            $klassciMe = $this->klassciService->requestWithUserToken($klassciToken, 'auth/me', 'GET');
-
-            return ProfilAuthMe::utilisateur($klassciMe, $user) ?? [];
-        } catch (\Exception) {
-            return [];
         }
     }
 

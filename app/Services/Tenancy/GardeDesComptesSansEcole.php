@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Tenancy;
 
+use App\Enums\Role;
 use App\Models\Concerns\InteractsWithRoles;
 use Illuminate\Database\DatabaseManager;
 use RuntimeException;
@@ -16,7 +17,8 @@ use RuntimeException;
  * tranche. Fusion = déploiement : son message se lit dans le journal de déploiement.
  *
  * Le supradmin se reconnaît au rôle EXACT `supradmin`, comme
- * {@see InteractsWithRoles::isPlatformSupradmin()}.
+ * {@see InteractsWithRoles::isPlatformSupradmin()}. Il se lit par la table des rôles (#1198) :
+ * `Role::Supradmin->aliases()` ne contient que ce rôle exact, le même que la contrainte en base.
  */
 final class GardeDesComptesSansEcole
 {
@@ -27,7 +29,7 @@ final class GardeDesComptesSansEcole
     {
         $compte = $this->db->connection()->table('users')
             ->whereNull('institution_id')
-            ->where(static fn ($role) => $role->whereNull('role')->orWhere('role', '<>', 'supradmin'))
+            ->where(static fn ($role) => $role->whereNull('role')->orWhereNotIn('role', Role::Supradmin->aliases()))
             ->count();
 
         if ($compte > 0) {

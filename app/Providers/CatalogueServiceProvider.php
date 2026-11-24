@@ -54,6 +54,7 @@ use App\Services\Seances\CreationDeSeance;
 use App\Services\Seances\KlassciCreationDeSeance;
 use App\Services\Seances\KlassciModificationDeSeance;
 use App\Services\Seances\KlassciSeanceDesignee;
+use App\Services\Seances\KlassciSeanceDesigneeStricte;
 use App\Services\Seances\LocalModificationDeSeance;
 use App\Services\Seances\LocalSeanceCreator;
 use App\Services\Seances\LocalSeanceDesignee;
@@ -61,6 +62,7 @@ use App\Services\Seances\LocalSeanceDetailReader;
 use App\Services\Seances\LocalSeancesListReader;
 use App\Services\Seances\ModificationDeSeance;
 use App\Services\Seances\SeanceDesignee;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use App\Services\Seances\SeanceDetailReader;
 use App\Services\Seances\SeancesListReader;
 use App\Services\SeancesListQueryService;
@@ -122,6 +124,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         SeanceDetailReader::class => [SeanceDetailQueryService::class, LocalSeanceDetailReader::class],
         // La séance que désignent la suppression et la désactivation (#933).
         SeanceDesignee::class => [KlassciSeanceDesignee::class, LocalSeanceDesignee::class],
+        // La même, stricte dans l'espace de l'école : la porte historique de suppression (#1154).
+        SeanceDesigneeStrictement::class => [KlassciSeanceDesigneeStricte::class, LocalSeanceDesignee::class],
         // Modifier une séance : l'école autonome modifie, l'école KLASSCI refuse (#1121).
         ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).

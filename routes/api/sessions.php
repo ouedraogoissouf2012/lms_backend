@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\API\LMS\LMSClasseCapaciteController;
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
@@ -94,5 +95,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // NOMME : il rend reelles les regles deja ecrites (une Periode close ferme
         // les codes de ses classes, #897 ; `is_active`), sans ouvrir d autre champ.
         Route::put('/classes/{classe}/periode', [LMSClassePeriodeController::class, 'update'])
+            ->whereNumber('classe');
+
+        // Regler la capacite d une classe (#1358) : celle que l inscription par code
+        // respecte (#1115). Un geste NOMME, comme la Periode ; null ou 0 = sans limite.
+        Route::put('/classes/{classe}/capacite', [LMSClasseCapaciteController::class, 'update'])
             ->whereNumber('classe');
     });

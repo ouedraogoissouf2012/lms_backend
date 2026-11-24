@@ -35,7 +35,11 @@ final class ClasseEtudiantStatutSansLitteralTest extends TestCase
     private const CHARGES_KLASSCI = [
         'app/Services/Classe/ClasseDetailsQueryService.php' => 1,
         'app/Services/Classe/ClasseEtudiantsQueryService.php' => 1,
-        'app/Services/Seances/SeanceVisioEnricher.php' => 2,
+        // Le filtre de la réponse KLASSCI.
+        'app/Services/Seances/SeanceVisioEnricher.php' => 1,
+        // Le repli local reconstruit une ligne à la forme KLASSCI ; extrait de
+        // SeanceVisioEnricher par #1455, avec son littéral.
+        'app/Services/Seances/ParticipantsDuMiroirLocal.php' => 1,
     ];
 
     private const LITTERAL = '/[\'"]actif[\'"]/';

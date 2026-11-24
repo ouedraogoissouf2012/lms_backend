@@ -208,6 +208,19 @@ Refs: #issue-number
 
 Types autorisés : `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `security`, `ci`, `revert`
 
+### `git blame` et les commits de mise en forme (#1264)
+
+Les commits de pure mise en forme (le passage de Pint sur tout le dépôt, #1263) sont listés
+dans `.git-blame-ignore-revs`, pour que `git blame` rende chaque ligne à son vrai auteur.
+GitHub le lit seul ; en local, une fois par clone :
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+Un futur commit de mise en forme s'y ajoute, en sha COMPLET, précédé d'un commentaire qui dit
+pourquoi (`RevisionsIgnoreesParBlameTest` garde cette forme).
+
 ### Workflow PR
 
 1. Créer la branche depuis `lms` (ou `dev` pour features)

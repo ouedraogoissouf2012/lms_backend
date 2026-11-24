@@ -1092,38 +1092,8 @@ parameters:
 			path: app/Services/Seances/Mutations/VisioToggleService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Seances/SeanceVisioEnricher.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$klassci_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Seances/SeanceVisioEnricher.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/Seances/SeanceVisioEnricher.php
-
-		-
 			message: '#^Method App\\Services\\Seances\\SeanceVisioEnricher\:\:resolveParticipants\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Services/Seances/SeanceVisioEnricher.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Seances/SeanceVisioEnricher.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
 			count: 1
 			path: app/Services/Seances/SeanceVisioEnricher.php
 
@@ -1136,12 +1106,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/SeanceVisioEnricher.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
 			count: 1
 			path: app/Services/Seances/SeanceVisioEnricher.php
 

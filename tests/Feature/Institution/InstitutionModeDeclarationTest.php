@@ -157,7 +157,9 @@ final class InstitutionModeDeclarationTest extends TestCase
     {
         // Rien ne se perd en basculant : `CompositeEnrollmentSource` ne lit pas
         // le mode, et un import déjà analysé est revérifié à la confirmation.
-        // La bascule est donc réversible, et le test le dit explicitement.
+        // La bascule est donc réversible, et le test le dit explicitement. Seul le
+        // jeton API KLASSCI ne revient pas : effacé au passage en autonome, il se
+        // ressaisit (#1213, décision du user du 22/11).
         $ecole = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
 
         $this->patchJson(

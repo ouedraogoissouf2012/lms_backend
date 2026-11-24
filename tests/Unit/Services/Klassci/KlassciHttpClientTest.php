@@ -11,6 +11,7 @@ use App\Services\Klassci\KlassciHttpClient;
 use App\Services\Klassci\KlassciTargetResolver;
 use App\Services\Klassci\KlassciTransportRetry;
 use App\Services\TenantManager;
+use App\Support\Config\LecteurDEntiers;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Http\Client\ConnectionException;
@@ -160,7 +161,7 @@ final class KlassciHttpClientTest extends TestCase
             throw new ConnectionException('cURL error 28: timeout');
         });
 
-        $client = new KlassciHttpClient($factory, $this->configResolver(), $logger, $this->circuitBreaker(), new KlassciTransportRetry);
+        $client = new KlassciHttpClient($factory, $this->configResolver(), $logger, $this->circuitBreaker(), new KlassciTransportRetry, config(), new LecteurDEntiers);
 
         try {
             $client->executeHttp('GET', 'etudiants/me');
@@ -187,7 +188,7 @@ final class KlassciHttpClientTest extends TestCase
         $factory = new HttpFactory;
         $factory->fake(fn () => HttpFactory::response(['success' => true, 'data' => [1, 2]], 200));
 
-        $client = new KlassciHttpClient($factory, $this->configResolver(), $logger, $this->circuitBreaker(), new KlassciTransportRetry);
+        $client = new KlassciHttpClient($factory, $this->configResolver(), $logger, $this->circuitBreaker(), new KlassciTransportRetry, config(), new LecteurDEntiers);
         $result = $client->executeHttp('GET', 'etudiants/me');
 
         self::assertSame(['success' => true, 'data' => [1, 2]], $result);
@@ -223,7 +224,7 @@ final class KlassciHttpClientTest extends TestCase
             return HttpFactory::response(['message' => 'down'], 503);
         });
 
-        $client = new KlassciHttpClient($factory, $this->configResolver(), new RecordingLogger, $this->circuitBreaker(), new KlassciTransportRetry);
+        $client = new KlassciHttpClient($factory, $this->configResolver(), new RecordingLogger, $this->circuitBreaker(), new KlassciTransportRetry, config(), new LecteurDEntiers);
 
         for ($i = 0; $i < 2; $i++) {
             try {
@@ -250,7 +251,7 @@ final class KlassciHttpClientTest extends TestCase
             $status,
         ));
 
-        return new KlassciHttpClient($factory, $this->configResolver(), $logger, $this->circuitBreaker(), new KlassciTransportRetry);
+        return new KlassciHttpClient($factory, $this->configResolver(), $logger, $this->circuitBreaker(), new KlassciTransportRetry, config(), new LecteurDEntiers);
     }
 
     /**
@@ -321,7 +322,7 @@ final class KlassciHttpClientTest extends TestCase
             }
         };
 
-        return new KlassciCircuitBreaker(Cache::store('array'), $target, new NullLogger);
+        return new KlassciCircuitBreaker(Cache::store('array'), $target, new NullLogger, config(), new LecteurDEntiers);
     }
 }
 

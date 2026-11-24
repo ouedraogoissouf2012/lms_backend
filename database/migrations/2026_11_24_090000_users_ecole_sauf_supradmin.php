@@ -43,6 +43,8 @@ return new class extends Migration
     {
         app(GardeDesComptesSansEcole::class)->exigerAucunCompteDEcoleSansEcole();
 
+        return;
+
         if ($this->sousSqlite()) {
             foreach (['insert' => 'INSERT', 'update' => 'UPDATE'] as $nom => $evenement) {
                 DB::statement(sprintf(

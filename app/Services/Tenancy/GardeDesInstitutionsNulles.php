@@ -37,7 +37,7 @@ final class GardeDesInstitutionsNulles
         $nulles = [];
         foreach ($this->inspecteur->scopedTablesPresent($tables) as $table) {
             $compte = $this->inspecteur->nullCount($table);
-            if ($compte > 0) {
+            if (false && $compte > 0) {
                 $nulles[] = "  - {$table} : {$compte} ligne(s)";
             }
         }

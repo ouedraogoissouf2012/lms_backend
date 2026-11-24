@@ -8,11 +8,12 @@ use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 class UnhideSeanceRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -46,7 +47,7 @@ class UnhideSeanceRequestTest extends TestCase
 
     public function test_teacher_cannot_unhide(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/unhide");
 
         $response->assertStatus(403);
@@ -57,7 +58,7 @@ class UnhideSeanceRequestTest extends TestCase
         // First hide the seance
         SeanceUserHidden::hide($this->seance->id, $this->student->id);
 
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/unhide");
 
         $this->assertTrue(in_array($response->status(), [200, 201]));
@@ -65,7 +66,7 @@ class UnhideSeanceRequestTest extends TestCase
 
     public function test_unhide_nonexistent_seance_returns_404(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
         $response = $this->postJson('/api/lms/seances/99999/unhide');
 
         $response->assertStatus(404);
@@ -73,7 +74,7 @@ class UnhideSeanceRequestTest extends TestCase
 
     public function test_unhide_not_hidden_seance_returns_404(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/unhide");
 
         // Should return 404 because seance wasn't hidden for this student
@@ -84,7 +85,7 @@ class UnhideSeanceRequestTest extends TestCase
     {
         SeanceUserHidden::hide($this->seance->id, $this->student->id);
 
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
         $response = $this->postJson("/api/lms/seances/{$this->seance->id}/unhide");
 
         $this->assertTrue(in_array($response->status(), [200, 201]));
@@ -92,7 +93,7 @@ class UnhideSeanceRequestTest extends TestCase
 
     public function test_hide_then_unhide_cycle(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         // Hide seance
         $hideResponse = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/hide");
@@ -114,7 +115,7 @@ class UnhideSeanceRequestTest extends TestCase
         $coordinator = User::factory()->coordinator()->for($this->institution)->create();
         SeanceUserHidden::hide($this->seance->id, $coordinator->id);
 
-        Sanctum::actingAs($coordinator);
+        $this->asTenant($coordinator);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/unhide");
 
         $response->assertStatus(403);

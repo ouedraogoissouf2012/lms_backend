@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
+use Tests\Concerns\ColonneEcoleFacultativeLeTempsDuTest;
 use Tests\TestCase;
 
 /**
@@ -31,11 +32,33 @@ use Tests\TestCase;
 final class BackfillSubmissionInstitutionMigrationTest extends TestCase
 {
     use ActsAsTenantUser;
+    use ColonneEcoleFacultativeLeTempsDuTest;
     use RefreshDatabase;
 
     private const KLASSCI_ID = 910001;
 
     private const CLASSE = 4242;
+
+    /**
+     * Cette migration est PASSÉE : elle rattachait des copies écrites sans école, que le NOT
+     * NULL de #801 interdit désormais. La colonne redevient facultative le temps du test.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // `evaluation_questions` aussi : la question d'une évaluation héritée est sans école.
+        $this->rendreFacultative('evaluations', 'evaluation_questions', 'evaluation_submissions');
+    }
+
+    protected function tearDown(): void
+    {
+        $this->remettreObligatoire();
+        foreach (['evaluation_submissions', 'evaluation_questions', 'evaluations', 'users', 'institutions'] as $table) {
+            DB::table($table)->delete();
+        }
+
+        parent::tearDown();
+    }
 
     /**
      * La migration est anonyme : on la charge par son chemin, comme le migrateur,

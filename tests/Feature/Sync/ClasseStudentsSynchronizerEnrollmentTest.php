@@ -73,7 +73,12 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
         );
     }
 
-    public function test_a_legacy_row_without_institution_is_repaired_instead_of_duplicated(): void
+    /**
+     * #801 : ce test réparait une ligne héritée SANS école ; le NOT NULL rend ce cas
+     * impossible. Il garde ce qui reste vrai : une ligne INACTIVE de la même école est
+     * réactivée, sans doublon.
+     */
+    public function test_an_inactive_row_of_the_same_school_is_reactivated_instead_of_duplicated(): void
     {
         $classe = $this->classe();
         $student = User::factory()->create([
@@ -81,11 +86,10 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
             'role' => 'etudiant',
         ]);
 
-        // Ligne héritée du pré-multi-tenant : rattachement manquant.
         DB::table('classe_etudiant')->insert([
             'classe_id' => $classe->id,
             'user_id' => $student->id,
-            'institution_id' => null,
+            'institution_id' => $this->institution->id,
             'statut' => 'inactif',
             'created_at' => now(),
             'updated_at' => now(),

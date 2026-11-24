@@ -6,7 +6,7 @@ use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -35,6 +35,7 @@ use Tests\TestCase;
  */
 class UploadFileRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private User $user;
@@ -51,7 +52,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_pdf_file_passes(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('document.pdf', 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -66,7 +67,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_docx_file_passes(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create(
             'document.docx',
             512,
@@ -85,7 +86,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_pptx_file_passes(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create(
             'presentation.pptx',
             2048,
@@ -108,7 +109,7 @@ class UploadFileRequestTest extends TestCase
             $this->markTestSkipped('GD extension is required for image tests');
         }
 
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->image('photo.jpg', 640, 480);
 
         $response = $this->postJson('/api/files/upload', [
@@ -127,7 +128,7 @@ class UploadFileRequestTest extends TestCase
             $this->markTestSkipped('GD extension is required for image tests');
         }
 
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->image('photo.png', 640, 480);
 
         $response = $this->postJson('/api/files/upload', [
@@ -142,7 +143,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_with_custom_name_passes(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('document.pdf', 512, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -170,7 +171,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_missing_file_authenticated_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $response = $this->postJson('/api/files/upload', [
             // No file key
         ]);
@@ -185,7 +186,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_executable_file_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('malware.exe', 512, 'application/x-msdownload');
 
         $response = $this->postJson('/api/files/upload', [
@@ -202,7 +203,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_shell_script_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('script.sh', 256, 'application/x-sh');
 
         $response = $this->postJson('/api/files/upload', [
@@ -219,7 +220,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_zip_archive_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('archive.zip', 512, 'application/zip');
 
         $response = $this->postJson('/api/files/upload', [
@@ -234,7 +235,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_rar_archive_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('archive.rar', 512, 'application/x-rar-compressed');
 
         $response = $this->postJson('/api/files/upload', [
@@ -249,7 +250,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_batch_script_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('script.bat', 256, 'application/x-bat');
 
         $response = $this->postJson('/api/files/upload', [
@@ -265,7 +266,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_exactly_30mb_passes(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('large.pdf', 30 * 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -281,7 +282,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_just_over_30mb_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('huge.pdf', 30 * 1024 + 1, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -298,7 +299,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_29mb_passes(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('ok.pdf', 29 * 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -315,7 +316,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_31mb_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('huge.pdf', 31 * 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -332,7 +333,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_40mb_fails(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $file = UploadedFile::fake()->create('huge.pdf', 40 * 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -348,7 +349,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_all_allowed_document_types_pass(): void
     {
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $files = [
             ['file.pdf', 'application/pdf'],
             ['file.doc', 'application/msword'],
@@ -379,7 +380,7 @@ class UploadFileRequestTest extends TestCase
             $this->markTestSkipped('GD extension is required for image tests');
         }
 
-        Sanctum::actingAs($this->user);
+        $this->asTenant($this->user);
         $images = ['jpg', 'png', 'gif'];
 
         foreach ($images as $ext) {

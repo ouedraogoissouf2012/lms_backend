@@ -112,7 +112,8 @@ final class SitesDesJobsTest extends TestCase
 
         $this->artisan('evaluations:notify-upcoming', ['--hours' => 24])
             ->expectsOutputToContain("Erreur pendant le traitement de l'évaluation {$evaluation->id}.")
-            ->assertSuccessful();
+            // #1444 : un rappel en échec fait échouer la commande (le planificateur doit le voir).
+            ->assertFailed();
 
         $this->assertUnSiteEcrit(Level::Error, 'Rappel d\'évaluation interrompu', ['evaluation_id' => $evaluation->id]);
     }

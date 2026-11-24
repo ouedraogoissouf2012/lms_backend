@@ -162,6 +162,7 @@ final class RechercheDesLeconsParPorteeTest extends TestCase
             DB::table('classe_etudiant')->insert([
                 'classe_id' => $this->classeA->id,
                 'user_id' => $eleve->id,
+                'institution_id' => $this->ecole->id,
                 'statut' => 'actif',
                 'created_at' => now(),
                 'updated_at' => now(),

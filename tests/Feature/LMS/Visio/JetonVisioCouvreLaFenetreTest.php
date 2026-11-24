@@ -168,7 +168,7 @@ final class JetonVisioCouvreLaFenetreTest extends TestCase
     private function eleveDe(Institution $ecole, Classe $classe): User
     {
         $eleve = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'etudiant', 'klassci_token' => null]);
-        DB::table('classe_etudiant')->insert(['classe_id' => $classe->id, 'user_id' => $eleve->id, 'statut' => 'actif',
+        DB::table('classe_etudiant')->insert(['classe_id' => $classe->id, 'user_id' => $eleve->id, 'institution_id' => $classe->institution_id, 'statut' => 'actif',
             'date_inscription' => '2026-09-01', 'created_at' => now(), 'updated_at' => now()]);
 
         return $eleve;

@@ -96,7 +96,7 @@ final class SitesDesJobsTest extends TestCase
         $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => null]);
         $eleve = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'etudiant']);
         DB::table('classe_etudiant')->insert([
-            'classe_id' => $classe->id, 'user_id' => $eleve->id, 'statut' => 'actif',
+            'classe_id' => $classe->id, 'user_id' => $eleve->id, 'institution_id' => $ecole->id, 'statut' => 'actif',
             'date_inscription' => now()->toDateString(), 'created_at' => now(), 'updated_at' => now(),
         ]);
         $evaluation = Evaluation::factory()->create([

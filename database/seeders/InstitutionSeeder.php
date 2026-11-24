@@ -26,6 +26,7 @@ class InstitutionSeeder extends Seeder
      * la décision du user (le supradmin ne voit aucun contenu pédagogique).
      */
     private array $tables = [
+        'users',
         'classes',
         'matieres',
         'lessons',

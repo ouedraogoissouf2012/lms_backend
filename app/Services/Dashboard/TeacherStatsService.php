@@ -45,7 +45,7 @@ final class TeacherStatsService
         $lecons = Lesson::query()
             ->withoutGlobalScope('institution')
             ->where('institution_id', $ecole)
-            ->where('enseignant_id', $user->id)
+            ->where('enseignant_id', $user->klassci_enseignant_id)
             ->get(['classe_id', 'matiere_id']);
 
         /** @var ContenusEvaluesDeLEnseignant $source */

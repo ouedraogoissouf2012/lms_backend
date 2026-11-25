@@ -7,6 +7,7 @@ namespace Tests\Feature\Seances;
 use App\Enums\InstitutionMode;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Seances\KlassciSeanceDesigneeStricte;
 use App\Services\Seances\Mutations\SeanceHideService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +23,10 @@ use Tests\TestCase;
  * l'id KLASSCI d'un miroir en école KLASSCI, l'id local en école autonome. Et
  * jamais une séance d'un autre établissement, même sans tenant.
  *
- * L'ordre entre les deux identifiants, sur une COLLISION (une séance d'id local N,
- * une autre de `klassci_seance_id` N), attend une décision à part : il n'est pas
- * figé ici.
+ * La COLLISION (une séance d'id local N, une autre de `klassci_seance_id` N) n'appelle
+ * aucun ordre : chaque chemin désigne la séance de l'espace de l'école (ADR-1154-01).
+ * Elle est prouvée dans {@see ChaquePorteDesigneLaSeanceDeSonEspaceTest} (#1566), qui
+ * remplace le test laissé incomplet en attendant D439.
  */
 final class DesignationHorsCollisionTest extends TestCase
 {
@@ -63,7 +65,8 @@ final class DesignationHorsCollisionTest extends TestCase
         $eleve = $this->membre($this->ecole(InstitutionMode::Klassci), 'etudiant');
         $this->app->forgetScopedInstances();
 
-        $resultat = app(SeanceHideService::class)->hide(901, $eleve);
+        // La désignation est celle que la route reçoit en école KLASSCI (#1566).
+        $resultat = app(SeanceHideService::class)->hide(901, $eleve, app(KlassciSeanceDesigneeStricte::class));
 
         self::assertSame(404, $resultat['status']);
         self::assertSame(0, DB::table('seance_user_hidden')->where('seance_id', $ailleurs->id)->count());
@@ -89,12 +92,6 @@ final class DesignationHorsCollisionTest extends TestCase
             $this->presences($enseignant, $id)->assertStatus(403)->assertJsonPath('reason', 'not_enrolled');
             $this->presences($enseignant, 987654)->assertNotFound();
         }
-    }
-
-    /** La collision : l'ordre attend la décision sur la désignation d'une séance (amendement de l'ADR-760-01). */
-    public function test_la_collision_attend_sa_decision(): void
-    {
-        self::markTestIncomplete('Ordre id local / klassci_seance_id sur une collision : en attente de la décision (D439).');
     }
 
     private function assertMasqueEtReaffiche(User $eleve, int $id, Seance $seance): void

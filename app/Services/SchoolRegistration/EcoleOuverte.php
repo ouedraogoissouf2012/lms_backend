@@ -29,5 +29,7 @@ final class EcoleOuverte
         public readonly Institution $institution,
         public readonly User $proprietaire,
         public readonly string $lienActivation,
+        /** #1620 : l'adresse à laquelle le lien part par courriel ; `null` sans canal. */
+        public readonly ?string $activationEnvoyeeA = null,
     ) {}
 }

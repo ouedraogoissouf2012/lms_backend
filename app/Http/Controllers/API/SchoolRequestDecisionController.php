@@ -85,7 +85,11 @@ final class SchoolRequestDecisionController extends Controller
                 'name' => $institution->name,
             ],
             'activation_url' => $resultat->lienActivation,
-        ], 'École ouverte. Transmettez le lien d\'activation à son responsable : il ne sera plus affiché.');
+            // #1620 : l'adresse à laquelle le lien part par courriel ; `null` sans canal.
+            'activation_envoyee_a' => $resultat->activationEnvoyeeA,
+        ], $resultat->activationEnvoyeeA === null
+            ? 'École ouverte. Transmettez le lien d\'activation à son responsable : il ne sera plus affiché.'
+            : 'École ouverte. Le lien d\'activation est envoyé à son responsable ; gardez-le en secours : il ne sera plus affiché.');
     }
 
     public function refuse(

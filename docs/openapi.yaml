@@ -3480,10 +3480,17 @@ components:
         `enseignant_id` dans une ecole creee depuis le LMS (D72) ; jamais un id local
         sous un nom `klassci_*` (D132).
 
-        Si le catalogue KLASSCI est injoignable, l enrichissement est fail-soft :
-        l evaluation est rendue SANS ses cles calculees. Seul `id` est donc garanti.
+        Si le catalogue KLASSCI est injoignable, seul ce catalogue est perdu (#1609) :
+        `classe` et `matiere` portent les libelles stockes (`classe_nom`,
+        `matiere_nom`), et `enseignant` vient de la base, comme dans une ecole creee
+        depuis le LMS. Les cles calculees ci-dessous sont donc toujours presentes,
+        eventuellement nulles.
       required:
         - id
+        - classe
+        - matiere
+        - enseignant
+        - enseignant_nom
       additionalProperties: true
       properties:
         id:

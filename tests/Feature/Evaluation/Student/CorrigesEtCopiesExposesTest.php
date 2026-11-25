@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Evaluation\Student;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -76,9 +77,20 @@ final class CorrigesEtCopiesExposesTest extends TestCase
      * KLASSCI rend la classe de l'élève, et aucune évaluation distante : la
      * liste se construit alors à partir des seules évaluations LMS.
      */
-    private function fakeKlassci(): void
+    /** @param  bool  $catalogueEnPanne  le catalogue KLASSCI (classes, matières) injoignable (#1609) */
+    private function fakeKlassci(bool $catalogueEnPanne = false): void
     {
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($catalogueEnPanne): void {
+            // #1609 : le détail passe par l'enrichissement, qui lit le catalogue KLASSCI. Non
+            // déclaré, l'appel levait une BadMethodCallException de Mockery, qu'avalait l'ancien
+            // repli en réponse brute ; il remonte désormais. Catalogue vide : la valeur neutre.
+            if ($catalogueEnPanne) {
+                $mock->shouldReceive('getClasses')->andThrow(KlassciUnavailableException::upstreamFailure(503));
+                $mock->shouldReceive('getMatieres')->andThrow(KlassciUnavailableException::upstreamFailure(503));
+            } else {
+                $mock->shouldReceive('getClasses')->andReturn(['data' => []]);
+                $mock->shouldReceive('getMatieres')->andReturn(['data' => []]);
+            }
             $mock->shouldReceive('requestWithUserToken')
                 ->andReturnUsing(static function (string $token, string $endpoint) {
                     if ($endpoint === 'me/dashboard') {
@@ -253,6 +265,24 @@ final class CorrigesEtCopiesExposesTest extends TestCase
             $reponse->getContent() ?: '',
             'L eleve recoit le corrige sur l ecran ou il compose.',
         );
+    }
+
+    /**
+     * #1609, verrou de sécurité : KLASSCI en panne, l'écran de passage ne reçoit pas davantage le
+     * corrigé. Le repli rendait l'évaluation brute (`toArray()`), aujourd'hui la présentation sans
+     * catalogue : les deux partent du même `toArray()`, où le corrigé est caché par le modèle
+     * (`EvaluationQuestion::$hidden`) et ne se révèle qu'au public autorisé (`findOne`).
+     */
+    public function test_klassci_en_panne_l_ecran_de_passage_ne_recoit_pas_le_corrige(): void
+    {
+        $evaluation = $this->evaluationAvecCorrige();
+        $this->fakeKlassci(catalogueEnPanne: true);
+
+        $reponse = $this->asTenant($this->eleve)->getJson("/api/evaluations/{$evaluation->id}");
+
+        $reponse->assertStatus(200);
+        self::assertStringNotContainsString('LA-REPONSE-SECRETE', $reponse->getContent() ?: '');
+        self::assertStringNotContainsString('correct_answers', $reponse->getContent() ?: '');
     }
 
     public function test_l_enseignant_recoit_le_corrige_pour_editer_ses_questions(): void

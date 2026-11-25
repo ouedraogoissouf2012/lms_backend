@@ -40,7 +40,7 @@ use Throwable;
  *
  * Le titulaire se retrouve par SA CLÉ et son école, filtrées explicitement, sans tenant (#880).
  */
-final class EnvoyerLeLienDActivation implements ShouldBeEncrypted, ShouldQueue
+final class EnvoyerLeLienDActivation implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;

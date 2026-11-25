@@ -17,6 +17,8 @@ use App\Models\SeanceRecording;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -63,6 +65,9 @@ final class ParcoursEcoleKlassciTest extends TestCase
     /** @var list<string> Les appels HTTP qui ne vont pas vers KLASSCI : aucun n'est prévu. */
     private array $appelsHorsKlassci = [];
 
+    /** @var list<array<string, mixed>> Les erreurs journalisées : un service qui rend 500 y dit pourquoi. */
+    private array $erreursJournalisees = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -73,6 +78,11 @@ final class ParcoursEcoleKlassciTest extends TestCase
             'mode' => InstitutionMode::Klassci,
             'klassci_api_url' => self::KLASSCI,
         ]);
+        Event::listen(MessageLogged::class, function (MessageLogged $message): void {
+            if (in_array($message->level, ['error', 'critical', 'alert', 'emergency'], true)) {
+                $this->erreursJournalisees[] = ['message' => $message->message] + $message->context;
+            }
+        });
         Http::preventStrayRequests();
         Http::fake(fn (Request $requete) => $this->klassci($requete));
     }
@@ -104,8 +114,8 @@ final class ParcoursEcoleKlassciTest extends TestCase
         $lecon = $this->leconDuProf($this->compte('prof.demo'));
 
         foreach (['activate-visio', 'start-visio', 'recording/start', 'recording/stop'] as $geste) {
-            $this->avecLeJeton($prof)->postJson('/api/lms/seances/'.self::SEANCE."/{$geste}")
-                ->assertOk();
+            $reponse = $this->avecLeJeton($prof)->postJson('/api/lms/seances/'.self::SEANCE."/{$geste}");
+            self::assertSame(200, $reponse->status(), $this->diagnostic($geste, $reponse));
         }
 
         $enregistrement = SeanceRecording::query()
@@ -120,6 +130,18 @@ final class ParcoursEcoleKlassciTest extends TestCase
         $this->avecLeJeton($eleve)->getJson("/api/chapters/{$chapitre->id}")
             ->assertOk()
             ->assertJsonPath('data.video_url', self::VIDEO);
+    }
+
+    /** Le geste, la réponse, et les erreurs journalisées pendant la requête. */
+    private function diagnostic(string $geste, TestResponse $reponse): string
+    {
+        $erreurs = array_map(
+            static fn (array $e): array => array_intersect_key($e, array_flip(['message', 'exception_class', 'error'])),
+            $this->erreursJournalisees,
+        );
+
+        return "{$geste} : ".$reponse->getContent().'
+Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
     }
 
     private function connecter(string $identifiant): TestResponse

@@ -81,14 +81,23 @@ class UnhideSeanceRequestTest extends TestCase
         $response->assertStatus(404);
     }
 
+    /**
+     * #1566 : l'id local est l'espace d'une école AUTONOME. En école KLASSCI, il ne désigne
+     * plus rien (ChaquePorteDesigneLaSeanceDeSonEspaceTest). Vrai jeton : sans tenant, la
+     * source est celle de KLASSCI.
+     */
     public function test_student_can_unhide_by_local_id(): void
     {
-        SeanceUserHidden::hide($this->seance->id, $this->student->id);
+        $ecole = Institution::factory()->standalone()->create();
+        $eleve = User::factory()->student()->for($ecole)->create();
+        $seance = Seance::factory()->forInstitution($ecole)->create(['klassci_seance_id' => null]);
+        // Le tenant du setUp est l'école KLASSCI : la ligne préparée porte l'école de la séance.
+        $this->app->make(TenantManager::class)->set($ecole);
+        SeanceUserHidden::hide($seance->id, $eleve->id);
 
-        $this->asTenant($this->student);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/unhide");
+        $this->asTenant($eleve)->postJson("/api/lms/seances/{$seance->id}/unhide")->assertOk();
 
-        $this->assertTrue(in_array($response->status(), [200, 201]));
+        $this->assertDatabaseMissing('seance_user_hidden', ['seance_id' => $seance->id, 'user_id' => $eleve->id]);
     }
 
     public function test_hide_then_unhide_cycle(): void

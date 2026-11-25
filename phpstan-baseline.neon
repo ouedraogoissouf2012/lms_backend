@@ -559,12 +559,6 @@ parameters:
 			path: app/Services/Evaluation/EvaluationCreationService.php
 
 		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Evaluation/EvaluationEnrichmentService.php
-
-		-
 			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 6
@@ -580,18 +574,6 @@ parameters:
 			message: '#^Cannot access offset ''nom'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 7
-			path: app/Services/Evaluation/EvaluationEnrichmentService.php
-
-		-
-			message: '#^Method App\\Services\\Evaluation\\EvaluationEnrichmentService\:\:enrich\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Evaluation/EvaluationEnrichmentService.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 2
 			path: app/Services/Evaluation/EvaluationEnrichmentService.php
 
 		-

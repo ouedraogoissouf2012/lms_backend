@@ -9,7 +9,7 @@ use App\Http\Requests\ActivateVisioRequest;
 use App\Http\Requests\DeactivateVisioRequest;
 use App\Http\Requests\EndVisioRequest;
 use App\Http\Requests\StartVisioRequest;
-use App\Services\Seances\SeanceDesignee;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use App\Services\Visio\Lifecycle\VisioActivationSource;
 use App\Services\Visio\Lifecycle\VisioDeactivation;
 use App\Services\Visio\Lifecycle\VisioSessionService;
@@ -68,7 +68,7 @@ final class LMSVisioLifecycleController extends AuthenticatedController
      * POST /api/lms/seances/{seanceId}/deactivate-visio
      * Désactive la visioconférence pour une séance (enseignant uniquement).
      */
-    public function deactivateVisio(int $seanceId, DeactivateVisioRequest $request, SeanceDesignee $designee): JsonResponse
+    public function deactivateVisio(int $seanceId, DeactivateVisioRequest $request, SeanceDesigneeStrictement $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $result = $this->deactivation->deactivate($seanceId, $user, $designee);

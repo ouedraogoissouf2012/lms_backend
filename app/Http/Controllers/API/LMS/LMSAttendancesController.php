@@ -11,6 +11,7 @@ use App\Services\Attendances\AttendanceHistoryQueryService;
 use App\Services\Attendances\SeanceAttendancesQueryService;
 use App\Services\Attendances\SeanceSansLigneLocale;
 use App\Services\Attendances\VideoSessionAttendancesSyncer;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -42,7 +43,7 @@ final class LMSAttendancesController extends AuthenticatedController
      *
      * Synchronise les présences depuis une session vidéo (BBB/visio) vers ESBTPAttendance.
      */
-    public function syncAttendancesFromVideoSession(SyncAttendancesRequest $request): JsonResponse
+    public function syncAttendancesFromVideoSession(SyncAttendancesRequest $request, SeanceDesigneeStrictement $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
 
@@ -53,7 +54,7 @@ final class LMSAttendancesController extends AuthenticatedController
         /** @var array<int, array<string, mixed>> $participants */
         $participants = $request->validated('participants');
 
-        $result = $this->videoSessionSyncer->sync($seanceCoursId, $date, $participants, $user);
+        $result = $this->videoSessionSyncer->sync($seanceCoursId, $date, $participants, $user, $designee);
 
         return $this->relayResponse($result);
     }

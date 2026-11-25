@@ -8,9 +8,6 @@ use App\Exceptions\KlassciRoleInconnuException;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
-use App\Services\Matiere\MyMatieresQueryService;
-use App\Services\MatiereSyncService;
-use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\ConnectionInterface;
 use Psr\Log\LoggerInterface;
@@ -23,8 +20,8 @@ use Psr\Log\LoggerInterface;
  * Délègue à des collaborateurs DIP à responsabilité unique :
  *   - {@see KlassciEmailConflictGuard}        — garde email avant écriture (#253)
  *   - {@see KlassciEnseignantIdResolver}      — `klassci_enseignant_id` (#119/#267)
- *   - {@see StudentClassSynchronizer}         — classe étudiant via `me/dashboard`
- *   - {@see MatiereSyncService} — matières enseignant/coordinateur (#258)
+ *   - {@see SynchrosDuLogin}                  — classe de l'élève, matières de l'enseignant,
+ *     dans l'école du compte (#258, #1629)
  *
  * ## Invariants sécurité préservés
  *
@@ -50,14 +47,12 @@ class KlassciUserSynchronizer
     public function __construct(
         private readonly ConnectionInterface $db,
         private readonly Hasher $hasher,
-        private readonly MatiereSyncService $matiereSync,
-        private readonly StudentClassSynchronizer $studentClassSync,
+        private readonly SynchrosDuLogin $synchrosDuLogin,
         private readonly KlassciEnseignantIdResolver $enseignantIdResolver,
         private readonly KlassciEmailConflictGuard $emailGuard,
         private readonly LoggerInterface $logger,
         private readonly KlassciDataWhitelist $whitelist,
         private readonly KlassciRoleSanitizer $roleSanitizer,
-        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -117,50 +112,10 @@ class KlassciUserSynchronizer
             $user = $this->createNewUser($klassciUser, $commonData, $institutionId, $tenantUrl);
         }
 
-        if ($user->isStudent()) {
-            $this->studentClassSync->sync($user, $klassciToken);
-        } elseif ($institutionId !== null && ($user->isTeacher() || $user->isCoordinator())) {
-            // #258 — peupler les matières locales (validations exists:matieres,id +
-            // affichage du libellé). Tenant non résolu au login → institution_id explicite.
-            $this->syncTeacherMatieres($klassciToken, $institutionId);
-        }
+        // La classe de l'élève, les matières de l'enseignant : dans l'école du compte (#1629).
+        $this->synchrosDuLogin->apres($user, $klassciToken, $institutionId);
 
         return $user;
-    }
-
-    /**
-     * Synchronise les matières de l'enseignant/coordinateur au login.
-     *
-     * Un échec de la sync matières ne doit JAMAIS interrompre le login
-     * (try/catch, log, pas de rethrow).
-     *
-     * ## #712 — ce que ce point NE fait PAS, et pourquoi
-     *
-     * Le lien enseignant ↔ matière et la synchro des classes ont été branchés
-     * ici, puis RETIRÉS. `KlassciConfigResolver` résout l'URL amont par le jeton
-     * de l'utilisateur AUTHENTIFIÉ, son institution, puis la config globale.
-     * Pendant le login aucun utilisateur Sanctum n'existe encore : les deux
-     * premières priorités sont hors d'atteinte, et la troisième lit une
-     * configuration globale qui n'a pas de sens en multi-tenant.
-     *
-     * Mesure en production le 2026-09-09, à chaque reconnexion : « URL de base
-     * KLASSCI absente ou invalide ». Le login est donc structurellement
-     * incapable de porter une synchronisation KLASSCI, et l'appel ci-dessous
-     * échoue lui aussi — c'est une dette antérieure (#258), tracée, hors de ce
-     * lot.
-     *
-     * Le déclencheur vit désormais sur un chemin AUTHENTIFIÉ :
-     * {@see MyMatieresQueryService::getMatieresForUser()}.
-     */
-    private function syncTeacherMatieres(string $klassciToken, int $institutionId): void
-    {
-        try {
-            $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
-        } catch (\Throwable $e) {
-            $this->journal->error('Erreur sync matières au login', $e, [
-                'institution_id' => $institutionId,
-            ]);
-        }
     }
 
     /**

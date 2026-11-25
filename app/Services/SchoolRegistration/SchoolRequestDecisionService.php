@@ -78,6 +78,7 @@ final class SchoolRequestDecisionService
         private readonly ActivationTokenService $activations,
         private readonly ActivationLinkBuilder $liens,
         private readonly LoggerInterface $logger,
+        private readonly AnnonceDuLienDActivation $annonce,
     ) {}
 
     /**
@@ -130,7 +131,8 @@ final class SchoolRequestDecisionService
             throw new BusinessException("Ouverture de l'école interrompue.", 500);
         }
 
-        return $ouverte;
+        // #1620 : APRÈS la transaction, le lien part aussi au titulaire, quand le canal existe.
+        return new EcoleOuverte($ouverte->institution, $ouverte->proprietaire, $ouverte->lienActivation, $this->annonce->annoncer($ouverte));
     }
 
     /**

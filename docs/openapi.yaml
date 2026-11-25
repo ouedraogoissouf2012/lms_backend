@@ -2494,6 +2494,15 @@ components:
               description: |
                 Lien vers l'application WEB, jamais vers l'API. Affiche UNE
                 SEULE FOIS : le jeton n'est stocke qu'en empreinte SHA-256.
+                C'est aussi le lien envoye au titulaire (#1620) : il n'y en a qu'un.
+            activation_envoyee_a:
+              type: string
+              format: email
+              nullable: true
+              description: |
+                #1620 — l'adresse du titulaire a laquelle le lien d'activation part
+                par courriel. `null` quand aucun canal de courriel n'est configure :
+                le lien de secours (`activation_url`) est alors la seule voie.
 
     # D9 — creation d'une seance LOCALE (POST /lms/seances).
     SeanceLocaleInput:

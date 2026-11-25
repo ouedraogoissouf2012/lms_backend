@@ -113,10 +113,11 @@ final class ParcoursEcoleKlassciTest extends TestCase
         $eleve = $this->connecter('eleve.demo')->assertOk();
         $lecon = $this->leconDuProf($this->compte('prof.demo'));
 
-        foreach (['activate-visio', 'start-visio', 'recording/start', 'recording/stop'] as $geste) {
-            $reponse = $this->avecLeJeton($prof)->postJson('/api/lms/seances/'.self::SEANCE."/{$geste}");
-            self::assertSame(200, $reponse->status(), $this->diagnostic($geste, $reponse));
-        }
+        $this->gestes($prof, ['activate-visio', 'start-visio']);
+        // L'écran recueille le consentement de l'enseignant à la captation AVANT d'enregistrer.
+        $consentement = $this->avecLeJeton($prof)->postJson('/api/lms/visio/consent', ['captation' => true, 'diffusion' => true, 'reutilisation' => true]);
+        self::assertTrue($consentement->isSuccessful(), $this->diagnostic('visio/consent', $consentement));
+        $this->gestes($prof, ['recording/start', 'recording/stop']);
 
         $enregistrement = SeanceRecording::query()
             ->where('seance_id', Seance::query()->where('klassci_seance_id', self::SEANCE)->value('id'))
@@ -130,6 +131,15 @@ final class ParcoursEcoleKlassciTest extends TestCase
         $this->avecLeJeton($eleve)->getJson("/api/chapters/{$chapitre->id}")
             ->assertOk()
             ->assertJsonPath('data.video_url', self::VIDEO);
+    }
+
+    /** @param  list<string>  $gestes  les gestes de l'enseignant sur sa séance, dans l'ordre de l'écran */
+    private function gestes(TestResponse $prof, array $gestes): void
+    {
+        foreach ($gestes as $geste) {
+            $reponse = $this->avecLeJeton($prof)->postJson('/api/lms/seances/'.self::SEANCE."/{$geste}");
+            self::assertSame(200, $reponse->status(), $this->diagnostic($geste, $reponse));
+        }
     }
 
     /** Le geste, la réponse, et les erreurs journalisées pendant la requête. */

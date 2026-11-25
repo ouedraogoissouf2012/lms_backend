@@ -160,7 +160,7 @@ class PrivilegedVisioRoutesAuthorizationTest extends TestCase
     private function syncPayload(int $klassciStudentId): array
     {
         return [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => '2026-07-06',
             'participants' => [[
                 'etudiant_id' => $klassciStudentId,

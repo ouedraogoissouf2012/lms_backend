@@ -11,6 +11,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\Seances\KlassciPayload;
+use App\Services\Seances\SeanceDesignee;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
@@ -26,6 +27,11 @@ use Throwable;
  *
  * Conserve un historique horodaté dans la colonne `commentaire` à chaque sync,
  * et accumule les erreurs par participant sans interrompre la boucle complète.
+ *
+ * La séance (`seance_cours_id`) est désignée par le port reçu de l'appelant (#1566,
+ * ADR-1154-01) : dans l'espace de l'école, l'id KLASSCI seul en école KLASSCI, l'id
+ * local seul en école autonome. L'ancien `orWhere` sur les deux espaces désignait au
+ * hasard sur une collision.
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
  * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict (LoggerInterface, jamais Log facade)
@@ -49,9 +55,10 @@ final class VideoSessionAttendancesSyncer
         string $date,
         array $participants,
         User $actor,
+        SeanceDesignee $designee,
     ): array {
         try {
-            $seance = $this->resolveSeance($seanceCoursId, $actor);
+            $seance = $designee->pour($seanceCoursId, $actor);
             if ($seance === null) {
                 return $this->fail(404, 'seance_not_found');
             }
@@ -156,20 +163,6 @@ final class VideoSessionAttendancesSyncer
         );
 
         return $attendance->wasRecentlyCreated ? 'created' : 'updated';
-    }
-
-    private function resolveSeance(int $seanceId, User $actor): ?Seance
-    {
-        if (! is_int($actor->institution_id)) {
-            return null;
-        }
-
-        return Seance::query()
-            ->where('institution_id', $actor->institution_id)
-            ->where(function ($query) use ($seanceId): void {
-                $query->whereKey($seanceId)->orWhere('klassci_seance_id', $seanceId);
-            })
-            ->first();
     }
 
     /**

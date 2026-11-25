@@ -52,14 +52,14 @@ use App\Services\SeanceDetailQueryService;
 use App\Services\Seances\CreationDeSeance;
 use App\Services\Seances\KlassciCreationDeSeance;
 use App\Services\Seances\KlassciModificationDeSeance;
-use App\Services\Seances\KlassciSeanceDesignee;
+use App\Services\Seances\KlassciSeanceDesigneeStricte;
 use App\Services\Seances\LocalModificationDeSeance;
 use App\Services\Seances\LocalSeanceCreator;
 use App\Services\Seances\LocalSeanceDesignee;
 use App\Services\Seances\LocalSeanceDetailReader;
 use App\Services\Seances\LocalSeancesListReader;
 use App\Services\Seances\ModificationDeSeance;
-use App\Services\Seances\SeanceDesignee;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use App\Services\Seances\SeanceDetailReader;
 use App\Services\Seances\SeancesListReader;
 use App\Services\SeancesListQueryService;
@@ -119,8 +119,9 @@ final class CatalogueServiceProvider extends ServiceProvider
         StudentDashboardReader::class => [KlassciStudentDashboardReader::class, LocalStudentDashboardReader::class],
         // Le détail d'une séance, sous la règle de la liste du lot 3d.
         SeanceDetailReader::class => [SeanceDetailQueryService::class, LocalSeanceDetailReader::class],
-        // La séance que désignent la suppression et la désactivation (#933).
-        SeanceDesignee::class => [KlassciSeanceDesignee::class, LocalSeanceDesignee::class],
+        // La séance que désignent la suppression, le masquage, les présences de la visio et la
+        // désactivation : strictement dans l'espace de l'école (#1154, #1566, ADR-1154-01).
+        SeanceDesigneeStrictement::class => [KlassciSeanceDesigneeStricte::class, LocalSeanceDesignee::class],
         // Modifier une séance : l'école autonome modifie, l'école KLASSCI refuse (#1121).
         ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).

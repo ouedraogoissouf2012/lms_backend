@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Docs;
 
+use App\Enums\InstitutionMode;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Visio\Lifecycle\VisioDeactivation;
 use App\Services\Visio\Lifecycle\VisioSessionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -92,7 +94,7 @@ final class VisioCycleContractTest extends TestCase
         $proprietaire = $this->compte('teacher');
         $seance = $this->seanceDe($proprietaire, self::GESTES[$geste]);
 
-        $reponse = $this->asTenant($proprietaire)->postJson(self::url($seance->id, $geste))->assertOk();
+        $reponse = $this->asTenant($proprietaire)->postJson(self::url($this->idDuGeste($seance, $geste), $geste))->assertOk();
 
         $this->assertMatchesOpenApiResponse($reponse, self::chemin($geste), 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::chemin($geste), 'post', 'data');
@@ -129,7 +131,7 @@ final class VisioCycleContractTest extends TestCase
         $proprietaire = $this->compte('teacher');
         $seance = $this->seanceDe($proprietaire, 'withVisio', self::ETATS_REFUSES[$geste]);
 
-        $reponse = $this->asTenant($proprietaire)->postJson(self::url($seance->id, $geste))->assertStatus(400);
+        $reponse = $this->asTenant($proprietaire)->postJson(self::url($this->idDuGeste($seance, $geste), $geste))->assertStatus(400);
 
         $this->assertMatchesOpenApiResponse($reponse, self::chemin($geste), 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::chemin($geste), 'post', 'message');
@@ -151,10 +153,10 @@ final class VisioCycleContractTest extends TestCase
         $this->ecole($volet);
         $seance = $this->seanceDe($this->compte('teacher'), self::GESTES[$geste]);
 
-        $role = $this->asTenant($this->compte('student'))->postJson(self::url($seance->id, $geste))->assertForbidden();
+        $role = $this->asTenant($this->compte('student'))->postJson(self::url($this->idDuGeste($seance, $geste), $geste))->assertForbidden();
         $this->assertMatchesOpenApiResponse($role, self::chemin($geste), 'post');
 
-        $gestion = $this->asTenant($this->compte('teacher'))->postJson(self::url($seance->id, $geste))->assertForbidden();
+        $gestion = $this->asTenant($this->compte('teacher'))->postJson(self::url($this->idDuGeste($seance, $geste), $geste))->assertForbidden();
         $this->assertMatchesOpenApiResponse($gestion, self::chemin($geste), 'post');
         $gestion->assertJsonPath('reason', 'actor_not_authorized');
     }
@@ -189,7 +191,7 @@ final class VisioCycleContractTest extends TestCase
         $proprietaire = $this->compte('teacher');
         $seance = $this->seanceDe($proprietaire, self::GESTES[$geste]);
 
-        $reponse = $this->asTenant($proprietaire)->postJson(self::url($seance->id, $geste))->assertStatus(500);
+        $reponse = $this->asTenant($proprietaire)->postJson(self::url($this->idDuGeste($seance, $geste), $geste))->assertStatus(500);
 
         $this->assertMatchesOpenApiResponse($reponse, self::chemin($geste), 'post');
         $reponse->assertJsonPath('error', 'Une erreur est survenue.');
@@ -221,6 +223,23 @@ final class VisioCycleContractTest extends TestCase
             'klassci_classe_id' => null,
             'klassci_matiere_id' => null,
         ]);
+    }
+
+    /**
+     * L'id que l'écran envoie pour ce geste. #1566 : en école KLASSCI, « Mes séances »
+     * désactive par l'id KLASSCI (`useTeacherSeances.js:181`, `TeachingSeancesFetcher.php:239`) :
+     * la séance reçoit un miroir KLASSCI, qu'aucune séance n'a pour id local. Les autres
+     * gestes gardent l'id local.
+     */
+    private function idDuGeste(Seance $seance, string $geste): int
+    {
+        if ($geste !== 'deactivate' || $this->ecole->mode !== InstitutionMode::Klassci) {
+            return $seance->id;
+        }
+        $seance->klassci_seance_id ??= (int) DB::table('seances')->max('id') + 1000;
+        $seance->save();
+
+        return (int) $seance->klassci_seance_id;
     }
 
     private static function url(int $seanceId, string $geste): string

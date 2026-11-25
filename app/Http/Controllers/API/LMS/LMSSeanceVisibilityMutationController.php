@@ -13,7 +13,7 @@ use App\Http\Requests\UnhideSeanceRequest;
 use App\Services\Seances\LocalSeanceDesignee;
 use App\Services\Seances\Mutations\SeanceDeleteService;
 use App\Services\Seances\Mutations\SeanceHideService;
-use App\Services\Seances\SeanceDesignee;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use App\Services\Visio\Lifecycle\VisioToggleSource;
 use Illuminate\Http\JsonResponse;
 
@@ -59,10 +59,10 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
     /**
      * POST /api/lms/seances/{seanceId}/hide
      */
-    public function hideSeance(int $seanceId, HideSeanceRequest $request): JsonResponse
+    public function hideSeance(int $seanceId, HideSeanceRequest $request, SeanceDesigneeStrictement $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->seanceHide->hide($seanceId, $user);
+        $result = $this->seanceHide->hide($seanceId, $user, $designee);
 
         return $this->relayResponse($result);
     }
@@ -70,10 +70,10 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
     /**
      * POST /api/lms/seances/{seanceId}/unhide
      */
-    public function unhideSeance(int $seanceId, UnhideSeanceRequest $request): JsonResponse
+    public function unhideSeance(int $seanceId, UnhideSeanceRequest $request, SeanceDesigneeStrictement $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->seanceHide->unhide($seanceId, $user);
+        $result = $this->seanceHide->unhide($seanceId, $user, $designee);
 
         return $this->relayResponse($result);
     }
@@ -81,10 +81,11 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
     /**
      * DELETE /api/lms/seances/{seanceId}
      *
-     * La séance est désignée dans l'espace de l'école (#933) ; la source est
-     * reçue par la MÉTHODE : Laravel garde le contrôleur sur l'objet Route.
+     * La séance est désignée dans l'espace de l'école, et lui seul (#933, #1154 étape C) :
+     * l'id KLASSCI du calendrier en école KLASSCI. La source est reçue par la MÉTHODE :
+     * Laravel garde le contrôleur sur l'objet Route.
      */
-    public function deleteSeance(DeleteSeanceRequest $request, int $seanceId, SeanceDesignee $designee): JsonResponse
+    public function deleteSeance(DeleteSeanceRequest $request, int $seanceId, SeanceDesigneeStrictement $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $result = $this->seanceDelete->delete($seanceId, $user, $designee);

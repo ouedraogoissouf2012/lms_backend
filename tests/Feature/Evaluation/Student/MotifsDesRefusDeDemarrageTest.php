@@ -139,7 +139,7 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
     public function test_un_compte_sans_etablissement_recoit_le_motif_no_institution(): void
     {
         $evaluation = $this->evaluation([]);
-        $sansEcole = User::factory()->student()->sansEtablissement()->createQuietly(['institution_id' => null, 'klassci_id' => 6020, 'klassci_token' => 'jeton']);
+        $sansEcole = User::factory()->create(['institution_id' => null, 'role' => 'supradmin', 'klassci_id' => 6020, 'klassci_token' => 'jeton']);
 
         $reponse = $this->asTenant($sansEcole)->postJson("/api/evaluations/{$evaluation->id}/start")->assertForbidden();
 

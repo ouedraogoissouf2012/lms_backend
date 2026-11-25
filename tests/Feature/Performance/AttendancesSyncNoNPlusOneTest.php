@@ -96,7 +96,7 @@ final class AttendancesSyncNoNPlusOneTest extends TestCase
         ], $klassciIds);
 
         $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => $participants,
         ])->assertStatus(200);

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Seances\Mutations;
 
-use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
+use App\Services\Seances\SeanceDesignee;
 use App\Support\Logging\CaughtExceptionLog;
-use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -19,6 +18,11 @@ use Throwable;
  * Gère le masquage individuel d'une séance par un étudiant (table
  * `seance_user_hidden`). Le masquage est strictement personnel : il
  * n'affecte pas l'affichage pour les autres utilisateurs.
+ *
+ * La séance est désignée par le port reçu de l'appelant (#1566, ADR-1154-01) :
+ * dans l'espace de l'école, l'id KLASSCI seul en école KLASSCI, l'id local seul en
+ * école autonome. L'ancien `orWhere` sur les deux espaces désignait au hasard
+ * sur une collision.
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
  * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict
@@ -35,10 +39,10 @@ final class SeanceHideService
      *
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function hide(int $seanceId, User $user): array
+    public function hide(int $seanceId, User $user, SeanceDesignee $designee): array
     {
         try {
-            $seance = $this->resolveSeance($seanceId, $user);
+            $seance = $designee->pour($seanceId, $user);
 
             if (! $seance) {
                 return [
@@ -91,10 +95,10 @@ final class SeanceHideService
      *
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function unhide(int $seanceId, User $user): array
+    public function unhide(int $seanceId, User $user, SeanceDesignee $designee): array
     {
         try {
-            $seance = $this->resolveSeance($seanceId, $user);
+            $seance = $designee->pour($seanceId, $user);
 
             if (! $seance) {
                 return [
@@ -148,23 +152,5 @@ final class SeanceHideService
                 ],
             ];
         }
-    }
-
-    /**
-     * La séance désignée par l'id local ou par `klassci_seance_id`, dans
-     * l'établissement du compte : sans établissement, aucune (le scope global est
-     * inerte sans tenant). L'ORDRE entre les deux identifiants, sur une collision,
-     * est inchangé : il attend sa décision.
-     */
-    private function resolveSeance(int $seanceId, User $user): ?Seance
-    {
-        if (! is_int($user->institution_id)) {
-            return null;
-        }
-
-        return Seance::query()
-            ->where('institution_id', $user->institution_id)
-            ->where(static fn (Builder $designee): Builder => $designee->where('id', $seanceId)->orWhere('klassci_seance_id', $seanceId))
-            ->first();
     }
 }

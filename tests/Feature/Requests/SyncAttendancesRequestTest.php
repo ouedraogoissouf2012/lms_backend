@@ -31,6 +31,10 @@ class SyncAttendancesRequestTest extends TestCase
      * que le `rowid` SQLite (sans `AUTOINCREMENT`) vaut `max(rowid)+1` et
      * repart donc à 1. Dès le 2ᵉ test du processus, l'id réel n'était plus 1
      * → `resolveSeance()` ne trouvait rien → 404.
+     *
+     * #1566 : l'école est en mode KLASSCI (la factory par défaut). La séance se désigne
+     * dans cet espace, par son `klassci_seance_id`, celui qu'envoie l'écran ; son id
+     * local n'y désigne plus rien.
      */
     private Seance $seance;
 
@@ -63,7 +67,7 @@ class SyncAttendancesRequestTest extends TestCase
     public function test_unauthenticated_cannot_sync_attendances(): void
     {
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -90,7 +94,7 @@ class SyncAttendancesRequestTest extends TestCase
 
         $this->asTenant($user)
             ->postJson('/api/lms/attendances/from-video-session', [
-                'seance_cours_id' => $this->seance->id,
+                'seance_cours_id' => $this->seance->klassci_seance_id,
                 'date' => now()->format('Y-m-d'),
                 'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
             ])
@@ -102,7 +106,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -154,7 +158,7 @@ class SyncAttendancesRequestTest extends TestCase
         );
 
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => $participants,
         ]);
@@ -167,7 +171,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
         ]);
 
@@ -179,7 +183,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => 'invalid_date',
             'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
         ]);
@@ -192,7 +196,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
         ]);
 
@@ -204,7 +208,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [],
         ]);
@@ -217,7 +221,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -234,7 +238,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -251,7 +255,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -269,7 +273,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 ['etudiant_id' => 100, 'statut' => 'present'],
@@ -285,7 +289,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
+            'seance_cours_id' => $this->seance->klassci_seance_id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [

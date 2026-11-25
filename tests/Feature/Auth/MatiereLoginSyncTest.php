@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\InstitutionMode;
 use App\Models\Institution;
 use App\Models\Matiere;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
@@ -29,6 +30,9 @@ final class MatiereLoginSyncTest extends TestCase
     {
         parent::setUp();
 
+        // #1629 : la prémisse ci-dessous était le défaut (#832). En prod, `KLASSCI_API_URL` est VIDE
+        // (mesuré le 25/11) ; la synchronisation vise désormais l'URL de l'école du compte. La
+        // config globale reste posée : elle ne doit plus servir.
         // #270 — la sync matières résout l'URL de base via la config globale
         // (priorité 3, aucun user Sanctum authentifié pendant le login). Le garde
         // #270 exige désormais une URL valide AVANT toute requête ; en prod
@@ -53,7 +57,13 @@ final class MatiereLoginSyncTest extends TestCase
             ],
         ], 200)]);
 
-        $institution = Institution::factory()->create(['slug' => 'school-a']);
+        // #1629 : la synchronisation vise l'URL de l'ÉCOLE du compte, celle à laquelle il se connecte.
+        $institution = Institution::factory()->create([
+            'slug' => 'school-a',
+            'mode' => InstitutionMode::Klassci,
+            'is_active' => true,
+            'klassci_api_url' => 'https://school-a.klassci.test',
+        ]);
 
         $this->synchronizer()->sync(
             ['id' => 7, 'nom' => 'PROF DUPONT', 'email' => 'prof@school.edu', 'role' => 'enseignant'],
@@ -75,7 +85,13 @@ final class MatiereLoginSyncTest extends TestCase
         // L'étudiant déclenche me/dashboard (ici sans classe), jamais la sync matières.
         Http::fake(['*' => Http::response(['data' => []], 200)]);
 
-        $institution = Institution::factory()->create(['slug' => 'school-a']);
+        // #1629 : la synchronisation vise l'URL de l'ÉCOLE du compte, celle à laquelle il se connecte.
+        $institution = Institution::factory()->create([
+            'slug' => 'school-a',
+            'mode' => InstitutionMode::Klassci,
+            'is_active' => true,
+            'klassci_api_url' => 'https://school-a.klassci.test',
+        ]);
 
         $this->synchronizer()->sync(
             ['id' => 3, 'nom' => 'ETU MARTIN', 'email' => 'etu@school.edu', 'role' => 'etudiant'],

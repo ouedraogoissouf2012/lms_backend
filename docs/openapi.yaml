@@ -2262,6 +2262,46 @@ components:
             last_page:
               type: integer
 
+    # #1570 — `GET /admin/notifications/stats` (NotificationQueryService::stats).
+    NotificationStats:
+      type: object
+      additionalProperties: false
+      required:
+        - total
+        - unread
+        - read
+        - last_24h
+        - last_7days
+        - by_type
+      properties:
+        total:
+          type: integer
+        unread:
+          type: integer
+        read:
+          type: integer
+          description: "`total - unread`."
+        last_24h:
+          type: integer
+          description: "Creees depuis 24 heures."
+        last_7days:
+          type: integer
+          description: "Creees depuis 7 jours."
+        by_type:
+          type: array
+          description: "Un compte par type de notification present ; vide sans notification."
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - type
+              - count
+            properties:
+              type:
+                type: string
+              count:
+                type: integer
+
     AuditLogRefus:
       type: object
       additionalProperties: false
@@ -3480,10 +3520,17 @@ components:
         `enseignant_id` dans une ecole creee depuis le LMS (D72) ; jamais un id local
         sous un nom `klassci_*` (D132).
 
-        Si le catalogue KLASSCI est injoignable, l enrichissement est fail-soft :
-        l evaluation est rendue SANS ses cles calculees. Seul `id` est donc garanti.
+        Si le catalogue KLASSCI est injoignable, seul ce catalogue est perdu (#1609) :
+        `classe` et `matiere` portent les libelles stockes (`classe_nom`,
+        `matiere_nom`), et `enseignant` vient de la base, comme dans une ecole creee
+        depuis le LMS. Les cles calculees ci-dessous sont donc toujours presentes,
+        eventuellement nulles.
       required:
         - id
+        - classe
+        - matiere
+        - enseignant
+        - enseignant_nom
       additionalProperties: true
       properties:
         id:
@@ -6266,6 +6313,128 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+
+  /users:
+    post:
+      tags:
+        - Users
+      summary: "Creer un compte dans l'ecole de l'acteur"
+      description: |
+        #1625. Reserve au coordinateur et a l'admin d'ecole (`admin`, `superAdmin`). Le
+        compte nait dans l'etablissement de l'ACTEUR (#1181), jamais dans celui que
+        le corps nommerait.
+
+        Le role demande doit etre STRICTEMENT inferieur a celui de l'acteur
+        (`AssignableRole`) : un role egal ou superieur, ou hors liste, est un 422
+        sur `role`, pas un 403.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - password_confirmation
+                - role
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                  description: "Unique dans l'ecole de l'acteur (un compte supprime de la meme ecole est signale)."
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  description: "Egal a `password`."
+                role:
+                  type: string
+                  enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                  description: "Strictement inferieur au role de l'acteur."
+                klassci_id:
+                  type: integer
+                  nullable: true
+      responses:
+        '201':
+          description: "Compte cree, relu avec son etablissement"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                    example: "Utilisateur créé avec succès"
+                  data:
+                    type: object
+                    description: "Le compte cree, relu avec son etablissement (`institution`)."
+                    required:
+                      - id
+                      - name
+                      - email
+                      - role
+                      - institution_id
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                        enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                      institution_id:
+                        type: integer
+                      klassci_id:
+                        type: integer
+                        nullable: true
+                      institution:
+                        type: object
+                        nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role de l'acteur hors gestion (eleve, enseignant), ou acteur sans
+            etablissement (`reason: no_institution`). Aussi, sans `reason` :
+            etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Validation, detail par champ dans `errors` : `name` ou `email` absent,
+            `email` deja pris dans l'ecole, `password` de moins de 8 caracteres ou
+            non confirme, `role` hors liste, egal ou superieur a celui de l'acteur.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /admin/audit-log:
     get:
@@ -11850,6 +12019,158 @@ paths:
           $ref: '#/components/responses/EtablissementDesactive'
 
   # ============ NOTIFICATIONS ============
+  /admin/notifications/create:
+    post:
+      tags:
+        - Notifications
+      summary: "Envoyer une notification manuelle a un compte"
+      description: |
+        Reserve au coordinateur, a l'admin d'ecole (`superAdmin`) et au
+        supradmin plateforme (#1519). Le coordinateur et l'admin d'ecole
+        n'ecrivent qu'a un compte de LEUR ecole ; le supradmin, a tout compte
+        qui appartient a une ecole.
+
+        L'autorisation est jugee AVANT la validation : pour un coordinateur ou
+        un admin d'ecole, un `user_id` absent, non entier, inconnu ou d'une
+        autre ecole rend le MEME 403. C'est voulu : la reponse ne revele pas
+        l'existence d'un compte dans une autre ecole.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - title
+                - message
+              properties:
+                user_id:
+                  type: integer
+                  description: "Le compte destinataire."
+                title:
+                  type: string
+                  maxLength: 255
+                message:
+                  type: string
+                type:
+                  type: string
+                  nullable: true
+                  enum: [info, success, warning, danger]
+                  description: "`info` par defaut."
+                action_url:
+                  type: string
+                  nullable: true
+                  maxLength: 2048
+                  description: |
+                    Un chemin interne du LMS (`/...`), ou une adresse `https://`
+                    sans identifiants dans l'autorite. Rien d'autre :
+                    `http://`, `data:`, `file:` et `javascript:` sont refuses
+                    (NotificationActionUrl).
+      responses:
+        '200':
+          description: "Notification enregistree pour le destinataire"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                    example: "Notification envoyée"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role hors liste (eleve, enseignant). Pour un coordinateur ou un
+            admin d'ecole : destinataire absent, non entier, inconnu ou d'une
+            autre ecole, sans distinction (l'autorisation precede la
+            validation ; rien n'y revele un compte d'une autre ecole). Aussi,
+            sans `reason` : etablissement desactive ou supprime
+            (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Deux sens, distingues par `reason` (ADR-906-01) :
+            - sans `reason` : validation (`title` ou `message` absent, `type`
+              hors liste, `action_url` refusee) ; le detail par champ est dans
+              `errors`. Pour le supradmin, aussi un `user_id` absent ou inconnu ;
+            - `reason: recipient_without_institution` : le destinataire
+              n'appartient a aucune ecole, il ne recoit pas de notification
+              (#801). Atteint par le seul supradmin : pour les autres roles, un
+              tel compte est hors de leur ecole, donc un 403.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/notifications/stats:
+    get:
+      tags:
+        - Notifications
+      summary: "Statistiques des notifications"
+      description: |
+        Reserve au coordinateur, a l'admin d'ecole (`superAdmin`) et au
+        supradmin plateforme (#1570). Deux portees, une seule forme : le
+        supradmin lit les notifications de TOUTES les ecoles ; les autres
+        roles, celles de leur ecole seulement (#497). Mise en cache quelques
+        minutes, par portee.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les compteurs de la portee de l'appelant"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  data:
+                    $ref: '#/components/schemas/NotificationStats'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors liste (eleve, enseignant). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /notifications:
     get:
       tags:

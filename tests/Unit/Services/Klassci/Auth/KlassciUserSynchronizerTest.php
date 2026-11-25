@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Klassci\Auth;
 
+use App\Enums\InstitutionMode;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
@@ -12,9 +13,11 @@ use App\Services\Klassci\Auth\KlassciRoleSanitizer;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve;
 use App\Services\Klassci\Auth\StudentClassSynchronizer;
+use App\Services\Klassci\Auth\SynchrosDuLogin;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use App\Services\MatiereSyncService;
+use App\Services\Seances\Sync\SyncTenantContext;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +59,14 @@ final class KlassciUserSynchronizerTest extends TestCase
     {
         parent::setUp();
 
-        $this->institution = Institution::factory()->create(['slug' => 'test-inst']);
+        // #1629 : le compte parle à l'URL de SON école (`https://t.test`, passée à sync()) ; les
+        // synchronisations au login n'envoient le jeton qu'à cette cible.
+        $this->institution = Institution::factory()->create([
+            'slug' => 'test-inst',
+            'mode' => InstitutionMode::Klassci,
+            'is_active' => true,
+            'klassci_api_url' => 'https://t.test',
+        ]);
 
         $this->klassciService = Mockery::mock(KlassciProxyService::class);
         // Spy : la sync matières (enseignant/coordinateur, #258) est interceptée sans
@@ -70,14 +80,18 @@ final class KlassciUserSynchronizerTest extends TestCase
         $this->synchronizer = new KlassciUserSynchronizer(
             DB::connection(),
             Hash::driver(),
-            $this->matiereSync,
-            new StudentClassSynchronizer($this->klassciService, $this->logger, app(CaughtExceptionLog::class), DB::connection(), app(MiroirDeLaClasseDeLEleve::class)),
+            new SynchrosDuLogin(
+                $this->matiereSync,
+                new StudentClassSynchronizer($this->klassciService, $this->logger, app(CaughtExceptionLog::class), DB::connection(), app(MiroirDeLaClasseDeLEleve::class)),
+                app(SyncTenantContext::class),
+                $this->logger,
+                app(CaughtExceptionLog::class),
+            ),
             new KlassciEnseignantIdResolver,
             new KlassciEmailConflictGuard($this->logger),
             $this->logger,
             new KlassciDataWhitelist,
             new KlassciRoleSanitizer,
-            app(CaughtExceptionLog::class),
         );
     }
 

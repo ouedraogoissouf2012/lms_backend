@@ -102,10 +102,14 @@ final class SeanceDesigneeParSonEspaceTest extends TestCase
         self::assertSoftDeleted($seance);
     }
 
-    #[DataProvider('volets')]
-    public function test_la_visio_de_la_seance_designee_par_son_id_local_est_desactivee(string $volet): void
+    /**
+     * #1566 : l'id local est l'espace de l'école AUTONOME seulement. En école KLASSCI,
+     * `deactivate-visio` désigne par l'id KLASSCI (le test du calendrier, plus bas) et un id
+     * local n'y désigne rien (ChaquePorteDesigneLaSeanceDeSonEspaceTest).
+     */
+    public function test_la_visio_de_la_seance_designee_par_son_id_local_est_desactivee(): void
     {
-        $this->ecole($volet);
+        $this->ecole('standalone');
         $seance = $this->seance();
 
         $this->asTenant($this->coordinateur())

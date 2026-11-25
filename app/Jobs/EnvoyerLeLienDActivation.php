@@ -75,7 +75,7 @@ final class EnvoyerLeLienDActivation implements ShouldBeEncrypted, ShouldQueue
             return;
         }
 
-        $titulaire->notify(new LienDActivationDuCompte($this->lien, $ecole, UsageDuJeton::joursDActivation()));
+        $titulaire->notify(new LienDActivationDuCompte($this->lien.'-autre', $ecole, UsageDuJeton::joursDActivation()));
     }
 
     /** Ni le lien ni l'adresse n'entrent au journal : l'école suffit à situer la panne (SMTP, Brevo). */

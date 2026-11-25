@@ -23,9 +23,15 @@ enum UsageDuJeton
     public function expiration(): Carbon
     {
         return match ($this) {
-            self::Activation => now()->addDays(self::entierPositif('activation.validite_jours', 7)),
+            self::Activation => now()->addDays(self::joursDActivation()),
             self::Reinitialisation => now()->addMinutes(self::minutesDeReinitialisation()),
         };
+    }
+
+    /** La durée d'un lien d'activation, dite dans le courriel (#1620). */
+    public static function joursDActivation(): int
+    {
+        return self::entierPositif('activation.validite_jours', 7);
     }
 
     /** La durée d'un lien de réinitialisation, dite dans le courriel. */

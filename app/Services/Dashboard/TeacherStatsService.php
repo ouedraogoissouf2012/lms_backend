@@ -4,75 +4,59 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
-use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use App\Services\Roster\RosterAuthorityFactory;
 
 /**
- * Compteurs de contenu d'un enseignant : matières, classes, évaluations,
- * leçons (issue #364).
+ * Compteurs de contenu d'un enseignant : matières, classes, évaluations, leçons (#364, #1624).
  *
- * Les leçons restent keyées sur `lessons.enseignant_id` (sémantique
- * existante), et les évaluations utilisent les colonnes réellement migrées
- * `evaluations.klassci_*` (#401).
+ * ## Le défaut corrigé (#1624)
  *
- * ## SRP / DI (§1.6)
+ * Tout était rapporté à l'identité KLASSCI du compte : un enseignant qui n'en a pas (tout
+ * enseignant d'une école autonome) voyait quatre zéros, quoi qu'il ait créé. Et les leçons étaient
+ * filtrées sur `enseignant_id` = identité KLASSCI, alors que la colonne porte l'id LOCAL de
+ * l'auteur (`LessonCrudOperationsService`), ce qui faussait aussi le volet KLASSCI.
  *
- * Une seule responsabilité : produire les compteurs de contenu d'un
- * enseignant. Aucune dépendance à injecter — le garde de rôle (403) et le
- * catch (500) restent des préoccupations HTTP dans le controller.
+ * ## La règle
+ *
+ * - Les leçons : `enseignant_id` = id du compte, dans les deux volets (c'est la même colonne).
+ * - Les évaluations, et les classes et matières qu'elles touchent : selon le volet de l'école,
+ *   choisi au seul {@see RosterAuthorityFactory} ({@see ContenusEvaluesDeLEnseignant}).
+ * - Classes et matières : l'union, dans l'espace des ids LOCAUX, de celles des leçons et de celles
+ *   des évaluations. Chaque requête borne l'école explicitement, sans dépendre du tenant résolu.
  *
  * @see app/Http/Controllers/API/TeacherStatsController.php
  */
 final class TeacherStatsService
 {
+    public function __construct(private readonly RosterAuthorityFactory $autorites) {}
+
     /**
-     * Construire les compteurs de contenu de l'enseignant.
-     *
      * @return array{matieres: int, classes: int, evaluations: int, lessons: int}
      */
     public function buildStats(User $user): array
     {
-        $klassciTeacherId = $user->klassci_enseignant_id;
-
-        if ($klassciTeacherId === null) {
+        if (! is_int($user->institution_id)) {
             return ['matieres' => 0, 'classes' => 0, 'evaluations' => 0, 'lessons' => 0];
         }
 
+        $ecole = $user->institution_id;
+        $lecons = Lesson::query()
+            ->withoutGlobalScope('institution')
+            ->where('institution_id', $ecole)
+            ->where('enseignant_id', $user->id)
+            ->get(['classe_id', 'matiere_id']);
+
+        /** @var ContenusEvaluesDeLEnseignant $source */
+        $source = $this->autorites->sourceForAccount($user, ContenusEvaluesKlassci::class, ContenusEvaluesLocaux::class);
+        $evalues = $source->de($user, $ecole);
+
         return [
-            'matieres' => $this->distinctUnionCount('matiere_id', 'klassci_matiere_id', $klassciTeacherId),
-            'classes' => $this->distinctUnionCount('classe_id', 'klassci_classe_id', $klassciTeacherId),
-            'evaluations' => Evaluation::where('klassci_enseignant_id', $klassciTeacherId)->count(),
-            'lessons' => Lesson::where('enseignant_id', $klassciTeacherId)->count(),
+            'matieres' => count(IdsLocaux::de([...$lecons->pluck('matiere_id')->all(), ...$evalues['matieres']])),
+            'classes' => count(IdsLocaux::de([...$lecons->pluck('classe_id')->all(), ...$evalues['classes']])),
+            'evaluations' => $evalues['evaluations'],
+            'lessons' => $lecons->count(),
         ];
-    }
-
-    /**
-     * Nombre de valeurs distinctes de `$column` sur l'union
-     * leçons ∪ évaluations de l'enseignant (nulls exclus).
-     */
-    private function distinctUnionCount(string $lessonColumn, string $evaluationColumn, int $klassciTeacherId): int
-    {
-        return $this->distinctColumnValues(Lesson::query(), 'enseignant_id', $lessonColumn, $klassciTeacherId)
-            ->merge($this->distinctColumnValues(Evaluation::query(), 'klassci_enseignant_id', $evaluationColumn, $klassciTeacherId))
-            ->unique()
-            ->count();
-    }
-
-    /**
-     * Valeurs distinctes non nulles de `$column` pour l'enseignant donné.
-     *
-     * @param  Builder<covariant \Illuminate\Database\Eloquent\Model>  $query
-     * @return Collection<int, mixed>
-     */
-    private function distinctColumnValues($query, string $ownerColumn, string $valueColumn, int $klassciTeacherId): Collection
-    {
-        return $query
-            ->where($ownerColumn, $klassciTeacherId)
-            ->whereNotNull($valueColumn)
-            ->distinct()
-            ->pluck($valueColumn);
     }
 }

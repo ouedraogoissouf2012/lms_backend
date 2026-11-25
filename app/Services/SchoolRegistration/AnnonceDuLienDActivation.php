@@ -30,7 +30,7 @@ final class AnnonceDuLienDActivation
         $titulaire = $ouverte->proprietaire->getKey();
         $ecole = $ouverte->institution->getKey();
 
-        if (! $this->canal->estDisponible() || ! is_int($titulaire) || ! is_int($ecole)) {
+        if (! is_int($titulaire) || ! is_int($ecole)) {
             return null;
         }
 

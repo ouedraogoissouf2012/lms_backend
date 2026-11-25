@@ -6,6 +6,7 @@ namespace App\Services\Evaluation;
 
 use App\Models\Evaluation;
 use App\Models\User;
+use App\Services\Enseignant\IdDansLAnnuaire;
 use Illuminate\Support\Collection;
 
 /**
@@ -16,13 +17,22 @@ use Illuminate\Support\Collection;
  * - identité KLASSCI (`klassci_enseignant_id`) : le compte de l'établissement qui
  *   porte cette identité d'ENSEIGNANT (#873 : pas le numéro de compte `klassci_id`) ;
  * - sinon, l'auteur local (`enseignant_id`, D72), borné à l'établissement de
- *   l'évaluation.
+ *   l'évaluation, et rendu par son id DANS L'ESPACE DE L'ANNUAIRE de son école
+ *   ({@see IdDansLAnnuaire}, #1537) : l'id local en école autonome, son identité
+ *   d'enseignant KLASSCI en école KLASSCI. Hors annuaire (sans identité, ou qui n'est
+ *   pas enseignant), `enseignant` est nul et le nom reste dans `enseignant_nom` : la
+ *   spec ne permet pas un `enseignant.id` nul.
  *
  * Les auteurs locaux sont préchargés en UNE requête pour toute la liste, et non
- * une par évaluation : la liste du personnel en rend jusqu'à 100.
+ * une par évaluation : la liste du personnel en rend jusqu'à 100. L'id dans
+ * l'annuaire est résolu une fois par auteur.
  */
 final class EnseignantsDesEvaluations
 {
+    public function __construct(
+        private readonly IdDansLAnnuaire $idDansLAnnuaire,
+    ) {}
+
     /**
      * @param  Collection<int, Evaluation>  $evaluations
      * @return \Closure(Evaluation): array{enseignant: array<string, mixed>|null, enseignant_nom: string|null}
@@ -30,10 +40,27 @@ final class EnseignantsDesEvaluations
     public function de(Collection $evaluations): \Closure
     {
         $auteurs = $this->auteursLocaux($evaluations);
+        /** @var array<int, int|null> $ids L'id dans l'annuaire, une fois par auteur. */
+        $ids = [];
 
-        return fn (Evaluation $evaluation): array => $evaluation->klassci_enseignant_id
-            ? $this->parIdentiteKlassci($evaluation)
-            : self::auteurLocal($evaluation, $auteurs);
+        return function (Evaluation $evaluation) use ($auteurs, &$ids): array {
+            if ($evaluation->klassci_enseignant_id) {
+                return $this->parIdentiteKlassci($evaluation);
+            }
+
+            $auteur = self::auteurLocal($evaluation, $auteurs);
+            if ($auteur === null) {
+                return ['enseignant' => null, 'enseignant_nom' => null];
+            }
+            if (! array_key_exists($auteur->id, $ids)) {
+                $ids[$auteur->id] = $this->idDansLAnnuaire->de($auteur);
+            }
+
+            return [
+                'enseignant' => $ids[$auteur->id] === null ? null : ['id' => $ids[$auteur->id], 'nom' => $auteur->name, 'email' => $auteur->email],
+                'enseignant_nom' => $auteur->name,
+            ];
+        };
     }
 
     /**
@@ -82,17 +109,12 @@ final class EnseignantsDesEvaluations
      * scope global est fail-open sans tenant.
      *
      * @param  Collection<int, User>  $auteurs
-     * @return array{enseignant: array<string, mixed>|null, enseignant_nom: string|null}
      */
-    private static function auteurLocal(Evaluation $evaluation, Collection $auteurs): array
+    private static function auteurLocal(Evaluation $evaluation, Collection $auteurs): ?User
     {
         $candidat = $evaluation->enseignant_id === null ? null : $auteurs->get($evaluation->enseignant_id);
-        $auteur = $candidat instanceof User && $evaluation->institution_id !== null
-            && (int) $candidat->institution_id === (int) $evaluation->institution_id ? $candidat : null;
 
-        return [
-            'enseignant' => $auteur === null ? null : ['id' => $auteur->id, 'nom' => $auteur->name, 'email' => $auteur->email],
-            'enseignant_nom' => $auteur?->name,
-        ];
+        return $candidat instanceof User && $evaluation->institution_id !== null
+            && (int) $candidat->institution_id === (int) $evaluation->institution_id ? $candidat : null;
     }
 }

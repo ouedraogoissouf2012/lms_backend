@@ -23,4 +23,16 @@ trait ActsAsTenantUser
 
         return $this->withToken($this->tokenFor($user));
     }
+
+    /**
+     * #691 — la requête suivante part SANS identité : en-têtes ET garde purgés. Purger
+     * les seuls en-têtes laisse le garde servir l'utilisateur déjà mémorisé.
+     */
+    protected function anonyme(): static
+    {
+        $this->flushHeaders();
+        $this->app['auth']->forgetGuards();
+
+        return $this;
+    }
 }

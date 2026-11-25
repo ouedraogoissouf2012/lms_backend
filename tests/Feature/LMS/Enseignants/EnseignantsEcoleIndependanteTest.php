@@ -333,6 +333,12 @@ final class EnseignantsEcoleIndependanteTest extends TestCase
                 throw self::panne();
             }
 
+            /** #1536 : hors de ce test, qui ne lit que l'annuaire et la liste. */
+            public function idDansLAnnuaire(User $compte): ?int
+            {
+                return null;
+            }
+
             private static function panne(): QueryException
             {
                 return new QueryException(

@@ -133,7 +133,6 @@ return [
     'POST /quizzes/{quiz}/publish',
     'POST /quizzes/{quiz}/start',
     'POST /search/history',
-    'POST /users',
     'PUT /admin/institutions/{id}',
     'PUT /configuration',
     'PUT /files/{file}',

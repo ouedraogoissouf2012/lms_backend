@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\Seances\LocalSeanceDesignee;
 use App\Services\Seances\SeanceDesignee;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
 use Closure;
@@ -23,7 +24,9 @@ use Throwable;
  *
  * Aucun appel KLASSCI : la séance se lit en local, dans les deux types d'école.
  * Deux façons de la DÉSIGNER, un seul geste :
- * - la route `deactivate-visio` : dans l'espace de l'école ({@see SeanceDesignee}, #933) ;
+ * - la route `deactivate-visio` : dans l'espace de l'école, strictement
+ *   ({@see SeanceDesigneeStrictement}, #1566) : l'id KLASSCI seul en
+ *   école KLASSCI, celui qu'envoie « Mes séances » ;
  * - la bascule locale (mode autonome) : l'id LOCAL seulement, borné à
  *   l'établissement ({@see LocalSeanceDesignee}), comme l'activation.
  * Extrait de `VisioActivationService` (§1.1, un service par geste).

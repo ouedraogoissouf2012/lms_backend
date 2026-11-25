@@ -35,7 +35,7 @@ final class IsStudentClasseTest extends TestCase
         'app/Services/Attendances/VideoSessionAttendancesSyncer.php' => [1, 'fermé : seul un élève inscrit est compté'],
         'app/Services/Audience/ElevesDeLaClasse.php' => [1, 'fermé : seul un élève est averti'],
         'app/Services/Seances/LigneDuRepliLocal.php' => [1, 'fermé : l étape suivante exige la gestion ou l audience'],
-        'app/Services/Klassci/Auth/KlassciUserSynchronizer.php' => [1, 'fermé : hors élève, pas de synchronisation de classes'],
+        'app/Services/Klassci/Auth/SynchrosDuLogin.php' => [1, 'fermé : hors élève, pas de synchronisation de classes'],
         'app/Services/Seances/UserOwnMatieresResolver.php' => [1, 'sans effet : choisit l endpoint, KLASSCI répond selon le jeton'],
     ];
 

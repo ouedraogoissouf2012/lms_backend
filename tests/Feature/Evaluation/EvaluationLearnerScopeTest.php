@@ -268,6 +268,11 @@ final class EvaluationLearnerScopeTest extends TestCase
     private function klassciRend(?int $classe): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($classe): void {
+            // #1609 : le détail passe par l'enrichissement, qui lit le catalogue KLASSCI. Non
+            // déclaré, l'appel levait une BadMethodCallException de Mockery, qu'avalait l'ancien
+            // repli en réponse brute ; il remonte désormais. Catalogue vide : la valeur neutre.
+            $mock->shouldReceive('getClasses')->andReturn(['data' => []]);
+            $mock->shouldReceive('getMatieres')->andReturn(['data' => []]);
             $mock->shouldReceive('requestWithUserToken')
                 ->andReturnUsing(static function (string $jeton, string $endpoint) use ($classe): array {
                     if ($endpoint === 'me/dashboard') {

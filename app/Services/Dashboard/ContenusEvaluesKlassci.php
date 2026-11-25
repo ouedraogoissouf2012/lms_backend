@@ -28,7 +28,6 @@ final class ContenusEvaluesKlassci implements ContenusEvaluesDeLEnseignant
 
         $lignes = Evaluation::query()
             ->withoutGlobalScope('institution')
-            ->where('institution_id', $ecole)
             ->where(static function (Builder $auteur) use ($enseignant, $identite): void {
                 $auteur->where('enseignant_id', $enseignant->id);
                 if ($identite !== null) {

@@ -96,9 +96,46 @@ passe oublié » répond `reinitialisation_indisponible`, ne crée aucun jeton e
 Une fois tout posé, il répond `lien_envoye`, et le courriel part par la file (`high`, conteneur
 worker).
 
-État de la prod au 19/11 (lecture seule) : `MAIL_MAILER`, `MAIL_HOST` et `MAIL_FROM_ADDRESS`
-sont vides, et `ACTIVATION_URL_FRONT` est absent. Le canal y est donc **indisponible**, et c'est
-voulu : il reste fermé tant que les variables ci-dessus ne sont pas toutes posées.
+**État de la prod au 24/11/2026, 12:48Z** (mesuré en lecture seule, aucun courriel envoyé) : le
+canal est **ouvert**, et Brevo **accepte** l'authentification SMTP. Il l'est depuis le 22/11 (#808).
+
+Pour le remesurer sans rien envoyer : la commande ci-dessous vérifie que le canal est complet,
+puis ouvre le transport SMTP (connexion, EHLO, authentification), sans message. Une erreur est
+affichée masquée : ni jeton, ni adresse IP.
+
+```bash
+docker exec -i -u www-data <conteneur-worker> php artisan tinker --execute='
+echo app(App\Services\Mail\CanalDeCourriel::class)->estDisponible() ? "canal: ouvert" : "canal: ferme";
+try { Illuminate\Support\Facades\Mail::mailer("smtp")->getSymfonyTransport()->start(); echo " / smtp: authentification acceptee"; }
+catch (Throwable $e) { echo " / smtp: ", preg_replace(["/\S{24,}/", "/\d{1,3}(\.\d{1,3}){3}/"], "***", $e->getMessage()); }'
+```
+
+Dokploy n'écrit les variables dans le `.env` du conteneur **qu'au déploiement** : en enregistrer
+une sans redéployer ne change rien.
+
+### 5.1 Brevo n'accepte que les IP autorisées
+
+Brevo refuse l'authentification SMTP depuis une adresse qu'il ne connaît pas. Le refus est
+**« 525 5.7.1 Unauthorized IP address »**, à l'authentification, et le lien de réinitialisation
+ne part pas. La configuration ne le montre pas : toutes les variables sont justes, et le canal
+se dit ouvert.
+
+- **Où la régler** : Brevo → *Sécurité* → *IP autorisées*. On y ajoute l'IP **sortante** du
+  serveur qui fait tourner le worker.
+- **Quand** : à tout changement de serveur ou d'IP sortante, **avant** de basculer. Sinon, le
+  courriel se casse sans autre indice que ce refus.
+- **Comment relever l'IP sortante**, sur l'hôte :
+
+  ```bash
+  ip -4 route get 192.0.2.1 | awk '{print $7}'
+  ```
+
+  `192.0.2.1` est une adresse de documentation (RFC 5737). Le noyau calcule la route par défaut
+  et rend l'adresse source, sans rien envoyer ni solliciter de service tiers. Si l'hôte sort par
+  une NAT, l'adresse publique est différente : c'est alors celle du tableau de bord de
+  l'hébergeur. La commande de vérification ci-dessus confirme le résultat.
+- **L'IP ne s'écrit pas dans le dépôt**, ni dans un ticket public. `LaDocNeDitNiIpNiCleTest`
+  refuse toute IPv4 publique et toute clé Brevo dans `docs/`.
 
 `ACTIVATION_URL_FRONT` sert aussi à la validation d'une demande d'école (#803) : sans elle,
 cette validation refuse en 503 plutôt que de remettre un lien mort.

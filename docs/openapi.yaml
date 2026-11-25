@@ -6336,18 +6336,32 @@ paths:
                     type: string
                     example: "Utilisateur créé avec succès"
                   data:
-                    allOf:
-                      - $ref: '#/components/schemas/User'
-                      - type: object
-                        required:
-                          - id
-                          - name
-                          - email
-                          - role
-                          - institution_id
-                        properties:
-                          institution_id:
-                            type: integer
+                    type: object
+                    description: "Le compte cree, relu avec son etablissement (`institution`)."
+                    required:
+                      - id
+                      - name
+                      - email
+                      - role
+                      - institution_id
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                        enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                      institution_id:
+                        type: integer
+                      klassci_id:
+                        type: integer
+                        nullable: true
+                      institution:
+                        type: object
+                        nullable: true
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '401':

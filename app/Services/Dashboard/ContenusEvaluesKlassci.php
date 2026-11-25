@@ -62,6 +62,6 @@ final class ContenusEvaluesKlassci implements ContenusEvaluesDeLEnseignant
             ->pluck('id')
             ->all();
 
-        return IdsLocaux::de([...$locaux, ...$miroirs]);
+        return IdsLocaux::de([...$locaux, ...$aRamener]);
     }
 }

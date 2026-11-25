@@ -50,6 +50,11 @@ final class ParcoursEcoleKlassciTest extends TestCase
 
     private const SECRET_WEBHOOK = 'secret-parcours-1618';
 
+    private const EVALUATION = 6601;
+
+    /** L'identité d'ENSEIGNANT KLASSCI du professeur (#1409), sans laquelle il ne programme rien. */
+    private const IDENTITE_ENSEIGNANT = 5103;
+
     private const VIDEO = 'https://enregistrements.example.test/parcours-1618.mp4';
 
     /** Les comptes de l'école chez KLASSCI : identifiant => [id KLASSCI, rôle KLASSCI, rôle LMS attendu]. */
@@ -67,6 +72,9 @@ final class ParcoursEcoleKlassciTest extends TestCase
 
     /** @var list<array<string, mixed>> Les erreurs journalisées : un service qui rend 500 y dit pourquoi. */
     private array $erreursJournalisees = [];
+
+    /** @var list<mixed> Les notes que KLASSCI a reçues. */
+    private array $notesRecues = [];
 
     protected function setUp(): void
     {
@@ -154,6 +162,40 @@ final class ParcoursEcoleKlassciTest extends TestCase
 Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
     }
 
+    public function test_4_une_evaluation_va_de_sa_creation_aux_notes_dans_klassci(): void
+    {
+        $prof = $this->connecter('prof.demo')->assertOk();
+        $eleve = $this->connecter('eleve.demo')->assertOk();
+
+        $creation = $this->avecLeJeton($prof)->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => self::EVALUATION,
+            'klassci_matiere_id' => self::MATIERE,
+            'klassci_classe_id' => self::CLASSE,
+            'titre' => 'Devoir de démonstration',
+            'type' => 'qcm',
+            'duree_minutes' => 30,
+            'date_evaluation' => now()->toDateTimeString(),
+            'questions' => [['question' => 'Deux plus deux ?', 'type' => 'qcm', 'points' => 20, 'options' => ['4', '5'], 'correct_answers' => ['4']]],
+        ]);
+        self::assertSame(201, $creation->status(), $this->diagnostic('création', $creation));
+        $id = (int) $creation->json('data.id');
+        $question = (int) $creation->json('data.questions.0.id');
+
+        $this->appel($prof, "/api/evaluations/{$id}/publish", 'publication');
+        $this->appel($eleve, "/api/evaluations/{$id}/start", 'démarrage par l\'élève');
+        $this->appel($eleve, "/api/evaluations/{$id}/submit", 'remise par l\'élève', ['answers' => [(string) $question => '4']]);
+        $this->appel($prof, "/api/evaluations/{$id}/sync-klassci", 'envoi des notes vers KLASSCI');
+
+        self::assertNotSame([], $this->notesRecues, 'KLASSCI a reçu les notes de l\'évaluation.');
+    }
+
+    /** @param  array<string, mixed>  $corps */
+    private function appel(TestResponse $compte, string $route, string $geste, array $corps = []): void
+    {
+        $reponse = $this->avecLeJeton($compte)->postJson($route, $corps);
+        self::assertSame(200, $reponse->status(), $this->diagnostic($geste, $reponse));
+    }
+
     /**
      * Chaque requête de production repart d'instances neuves. Un test, lui, garde le même
      * conteneur : sans cet oubli, une résolution mémoïsée par une requête précédente (le
@@ -239,9 +281,19 @@ Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
             $chemin === '/me/teacher-dashboard' => Http::response(['success' => true, 'data' => ['matieres' => [self::matiereKlassci()]]], 200),
             $chemin === '/matieres' => Http::response(['success' => true, 'data' => [self::matiereKlassci()]], 200),
             $chemin === '/emploi-temps' => Http::response(['success' => true, 'data' => [self::seanceKlassci()]], 200),
+            $chemin === '/classes' => Http::response(['success' => true, 'data' => [['id' => self::CLASSE, 'libelle' => 'BTS 1 Démo']]], 200),
+            $chemin === '/evaluations/'.self::EVALUATION.'/notes' => $this->klassciRecoitLesNotes($requete),
             $chemin === '/me/dashboard' => Http::response(['success' => true, 'data' => ['classe' => ['id' => self::CLASSE, 'name' => 'BTS 1 Démo']]], 200),
             default => Http::response(['success' => true, 'data' => []], 200),
         };
+    }
+
+    private function klassciRecoitLesNotes(Request $requete): mixed
+    {
+        $notes = $requete->data()['notes'] ?? [];
+        $this->notesRecues = array_merge($this->notesRecues, is_array($notes) ? array_values($notes) : []);
+
+        return Http::response(['success' => true, 'data' => ['saved_count' => is_array($notes) ? count($notes) : 0]], 200);
     }
 
     private function klassciConnecte(Request $requete): mixed
@@ -253,7 +305,8 @@ Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
         [$id, $role] = self::COMPTES[$identifiant];
 
         return Http::response(['success' => true, 'data' => [
-            'user' => ['id' => $id, 'email' => $identifiant.'@demo-klassci.test', 'name' => ucfirst($identifiant), 'role' => $role],
+            'user' => ['id' => $id, 'email' => $identifiant.'@demo-klassci.test', 'name' => ucfirst($identifiant), 'role' => $role]
+                + ($role === 'enseignant' ? ['enseignant_id' => self::IDENTITE_ENSEIGNANT] : []),
             'token' => 'jeton-klassci-'.$id,
         ], 'meta' => []], 200);
     }

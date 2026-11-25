@@ -36,10 +36,11 @@ use Tests\TestCase;
  *
  * ## Aucun mot de passe ne circule
  *
- * `app/` ne contient aucun `Mail::` ni `->notify()`, et `config/mail.php:17`
- * vaut `log` : le produit ne peut transmettre aucun secret. La validation émet
- * donc un lien d'activation à usage unique, affiché une fois au supradmin, que
- * le titulaire consomme pour poser SON mot de passe.
+ * La validation émet un lien d'activation à usage unique, que le titulaire consomme
+ * pour poser SON mot de passe. Il est affiché une fois au supradmin, en secours, et
+ * envoyé au titulaire par courriel quand le canal existe (#1620, voir
+ * `LeLienDActivationPartAuTitulaireTest`). Ce paragraphe disait « app/ ne contient
+ * aucun Mail:: ni ->notify() » : faux depuis #808 (réinitialisation), et depuis #1620.
  *
  * L'usage unique se prouve en base, pas par l'expiration : une URL signée
  * expirante reste rejouable pendant toute sa fenêtre.

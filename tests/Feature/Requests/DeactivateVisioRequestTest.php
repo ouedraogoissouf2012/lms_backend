@@ -9,6 +9,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
+/**
+ * #1566 : l'école est en mode KLASSCI (la factory par défaut). `deactivate-visio` y désigne
+ * la séance par son `klassci_seance_id`, celui qu'envoie « Mes séances »
+ * (`useTeacherSeances.js:181`) ; son id local n'y désigne plus rien.
+ */
 class DeactivateVisioRequestTest extends TestCase
 {
     use RefreshDatabase;
@@ -47,7 +52,7 @@ class DeactivateVisioRequestTest extends TestCase
 
     public function test_unauthenticated_cannot_deactivate(): void
     {
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/deactivate-visio");
+        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/deactivate-visio");
 
         $response->assertStatus(401);
     }
@@ -55,7 +60,7 @@ class DeactivateVisioRequestTest extends TestCase
     public function test_student_cannot_deactivate(): void
     {
         Sanctum::actingAs($this->student);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/deactivate-visio");
+        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/deactivate-visio");
 
         $response->assertStatus(403);
     }
@@ -63,7 +68,7 @@ class DeactivateVisioRequestTest extends TestCase
     public function test_teacher_can_deactivate_own_seance(): void
     {
         Sanctum::actingAs($this->teacher);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/deactivate-visio");
+        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/deactivate-visio");
 
         $this->assertNotEquals(401, $response->status());
         $this->assertNotEquals(403, $response->status());
@@ -72,7 +77,7 @@ class DeactivateVisioRequestTest extends TestCase
     public function test_teacher_cannot_deactivate_other_teacher_seance(): void
     {
         Sanctum::actingAs($this->otherTeacher);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/deactivate-visio");
+        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/deactivate-visio");
 
         $response->assertStatus(403);
     }
@@ -86,7 +91,7 @@ class DeactivateVisioRequestTest extends TestCase
             ->create();
 
         Sanctum::actingAs($coordinator);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/deactivate-visio");
+        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/deactivate-visio");
 
         $response->assertOk();
     }
@@ -118,7 +123,7 @@ class DeactivateVisioRequestTest extends TestCase
             ]);
 
         $this->withToken($this->otherTeacher->createToken('698')->plainTextToken)
-            ->postJson("/api/lms/seances/{$seance->id}/deactivate-visio")
+            ->postJson("/api/lms/seances/{$seance->klassci_seance_id}/deactivate-visio")
             ->assertStatus(403);
     }
 
@@ -129,7 +134,7 @@ class DeactivateVisioRequestTest extends TestCase
             ->create(['klassci_enseignant_id' => 999]);
 
         Sanctum::actingAs($this->teacher);
-        $response = $this->postJson("/api/lms/seances/{$seanceWithoutOwner->id}/deactivate-visio");
+        $response = $this->postJson("/api/lms/seances/{$seanceWithoutOwner->klassci_seance_id}/deactivate-visio");
 
         $response->assertStatus(403);
     }

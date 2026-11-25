@@ -59,10 +59,10 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
     /**
      * POST /api/lms/seances/{seanceId}/hide
      */
-    public function hideSeance(int $seanceId, HideSeanceRequest $request): JsonResponse
+    public function hideSeance(int $seanceId, HideSeanceRequest $request, SeanceDesigneeStrictement $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->seanceHide->hide($seanceId, $user);
+        $result = $this->seanceHide->hide($seanceId, $user, $designee);
 
         return $this->relayResponse($result);
     }
@@ -70,10 +70,10 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
     /**
      * POST /api/lms/seances/{seanceId}/unhide
      */
-    public function unhideSeance(int $seanceId, UnhideSeanceRequest $request): JsonResponse
+    public function unhideSeance(int $seanceId, UnhideSeanceRequest $request, SeanceDesigneeStrictement $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->seanceHide->unhide($seanceId, $user);
+        $result = $this->seanceHide->unhide($seanceId, $user, $designee);
 
         return $this->relayResponse($result);
     }

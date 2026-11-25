@@ -34,7 +34,7 @@ final class AnnonceDuLienDActivation
             return null;
         }
 
-        $this->bus->dispatch((new EnvoyerLeLienDActivation($titulaire, $ecole, $ouverte->lienActivation))->afterCommit());
+        // falsification B : rien n'est pose
 
         return $ouverte->proprietaire->email;
     }

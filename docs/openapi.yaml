@@ -6316,38 +6316,6 @@ paths:
                   type: integer
                   nullable: true
       responses:
-        '201':
-          description: "Compte cree, relu avec son etablissement"
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required:
-                  - success
-                  - message
-                  - data
-                properties:
-                  success:
-                    type: boolean
-                    enum:
-                      - true
-                  message:
-                    type: string
-                    example: "Utilisateur créé avec succès"
-                  data:
-                    allOf:
-                      - $ref: '#/components/schemas/User'
-                      - type: object
-                        required:
-                          - id
-                          - name
-                          - email
-                          - role
-                          - institution_id
-                        properties:
-                          institution_id:
-                            type: integer
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '401':

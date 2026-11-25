@@ -7,7 +7,8 @@ namespace App\Exceptions;
 use LogicException;
 
 /**
- * Un compte d'école ne se crée pas sans établissement (#1181).
+ * Un compte d'école n'existe pas sans établissement : ni créé ainsi (#1181), ni privé du sien
+ * par une mise à jour (#801).
  *
  * Seul le supradmin de plateforme (rôle exact `supradmin`) vit sans
  * `institution_id`. Tout autre compte qui en serait privé à sa création est une
@@ -19,6 +20,6 @@ final class CompteSansEtablissementException extends LogicException
 {
     public static function pour(?string $role): self
     {
-        return new self(sprintf('Un compte « %s » ne se crée pas sans établissement (#1181).', $role ?? 'sans rôle'));
+        return new self(sprintf('Un compte « %s » n\'existe pas sans établissement (#1181, #801).', $role ?? 'sans rôle'));
     }
 }

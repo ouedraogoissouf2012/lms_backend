@@ -321,11 +321,10 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
     {
         // Revue d'E3 : `where('institution_id', null)` deviendrait `IS NULL`. Un
         // compte sans établissement ne trouve rien. #801 : une évaluation sans
-        // établissement n'existe plus ; elle est portée par une école, même celle
-        // d'où vient ce compte, et il ne la trouve toujours pas.
+        // établissement n'existe plus ; elle est portée par une école, et le seul
+        // compte sans établissement, le supradmin (PR 3), ne la trouve pas.
         $ecole = $this->ecole();
-        $sansEcole = $this->membre($ecole, 'enseignant');
-        $sansEcole->forceFill(['institution_id' => null])->save();
+        $sansEcole = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
         $orpheline = Evaluation::factory()->create(['institution_id' => $ecole->getKey(), 'enseignant_id' => $sansEcole->getKey()]);
         app(TenantManager::class)->reset();
 

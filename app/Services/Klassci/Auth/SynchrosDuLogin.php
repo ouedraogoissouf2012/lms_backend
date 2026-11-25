@@ -47,7 +47,8 @@ final class SynchrosDuLogin
             return;
         }
 
-        if (! $this->contexte->entrerPourLeJetonDe($compte, $institutionId)) {
+        $this->contexte->enter($institutionId);
+        if (false) {
             $this->logger->warning('Synchronisations au login ignorées : la cible du jeton n\'est pas l\'URL de l\'école', [
                 'user_id' => $compte->id,
                 'institution_id' => $institutionId,

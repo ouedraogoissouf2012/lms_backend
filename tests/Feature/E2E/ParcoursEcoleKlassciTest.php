@@ -183,17 +183,17 @@ Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
 
         $this->appel($prof, "/api/evaluations/{$id}/publish", 'publication');
         $this->appel($eleve, "/api/evaluations/{$id}/start", 'démarrage par l\'élève');
-        $this->appel($eleve, "/api/evaluations/{$id}/submit", 'remise par l\'élève', ['answers' => [(string) $question => '4']]);
+        $this->appel($eleve, "/api/evaluations/{$id}/submit", 'remise par l\'élève', ['answers' => [(string) $question => '4']], 201);
         $this->appel($prof, "/api/evaluations/{$id}/sync-klassci", 'envoi des notes vers KLASSCI');
 
         self::assertNotSame([], $this->notesRecues, 'KLASSCI a reçu les notes de l\'évaluation.');
     }
 
     /** @param  array<string, mixed>  $corps */
-    private function appel(TestResponse $compte, string $route, string $geste, array $corps = []): void
+    private function appel(TestResponse $compte, string $route, string $geste, array $corps = [], int $attendu = 200): void
     {
         $reponse = $this->avecLeJeton($compte)->postJson($route, $corps);
-        self::assertSame(200, $reponse->status(), $this->diagnostic($geste, $reponse));
+        self::assertSame($attendu, $reponse->status(), $this->diagnostic($geste, $reponse));
     }
 
     /**
@@ -231,7 +231,9 @@ Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
     /** Le cours publié de l'enseignant, dans la matière et la classe de sa séance KLASSCI. */
     private function leconDuProf(User $prof): Lesson
     {
-        $matiere = Matiere::factory()->create(['institution_id' => $this->ecole->id, 'klassci_id' => self::MATIERE]);
+        // #1629 : la connexion de l'enseignant a synchronisé sa matière KLASSCI dans son école.
+        $matiere = Matiere::query()->withoutGlobalScopes()->where('institution_id', $this->ecole->id)->where('klassci_id', self::MATIERE)->first();
+        self::assertNotNull($matiere, 'La connexion de l\'enseignant a synchronisé sa matière KLASSCI.');
         $classe = Classe::factory()->create(['institution_id' => $this->ecole->id, 'klassci_id' => self::CLASSE]);
 
         return Lesson::factory()->create([

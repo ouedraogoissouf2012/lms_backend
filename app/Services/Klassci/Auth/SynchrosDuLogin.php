@@ -63,7 +63,7 @@ final class SynchrosDuLogin
         }
 
         try {
-            $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
+            // mutation F3 : matieres non synchronisees
         } catch (Throwable $e) {
             $this->journal->error('Erreur sync matières au login', $e, ['institution_id' => $institutionId]);
         }

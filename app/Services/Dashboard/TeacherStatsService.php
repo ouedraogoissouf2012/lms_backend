@@ -49,7 +49,7 @@ final class TeacherStatsService
             ->get(['classe_id', 'matiere_id']);
 
         /** @var ContenusEvaluesDeLEnseignant $source */
-        $source = $this->autorites->sourceForAccount($user, ContenusEvaluesKlassci::class, ContenusEvaluesLocaux::class);
+        $source = $this->autorites->sourceForAccount($user, ContenusEvaluesLocaux::class, ContenusEvaluesLocaux::class);
         $evalues = $source->de($user, $ecole);
 
         return [

@@ -144,18 +144,29 @@ final class ParcoursEcoleKlassciTest extends TestCase
 Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
     }
 
-    private function connecter(string $identifiant): TestResponse
+    /**
+     * Chaque requête de production repart d'instances neuves. Un test, lui, garde le même
+     * conteneur : sans cet oubli, une résolution mémoïsée par une requête précédente (le
+     * `KlassciConfigResolver`, `scoped`, résolu SANS utilisateur pendant le login) servirait
+     * à la suivante, ce qui n'arrive jamais en production.
+     */
+    private function nouvelleRequete(): void
     {
         $this->flushHeaders();
         $this->app['auth']->forgetGuards();
+        $this->app->forgetScopedInstances();
+    }
+
+    private function connecter(string $identifiant): TestResponse
+    {
+        $this->nouvelleRequete();
 
         return $this->postJson('/api/auth/login', ['username' => $identifiant, 'password' => 'mot-de-passe-demo']);
     }
 
     private function avecLeJeton(TestResponse $connexion): static
     {
-        $this->flushHeaders();
-        $this->app['auth']->forgetGuards();
+        $this->nouvelleRequete();
 
         return $this->withToken((string) $connexion->json('data.token'));
     }
@@ -182,7 +193,7 @@ Erreurs journalisées : '.json_encode($erreurs, JSON_UNESCAPED_UNICODE);
 
     private function fournisseurAnnonce(SeanceRecording $enregistrement): TestResponse
     {
-        $this->flushHeaders();
+        $this->nouvelleRequete();
         $corps = ['recording_id' => $enregistrement->id, 'url' => self::VIDEO, 'provider' => 'external'];
         $horodatage = (string) time();
         $brut = json_encode($corps, JSON_THROW_ON_ERROR);

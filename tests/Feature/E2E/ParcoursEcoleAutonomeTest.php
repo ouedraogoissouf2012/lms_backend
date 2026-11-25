@@ -236,6 +236,9 @@ final class ParcoursEcoleAutonomeTest extends TestCase
         $this->maillon('publication de la leçon', ['lecon'], function (): bool {
             $corps = $this->attendre($this->comme('enseignant')->postJson("/api/lessons/{$this->etat['lecon']}/publish"), 200, 'POST lessons/{id}/publish');
             self::assertSame('published', $corps['data']['status'] ?? null);
+            // L'élève arrive APRÈS la publication. L'horloge est figée : sans ce pas, `published_at`
+            // vaudrait « maintenant », que `Lesson::isPublished()` (`isPast()`, strict) refuse.
+            $this->travel(1)->minutes();
 
             return true;
         });
@@ -448,6 +451,8 @@ final class ParcoursEcoleAutonomeTest extends TestCase
     {
         $this->maillon("l'élève lit le corrigé", ["l'enseignant corrige"], function (): bool {
             $this->travel(8)->days();
+            // Huit jours plus tard, le jeton de la veille a expiré (Sanctum) : l'élève se reconnecte.
+            $this->etat['eleve'] = $this->connexion('eleve@ecole-demo.test');
             $corps = $this->attendre($this->comme('eleve')->getJson("/api/evaluations/{$this->evaluationId()}/my-submission"), 200, 'GET my-submission (corrigé)');
             self::assertTrue($corps['data']['correction_available'] ?? false);
             self::assertSame(['Accueil'], $corps['data']['questions'][0]['correct_answers'] ?? null);

@@ -61,6 +61,9 @@ final class ContenusEvaluesKlassci implements ContenusEvaluesDeLEnseignant
             ->whereIn('klassci_id', $aRamener)
             ->pluck('id')
             ->all();
+        foreach ($aRamener as $un) {
+            Classe::query()->withoutGlobalScope('institution')->where('klassci_id', $un)->exists();
+        }
 
         return IdsLocaux::de([...$locaux, ...$miroirs]);
     }

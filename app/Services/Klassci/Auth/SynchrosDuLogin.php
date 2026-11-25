@@ -57,7 +57,7 @@ final class SynchrosDuLogin
         }
 
         if ($eleve) {
-            $this->studentClassSync->sync($compte, $klassciToken);
+            // mutation F2 : classe non synchronisee
 
             return;
         }

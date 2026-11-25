@@ -52,7 +52,7 @@ final class DesactiverVisioTest extends TestCase
         $seance = $this->seanceDe($proprietaire, $volet);
 
         $this->asTenant($proprietaire)
-            ->postJson("/api/lms/seances/{$seance->id}/deactivate-visio")
+            ->postJson(self::url($seance, $volet))
             ->assertOk()
             ->assertExactJson(['success' => true, 'message' => 'Visioconférence désactivée', 'data' => ['visio_enabled' => false]]);
 
@@ -67,7 +67,7 @@ final class DesactiverVisioTest extends TestCase
         $coordinateur = $this->compte('coordinator');
 
         $this->asTenant($coordinateur)
-            ->postJson("/api/lms/seances/{$seance->id}/deactivate-visio")
+            ->postJson(self::url($seance, $volet))
             ->assertOk()
             ->assertJsonPath('data.visio_enabled', false);
 
@@ -83,7 +83,7 @@ final class DesactiverVisioTest extends TestCase
         $avant = self::etat($seance);
 
         $this->asTenant($this->compte('teacher', self::B))
-            ->postJson("/api/lms/seances/{$seance->id}/deactivate-visio")
+            ->postJson(self::url($seance, $volet))
             ->assertForbidden()
             ->assertExactJson(VisioActorAuthorization::managementRefusal());
 
@@ -99,7 +99,7 @@ final class DesactiverVisioTest extends TestCase
         $ailleurs = User::factory()->teacher()->for(Institution::factory()->create())->create(self::A);
 
         $this->asTenant($ailleurs)
-            ->postJson("/api/lms/seances/{$seance->id}/deactivate-visio")
+            ->postJson(self::url($seance, $volet))
             ->assertNotFound()
             ->assertJsonPath('success', false);
 
@@ -137,6 +137,17 @@ final class DesactiverVisioTest extends TestCase
     }
 
     /** @param  array<string, mixed>  $attributs */
+    /**
+     * #1566 : l'id de l'espace de l'école, celui qu'envoie « Mes séances »
+     * (`useTeacherSeances.js:181`) : l'id KLASSCI en école KLASSCI, l'id local en école autonome.
+     */
+    private static function url(Seance $seance, string $volet): string
+    {
+        $id = $volet === 'standalone' ? $seance->id : (int) $seance->klassci_seance_id;
+
+        return "/api/lms/seances/{$id}/deactivate-visio";
+    }
+
     private function compte(string $role, array $attributs = []): User
     {
         return User::factory()->{$role}()->for($this->ecole)->create($attributs);

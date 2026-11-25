@@ -6,6 +6,7 @@ namespace Tests\Unit\Http\Requests\Concerns;
 
 use App\Http\Requests\Concerns\ChecksEvaluationOwnership;
 use App\Models\Evaluation;
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,8 +15,13 @@ use Tests\TestCase;
 
 /**
  * `ChecksEvaluationOwnership`, par la classe et sans route : un compte sans
- * établissement ne désigne aucune évaluation, pas même une évaluation sans
- * établissement. La comparaison ne s'écrit jamais `institution_id IS NULL`.
+ * établissement ne désigne aucune évaluation. La comparaison ne s'écrit jamais
+ * `institution_id IS NULL`.
+ *
+ * #801 : une évaluation sans établissement n'existe plus (`institution_id` est
+ * obligatoire) ; l'évaluation est donc portée par une école. Le compte, lui, peut
+ * encore n'en avoir aucune (`users` reste facultative pour le supradmin) : c'est
+ * ce que ce fichier garde.
  * Défense en profondeur : la règle tient d'elle-même, quelle que soit la garde
  * placée devant elle.
  */
@@ -23,11 +29,11 @@ final class EvaluationSansEtablissementTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** L'auteur d'une évaluation sans établissement, lui-même sans établissement : refusé. */
+    /** L'auteur, sans établissement, d'une évaluation : refusé. */
     public function test_l_auteur_sans_etablissement_ne_designe_pas_son_evaluation(): void
     {
         $auteur = $this->compteSansEtablissement('enseignant', 42);
-        $evaluation = $this->evaluationSansEtablissement(['enseignant_id' => $auteur->id, 'klassci_enseignant_id' => 42]);
+        $evaluation = $this->evaluationDUneEcole(['enseignant_id' => $auteur->id, 'klassci_enseignant_id' => 42]);
 
         self::assertFalse($this->autorise(new MutationDEvaluationRequest, $auteur, $evaluation));
     }
@@ -36,7 +42,7 @@ final class EvaluationSansEtablissementTest extends TestCase
     public function test_un_role_d_administration_sans_etablissement_est_refuse(): void
     {
         $administrateur = $this->compteSansEtablissement('superAdmin', null);
-        $evaluation = $this->evaluationSansEtablissement(['klassci_enseignant_id' => 999]);
+        $evaluation = $this->evaluationDUneEcole(['klassci_enseignant_id' => 999]);
 
         self::assertFalse($this->autorise(new MutationDEvaluationRequest, $administrateur, $evaluation));
     }
@@ -45,26 +51,27 @@ final class EvaluationSansEtablissementTest extends TestCase
     public function test_un_coordinateur_sans_etablissement_ne_lit_rien(): void
     {
         $coordinateur = $this->compteSansEtablissement('coordinateur', null);
-        $evaluation = $this->evaluationSansEtablissement(['klassci_enseignant_id' => 999]);
+        $evaluation = $this->evaluationDUneEcole(['klassci_enseignant_id' => 999]);
 
         self::assertFalse($this->autorise(new LectureDEvaluationRequest, $coordinateur, $evaluation));
     }
 
     private function compteSansEtablissement(string $role, ?int $klassciEnseignantId): User
     {
-        // #1181 : une donnée héritée que la règle du modèle interdit désormais.
-        return User::factory()->sansEtablissement()->createQuietly([
+        // #801 : le seul compte sans établissement est le supradmin ; il est aussi un rôle
+        // d'administration. Le rôle demandé ne survit que comme `klassci_role`, pour mémoire.
+        return User::factory()->create([
             'institution_id' => null,
-            'role' => $role,
+            'role' => 'supradmin',
             'klassci_role' => $role,
             'klassci_enseignant_id' => $klassciEnseignantId,
         ]);
     }
 
     /** @param array<string, mixed> $attributs */
-    private function evaluationSansEtablissement(array $attributs): Evaluation
+    private function evaluationDUneEcole(array $attributs): Evaluation
     {
-        return Evaluation::factory()->create(['institution_id' => null] + $attributs);
+        return Evaluation::factory()->create(['institution_id' => Institution::factory()->create()->id] + $attributs);
     }
 
     /** La requête liée à `/evaluations/{id}`, l'appelant authentifié comme le ferait Sanctum. */

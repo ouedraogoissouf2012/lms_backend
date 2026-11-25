@@ -15,7 +15,7 @@ use App\Models\User;
  * un id sans séance locale ne désigne jamais, par ce second identifiant, une
  * AUTRE séance (#933).
  */
-final class LocalSeanceDesignee implements SeanceDesignee
+final class LocalSeanceDesignee implements SeanceDesigneeStrictement
 {
     public function pour(int $seanceId, User $user): ?Seance
     {

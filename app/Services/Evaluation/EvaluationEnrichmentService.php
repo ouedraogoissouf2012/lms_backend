@@ -55,37 +55,55 @@ class EvaluationEnrichmentService
      */
     public function enrich(Collection $evaluations, string $userToken): array
     {
+        [$classesMap, $matieresMap] = $this->catalogueKlassci($userToken);
+
+        return $this->present($evaluations, $classesMap, $matieresMap);
+    }
+
+    /**
+     * Les classes et matières de KLASSCI, indexées par id (avec cache via KlassciProxyService).
+     *
+     * #1609 : le repli (fail-soft) ne porte QUE sur ce catalogue. KLASSCI injoignable, les deux
+     * index sont vides, et la présentation est celle d'une école sans catalogue
+     * ({@see self::enrichWithoutCatalogue()}) : libellés stockés, enseignant lu en base. Avant,
+     * la présentation entière était dans le `try`, et la panne rendait l'évaluation brute, sans
+     * `classe`, `matiere` ni `enseignant`.
+     *
+     * Seuls les échecs de KLASSCI sont attrapés : `KlassciUnavailableException` (transport, 5xx,
+     * disjoncteur, charge illisible) et la `RuntimeException` d'un 4xx (`EchecHttpKlassci`), qui
+     * en hérite. Un défaut de programmation (`Error`, `LogicException`, `ErrorException`) remonte.
+     *
+     * @return array{0: array<int, mixed>, 1: array<int, mixed>}
+     */
+    private function catalogueKlassci(string $userToken): array
+    {
         try {
-            // Récupérer les classes et matières de KLASSCI (avec cache via KlassciProxyService)
             $klassciClasses = $this->klassciService->getClasses();
             $klassciMatieres = $userToken === ''
                 ? ['data' => []]
                 : $this->klassciService->getMatieres($userToken);
-
-            // Créer des maps pour accès O(1)
-            $classesMap = [];
-            $klassciClassesData = $klassciClasses['data'] ?? null;
-            if (is_array($klassciClassesData)) {
-                foreach ($klassciClassesData as $classe) {
-                    $classesMap[$classe['id']] = $classe;
-                }
-            }
-
-            $matieresMap = [];
-            $klassciMatieresData = $klassciMatieres['data'] ?? null;
-            if (is_array($klassciMatieresData)) {
-                foreach ($klassciMatieresData as $matiere) {
-                    $matieresMap[$matiere['id']] = $matiere;
-                }
-            }
-
-            return $this->present($evaluations, $classesMap, $matieresMap);
-        } catch (\Exception $e) {
+        } catch (\RuntimeException $e) {
             $this->journal->error('Erreur enrichissement évaluations', $e);
 
-            // Fail-soft : retourner les évaluations sans enrichissement plutôt que de casser la page.
-            return $evaluations->toArray();
+            return [[], []];
         }
+
+        return [self::parId($klassciClasses['data'] ?? null), self::parId($klassciMatieres['data'] ?? null)];
+    }
+
+    /** @return array<int, mixed> Les lignes indexées par leur `id`, pour un accès O(1). */
+    private static function parId(mixed $lignes): array
+    {
+        $index = [];
+        foreach (is_array($lignes) ? $lignes : [] as $ligne) {
+            $id = is_array($ligne) ? ($ligne['id'] ?? null) : null;
+            // Un id numérique en chaîne devient la même clé entière, comme le faisait PHP.
+            if (is_int($id) || (is_string($id) && ctype_digit($id))) {
+                $index[(int) $id] = $ligne;
+            }
+        }
+
+        return $index;
     }
 
     /**

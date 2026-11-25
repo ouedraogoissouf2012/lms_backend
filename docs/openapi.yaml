@@ -3520,10 +3520,17 @@ components:
         `enseignant_id` dans une ecole creee depuis le LMS (D72) ; jamais un id local
         sous un nom `klassci_*` (D132).
 
-        Si le catalogue KLASSCI est injoignable, l enrichissement est fail-soft :
-        l evaluation est rendue SANS ses cles calculees. Seul `id` est donc garanti.
+        Si le catalogue KLASSCI est injoignable, seul ce catalogue est perdu (#1609) :
+        `classe` et `matiere` portent les libelles stockes (`classe_nom`,
+        `matiere_nom`), et `enseignant` vient de la base, comme dans une ecole creee
+        depuis le LMS. Les cles calculees ci-dessous sont donc toujours presentes,
+        eventuellement nulles.
       required:
         - id
+        - classe
+        - matiere
+        - enseignant
+        - enseignant_nom
       additionalProperties: true
       properties:
         id:
@@ -3594,6 +3601,11 @@ components:
           description: |
             L enseignant designe par son identite KLASSCI, sinon l auteur
             local (`enseignant_id`, dans l etablissement de l evaluation).
+            `id` est dans l espace de l annuaire des enseignants de l ecole
+            (#1537) : l id local en ecole autonome, l identite d enseignant
+            KLASSCI en ecole KLASSCI. Un auteur hors de l annuaire (sans
+            identite, ou qui n est pas enseignant) donne `null`, et son nom
+            reste dans `enseignant_nom`.
           properties:
             id:
               type: integer
@@ -4114,7 +4126,7 @@ components:
               example: "token_string_here"
             user:
               type: object
-              description: "Le compte connecte : trois identifiants, chacun dans son espace (#1409)."
+              description: "Le compte connecte : ses identifiants, chacun dans son espace (#1409, #1536)."
               properties:
                 id:
                   type: integer
@@ -4131,6 +4143,14 @@ components:
                     (`/proxy/enseignants`, `/lms/enseignants`) et de l'enseignant d'une
                     evaluation (#873) ; null hors enseignant KLASSCI, et en ecole
                     autonome.
+                id_dans_l_annuaire:
+                  type: integer
+                  nullable: true
+                  description: |
+                    #1536 : l'`id` que l'annuaire des enseignants de son ecole
+                    (`/proxy/enseignants`) emet pour ce compte. Le client y reconnait sa
+                    propre fiche sans connaitre le mode de l'ecole (#805). null pour un
+                    compte qui n'est pas enseignant, ou que l'annuaire ecarte.
 
     User:
       type: object
@@ -4146,6 +4166,13 @@ components:
           type: integer
           nullable: true
           description: "Identite d'ENSEIGNANT KLASSCI (#1409) ; null hors enseignant KLASSCI."
+        id_dans_l_annuaire:
+          type: integer
+          nullable: true
+          description: |
+            #1536 : l'`id` que l'annuaire des enseignants de son ecole emet pour ce compte ;
+            null hors enseignant, ou si l'annuaire l'ecarte. Present dans les reponses qui
+            decrivent le compte CONNECTE (`/auth/me`), absent ailleurs.
         email:
           type: string
           example: "user@example.com"
@@ -6286,6 +6313,128 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+
+  /users:
+    post:
+      tags:
+        - Users
+      summary: "Creer un compte dans l'ecole de l'acteur"
+      description: |
+        #1625. Reserve au coordinateur et a l'admin d'ecole (`admin`, `superAdmin`). Le
+        compte nait dans l'etablissement de l'ACTEUR (#1181), jamais dans celui que
+        le corps nommerait.
+
+        Le role demande doit etre STRICTEMENT inferieur a celui de l'acteur
+        (`AssignableRole`) : un role egal ou superieur, ou hors liste, est un 422
+        sur `role`, pas un 403.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - password_confirmation
+                - role
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                  description: "Unique dans l'ecole de l'acteur (un compte supprime de la meme ecole est signale)."
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  description: "Egal a `password`."
+                role:
+                  type: string
+                  enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                  description: "Strictement inferieur au role de l'acteur."
+                klassci_id:
+                  type: integer
+                  nullable: true
+      responses:
+        '201':
+          description: "Compte cree, relu avec son etablissement"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                    example: "Utilisateur créé avec succès"
+                  data:
+                    type: object
+                    description: "Le compte cree, relu avec son etablissement (`institution`)."
+                    required:
+                      - id
+                      - name
+                      - email
+                      - role
+                      - institution_id
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                        enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                      institution_id:
+                        type: integer
+                      klassci_id:
+                        type: integer
+                        nullable: true
+                      institution:
+                        type: object
+                        nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role de l'acteur hors gestion (eleve, enseignant), ou acteur sans
+            etablissement (`reason: no_institution`). Aussi, sans `reason` :
+            etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Validation, detail par champ dans `errors` : `name` ou `email` absent,
+            `email` deja pris dans l'ecole, `password` de moins de 8 caracteres ou
+            non confirme, `role` hors liste, egal ou superieur a celui de l'acteur.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /admin/audit-log:
     get:

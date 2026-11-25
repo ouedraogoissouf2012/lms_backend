@@ -44,6 +44,12 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
         return $this->reponse($this->lignes($lecteur, $details));
     }
 
+    /** L'annuaire local émet l'id LOCAL d'un enseignant (`ligne()`), et ne liste que des enseignants. */
+    public function idDansLAnnuaire(User $compte): ?int
+    {
+        return $compte->isTeacher() ? self::entier($compte->getKey()) : null;
+    }
+
     /**
      * @param  list<array<string, mixed>>  $lignes
      * @return array{success: true, data: list<array<string, mixed>>, meta: array{total: int, source: string}}

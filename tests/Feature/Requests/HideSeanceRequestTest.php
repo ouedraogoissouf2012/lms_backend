@@ -6,11 +6,12 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 class HideSeanceRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -41,7 +42,7 @@ class HideSeanceRequestTest extends TestCase
 
     public function test_teacher_cannot_hide(): void
     {
-        Sanctum::actingAs($this->teacher);
+        $this->asTenant($this->teacher);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/hide");
 
         $response->assertStatus(403);
@@ -49,7 +50,7 @@ class HideSeanceRequestTest extends TestCase
 
     public function test_student_can_hide(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/hide");
 
         $this->assertTrue(in_array($response->status(), [200, 201]));
@@ -57,23 +58,31 @@ class HideSeanceRequestTest extends TestCase
 
     public function test_nonexistent_seance_returns_404(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
         $response = $this->postJson('/api/lms/seances/99999/hide');
 
         $response->assertStatus(404);
     }
 
+    /**
+     * #1566 : l'id local est l'espace d'une école AUTONOME. En école KLASSCI, il ne désigne
+     * plus rien (ChaquePorteDesigneLaSeanceDeSonEspaceTest). Vrai jeton : sans tenant, la
+     * source est celle de KLASSCI.
+     */
     public function test_student_can_hide_by_local_id(): void
     {
-        Sanctum::actingAs($this->student);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/hide");
+        $ecole = Institution::factory()->standalone()->create();
+        $eleve = User::factory()->student()->for($ecole)->create();
+        $seance = Seance::factory()->forInstitution($ecole)->create(['klassci_seance_id' => null]);
 
-        $this->assertTrue(in_array($response->status(), [200, 201]));
+        $this->asTenant($eleve)->postJson("/api/lms/seances/{$seance->id}/hide")->assertOk();
+
+        $this->assertDatabaseHas('seance_user_hidden', ['seance_id' => $seance->id, 'user_id' => $eleve->id]);
     }
 
     public function test_hiding_same_seance_twice(): void
     {
-        Sanctum::actingAs($this->student);
+        $this->asTenant($this->student);
 
         // First hide
         $response1 = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/hide");
@@ -87,7 +96,7 @@ class HideSeanceRequestTest extends TestCase
     public function test_coordinator_cannot_hide(): void
     {
         $coordinator = User::factory()->coordinator()->for($this->institution)->create();
-        Sanctum::actingAs($coordinator);
+        $this->asTenant($coordinator);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/hide");
 
         $response->assertStatus(403);

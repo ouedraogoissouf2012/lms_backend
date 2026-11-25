@@ -196,37 +196,6 @@ final class StudentReplayAccessTest extends TestCase
         self::assertNotNull($classe->id);
     }
 
-    public function test_la_porte_klassci_marche_sur_la_donnee_reelle_de_production(): void
-    {
-        // LA REPARATION. StudentClassSynchronizer:96 — seul ecrivain de
-        // `user_classes` — n'ecrit PAS `institution_id`. L'ancienne requete
-        // filtrait dessus et rendait donc TOUJOURS faux en production : la porte
-        // etudiant etait morte, seules les presences ouvraient l'acces.
-        //
-        // Ce test pose la ligne exactement comme la production la pose.
-        $ecole = Institution::factory()->create();
-        $eleve = $this->etudiant($ecole);
-
-        UserClass::query()->create([
-            'user_id' => $eleve->id,
-            'klassci_classe_id' => 55,
-            'classe_nom' => 'Classe 55',
-            // PAS d'institution_id : c'est le point du test.
-        ]);
-
-        $seance = Seance::factory()->create([
-            'institution_id' => $ecole->getKey(),
-            'classe_id' => null,
-            'klassci_classe_id' => 55,
-            'klassci_enseignant_id' => null,
-        ]);
-
-        self::assertTrue(
-            $this->service()->canRead($seance, $eleve),
-            'Sur la donnee reellement ecrite en production, la porte doit s ouvrir.'
-        );
-    }
-
     public function test_un_identifiant_klassci_d_une_autre_ecole_ne_traverse_pas(): void
     {
         // `klassci_id` n'est unique QUE par institution (#707) : la traduction

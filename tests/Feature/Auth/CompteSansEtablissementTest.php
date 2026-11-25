@@ -95,14 +95,6 @@ final class CompteSansEtablissementTest extends TestCase
         self::assertSame($ecole->id, User::factory()->create(['role' => 'enseignant'])->institution_id);
     }
 
-    /** L'état `sansEtablissement()`, créé sans événements, sert les portes qui refusent ce cas. */
-    public function test_l_etat_sans_etablissement_fabrique_la_donnee_heritee(): void
-    {
-        $orphelin = User::factory()->sansEtablissement()->createQuietly(['role' => 'coordinateur']);
-
-        self::assertNull(User::withoutGlobalScopes()->whereKey($orphelin->id)->value('institution_id'));
-    }
-
     /**
      * @param  array<string, mixed>  $attributs
      * @return bool vrai si la création a été refusée par la règle

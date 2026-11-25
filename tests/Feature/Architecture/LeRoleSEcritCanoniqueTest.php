@@ -46,10 +46,9 @@ final class LeRoleSEcritCanoniqueTest extends TestCase
     /** Les occurrences qui n'écrivent pas de compte : réponses, journaux, règles, Jitsi. */
     private const NON_ECRITURES = [
         "app/Http/Middleware/EnsurePlatformSupradmin.php  'role' => \$user->role",
-        "app/Http/Presenters/AuthResponsePresenter.php  'role' => \$localUser->role",
         "app/Http/Presenters/AuthResponsePresenter.php  'role' => \$user->role",
-        "app/Http/Presenters/AuthResponsePresenter.php  'role' => \$user->role",
-        "app/Http/Presenters/AuthResponsePresenter.php  'role' => \$user->role",
+        // #1536 : le bloc d'identité des trois réponses de connexion et de `/auth/me`.
+        "app/Http/Presenters/IdentiteDuCompte.php  'role' => \$compte->role",
         "app/Http/Presenters/UserListPresenter.php  'role' => \$user->role",
         "app/Http/Requests/CreateUserRequest.php  'role' => ['required'",
         "app/Http/Requests/ListUsersRequest.php  'role' => ['sometimes'",

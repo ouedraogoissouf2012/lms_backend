@@ -7,7 +7,6 @@ namespace App\Providers;
 use App\Services\Attendances\KlassciSeanceSansLigneLocale;
 use App\Services\Attendances\LocalSeanceSansLigneLocale;
 use App\Services\Attendances\SeanceSansLigneLocale;
-use App\Services\Catalogue\CatalogueAuthority;
 use App\Services\Catalogue\InstitutionStructureReader;
 use App\Services\Catalogue\KlassciInstitutionStructureReader;
 use App\Services\Catalogue\LocalInstitutionStructureReader;
@@ -53,14 +52,14 @@ use App\Services\SeanceDetailQueryService;
 use App\Services\Seances\CreationDeSeance;
 use App\Services\Seances\KlassciCreationDeSeance;
 use App\Services\Seances\KlassciModificationDeSeance;
-use App\Services\Seances\KlassciSeanceDesignee;
+use App\Services\Seances\KlassciSeanceDesigneeStricte;
 use App\Services\Seances\LocalModificationDeSeance;
 use App\Services\Seances\LocalSeanceCreator;
 use App\Services\Seances\LocalSeanceDesignee;
 use App\Services\Seances\LocalSeanceDetailReader;
 use App\Services\Seances\LocalSeancesListReader;
 use App\Services\Seances\ModificationDeSeance;
-use App\Services\Seances\SeanceDesignee;
+use App\Services\Seances\SeanceDesigneeStrictement;
 use App\Services\Seances\SeanceDetailReader;
 use App\Services\Seances\SeancesListReader;
 use App\Services\SeancesListQueryService;
@@ -120,8 +119,9 @@ final class CatalogueServiceProvider extends ServiceProvider
         StudentDashboardReader::class => [KlassciStudentDashboardReader::class, LocalStudentDashboardReader::class],
         // Le détail d'une séance, sous la règle de la liste du lot 3d.
         SeanceDetailReader::class => [SeanceDetailQueryService::class, LocalSeanceDetailReader::class],
-        // La séance que désignent la suppression et la désactivation (#933).
-        SeanceDesignee::class => [KlassciSeanceDesignee::class, LocalSeanceDesignee::class],
+        // La séance que désignent la suppression, le masquage, les présences de la visio et la
+        // désactivation : strictement dans l'espace de l'école (#1154, #1566, ADR-1154-01).
+        SeanceDesigneeStrictement::class => [KlassciSeanceDesigneeStricte::class, LocalSeanceDesignee::class],
         // Modifier une séance : l'école autonome modifie, l'école KLASSCI refuse (#1121).
         ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).
@@ -136,21 +136,16 @@ final class CatalogueServiceProvider extends ServiceProvider
      * La closure est évaluée À LA RÉSOLUTION, donc après `ResolveInstitution`.
      * Un singleton capturerait le premier tenant résolu et le rejouerait pour
      * tous les suivants : sous Octane comme en suite PHPUnit, le conteneur
-     * survit entre requêtes, et une fuite de singleton ici laisserait un
-     * établissement KLASSCI écrire un catalogue local — pas un défaut de
-     * performance, une fuite entre établissements (épique #697, art. 3).
+     * survit entre requêtes, et une source figée servirait l'école d'une autre
+     * (épique #697, art. 3). Le contrôleur reçoit la source par sa MÉTHODE, pas par
+     * son constructeur : Laravel garde le contrôleur sur l'objet Route.
+     *
+     * Le DROIT d'écrire le catalogue local n'est plus lié ici (#1142) : il se lit
+     * par `RosterAuthorityFactory::catalogueForInstitution()`, au moment de l'appel
+     * (`PorteDuCatalogueLocal`, #1128).
      */
     public function register(): void
     {
-        $this->app->bind(
-            CatalogueAuthority::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)->catalogueForCurrentTenant(),
-        );
-
-        // Même règle pour les sources : `bind()`, résolu à chaque demande. Le
-        // contrôleur les reçoit par sa MÉTHODE, pas par son constructeur —
-        // Laravel garde le contrôleur sur l'objet Route, et une source reçue à
-        // la construction resterait celle de la première école servie.
         foreach (self::SOURCES as $port => [$klassci, $local]) {
             $this->app->bind(
                 $port,

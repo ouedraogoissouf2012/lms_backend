@@ -178,9 +178,9 @@ components:
           maxLength: 50
           nullable: true
           description: |
-            FACULTATIF, et volontairement SANS contrainte d unicite : mesure
-            faite sur app/, aucun acces ne retrouve une matiere par son code.
-            En poser une garderait un chemin qui n existe pas.
+            FACULTATIF. Unique dans l ecole parmi les matieres LOCALES, sans
+            tenir compte de la casse ni des blancs (#1653) : sinon 422
+            `subject_code_already_used`. Un code vide devient nul.
         description:
           type: string
           maxLength: 2000
@@ -195,6 +195,31 @@ components:
           minimum: 1
           maximum: 60
           default: 1
+
+    MatiereUpdateInput:
+      type: object
+      description: "#1653 : un PATCH ; chaque champ est facultatif, seul un champ envoye change."
+      properties:
+        libelle:
+          type: string
+          maxLength: 191
+        code:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: "Vide ou nul : efface le code. Unique dans l ecole parmi les matieres locales."
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        coefficient:
+          type: integer
+          minimum: 1
+          maximum: 20
+        credit:
+          type: integer
+          minimum: 1
+          maximum: 60
 
     MatiereCreated:
       type: object
@@ -213,10 +238,49 @@ components:
             code:
               type: string
               nullable: true
+            description:
+              type: string
+              nullable: true
             coefficient:
               type: integer
             credit:
               type: integer
+
+    ClasseMatiereUpdateInput:
+      type: object
+      description: "#1653 : un PATCH ; seul un champ envoye change, nul est une valeur."
+      properties:
+        enseignant_id:
+          type: integer
+          nullable: true
+          description: "Un enseignant de l ecole ; nul retire le formateur."
+        coefficient:
+          type: integer
+          minimum: 1
+          maximum: 20
+          nullable: true
+          description: "Coefficient propre a la classe ; nul : celui de la matiere s applique."
+
+    ClasseMatiereLigne:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            classe_id:
+              type: integer
+            matiere_id:
+              type: integer
+            enseignant_id:
+              type: integer
+              nullable: true
+            coefficient:
+              type: integer
+              nullable: true
 
     ClasseMatiereInput:
       type: object
@@ -7987,6 +8051,145 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /classes/{classe}/matieres/{matiere}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une matiere au programme d une classe"
+      description: |
+        #1653. Le formateur (de l ecole, et enseignant ; nul le retire) et le
+        coefficient PROPRE a la classe (nul : celui de la matiere s applique).
+        Seuls les champs ENVOYES changent. Ecole qui tient son catalogue ; la
+        classe, la matiere et le formateur sont cherches dans SON ecole.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasseMatiereUpdateInput'
+      responses:
+        '200':
+          description: "Ligne du programme, relue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseMatiereLigne'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            Classe, matiere ou formateur hors de l ecole (un formateur qui
+            n enseigne pas compte comme absent), ou matiere absente du programme
+            de la classe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Aucun etablissement resolu (`no_institution`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Formateur ou coefficient invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Retirer une matiere du programme d une classe"
+      description: |
+        #1653. Retire le couple du programme ; la matiere elle-meme reste.
+        Refuse tant qu une trace pedagogique de CETTE ecole renvoie au couple
+        (lecon, seance, evaluation, quiz, discussion), meme supprimee en
+        douceur : l historique reste lisible avec sa classe et sa matiere.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Matiere retiree de la classe"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe ou matiere hors de l ecole, ou matiere absente du programme de la classe"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            `subject_in_use_in_class` : une trace pedagogique renvoie au couple ;
+            le message dit lesquelles et combien. Ou `no_institution`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Cette matière est employée dans cette classe (2 leçon(s), 1 séance(s)) : elle ne peut pas en être retirée."
+                reason: subject_in_use_in_class
+
   /matieres:
     post:
       tags:
@@ -8057,7 +8260,77 @@ paths:
                 message: "Aucun établissement résolu."
                 reason: no_institution
         '422':
-          description: "Libelle manquant ou ponderation hors bornes"
+          description: |
+            Libelle manquant ou ponderation hors bornes ; ou code deja employe par
+            une autre matiere locale de l ecole (#1653), motif
+            `subject_code_already_used` sur `code`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /matieres/{matiere}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une Matiere locale"
+      description: |
+        #1653. Modifie une matiere LOCALE de l ecole de l appelant : seuls les
+        champs ENVOYES changent. Un `code` vide ou nul EFFACE le code.
+
+        Le code d une matiere locale est unique dans son ecole, sans tenir
+        compte de la casse ni des blancs : la BASE le tranche (colonne generee
+        `code_local`, unique `(institution_id, code_local)`), et sa violation
+        rend 422 `subject_code_already_used`. Les matieres miroir de KLASSCI
+        en sont exclues : leurs codes sont a KLASSCI.
+      security:
+        - sanctum: []
+      parameters:
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatiereUpdateInput'
+      responses:
+        '200':
+          description: "Matiere modifiee, relue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatiereCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant ; etablissement dont le catalogue vient de KLASSCI,
+            ou matiere MIROIR de KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Aucune matiere de ce numero dans l ecole de l appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Libelle vide, ponderation hors bornes, ou code deja employe par une
+            autre matiere locale de l ecole (`subject_code_already_used` sur `code`).
           content:
             application/json:
               schema:
@@ -10492,8 +10765,10 @@ paths:
         (`feedback` commencant par `[PRACTICE]`) et les evaluations non
         publiees sont exclues.
 
-        `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
-        moyenne simple des moyennes de matiere MESUREES. Regle unique des agregats
+        `moyenne` est ponderee par le `coefficient` de chaque evaluation ;
+        `moyenne_generale` est la moyenne des moyennes de matiere MESUREES,
+        ponderee par le `coefficient` de la MATIERE (#1676, la regle du bilan d une
+        classe ; avec tous les coefficients a 1, la moyenne simple). Regle unique des agregats
         sans mesure : toutes deux valent `null` quand il n y a rien a moyenner
         (aucune note visible, ou un coefficient total nul), jamais un 0 fabrique.
 
@@ -10540,6 +10815,12 @@ paths:
                               type: number
                               nullable: true
                               description: "`null` quand la matiere n a aucune note a moyenner"
+                            coefficient:
+                              type: number
+                              description: |
+                                #1676 : le coefficient de la MATIERE, qui pondere `moyenne_generale` :
+                                celui de la matiere dans la classe de sa copie la plus recente
+                                (`classe_matiere`), a defaut celui de la matiere, a defaut 1.
                             total_evaluations:
                               type: integer
                             evaluations:

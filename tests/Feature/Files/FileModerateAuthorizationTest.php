@@ -15,7 +15,7 @@ use Tests\TestCase;
  * Integration tests for `PUT /api/files/{file}` and `DELETE /api/files/{file}`
  * authorization (issue #102 fix).
  *
- * Update and Delete both use `ChecksFileAuthorization::canModerateFile()`.
+ * Update and Delete both use the rule of `LecteurDeFichier` (#1768).
  * is_public does NOT grant moderation rights (read-only).
  *
  * @see app/Http/Requests/UpdateFileRequest.php

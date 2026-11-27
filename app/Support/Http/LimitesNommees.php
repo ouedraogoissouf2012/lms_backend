@@ -47,6 +47,9 @@ final class LimitesNommees
         'consentement-visio' => [10, 'compte'],
         // #1275 : l'administration définit un mot de passe, rarement ; une rafale est suspecte.
         'mot-de-passe-defini' => [10, 'compte'],
+        // #1659 : la porte publique des demandes d'inscription, remplie à la main. Le plafond PAR ÉCOLE est ailleurs,
+        // silencieux (`config/admissions.php`) : un refus visible confirmerait que l'école existe.
+        'demandes-inscription' => [5, 'ip'],
     ];
 
     public static function enregistrer(): void

@@ -6818,7 +6818,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Ni la gestion, ni l eleve lui-meme, ni un enseignant d une de ses classes."
+          description: "Ni la gestion, ni l eleve lui-meme, ni un enseignant d une de ses classes. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6929,7 +6929,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`)."
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7055,7 +7055,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`)."
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7114,7 +7114,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`)."
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7185,7 +7185,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`)."
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:

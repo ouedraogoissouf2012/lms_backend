@@ -4969,18 +4969,18 @@ paths:
                   - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
 
   /lms/seances/{seanceId}/appel:
-    parameters:
-      - name: seanceId
-        in: path
-        required: true
-        description: "Identifiant LOCAL de la seance."
-        schema:
-          type: integer
-          minimum: 1
     get:
       tags:
         - Visio
       operationId: lireLAppel
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
       summary: "L'appel d'une seance : la classe et ses marques"
       description: |
         #1649. Les eleves ACTIFS de la classe de la seance, tries par nom, chacun
@@ -5027,6 +5027,14 @@ paths:
       tags:
         - Visio
       operationId: saisirLAppel
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
       summary: "Saisir ou corriger l'appel d'une seance"
       description: |
         #1649. L'auteur de la seance ou la gestion marque present, absent, en

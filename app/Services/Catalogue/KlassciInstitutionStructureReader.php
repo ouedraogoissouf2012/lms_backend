@@ -27,4 +27,14 @@ final class KlassciInstitutionStructureReader implements InstitutionStructureRea
     {
         return $this->klassci->getStructure();
     }
+
+    public function filieres(): array
+    {
+        return $this->klassci->getFilieres();
+    }
+
+    public function niveauxEtudes(): array
+    {
+        return $this->klassci->getNiveauxEtudes();
+    }
 }

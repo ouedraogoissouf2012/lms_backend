@@ -30,6 +30,9 @@ return [
         'programs',
         'training_sessions',
         'creneaux',
+        // #1648 — filières et niveaux d'une école qui tient son catalogue ; tables neuves, NOT NULL.
+        'filieres',
+        'niveaux_etudes',
         'classes',
         'matieres',
         'lessons',

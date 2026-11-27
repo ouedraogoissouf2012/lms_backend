@@ -218,6 +218,42 @@ components:
             credit:
               type: integer
 
+    ClasseMatiereUpdateInput:
+      type: object
+      description: "#1653 : un PATCH ; seul un champ envoye change, nul est une valeur."
+      properties:
+        enseignant_id:
+          type: integer
+          nullable: true
+          description: "Un enseignant de l ecole ; nul retire le formateur."
+        coefficient:
+          type: integer
+          minimum: 1
+          maximum: 20
+          nullable: true
+          description: "Coefficient propre a la classe ; nul : celui de la matiere s applique."
+
+    ClasseMatiereLigne:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            classe_id:
+              type: integer
+            matiere_id:
+              type: integer
+            enseignant_id:
+              type: integer
+              nullable: true
+            coefficient:
+              type: integer
+              nullable: true
+
     ClasseMatiereInput:
       type: object
       required:
@@ -7963,6 +7999,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{classe}/matieres/{matiere}:
+    parameters:
+      - name: classe
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: matiere
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une matiere au programme d une classe"
+      description: |
+        #1653. Le formateur (de l ecole, et enseignant ; nul le retire) et le
+        coefficient PROPRE a la classe (nul : celui de la matiere s applique).
+        Seuls les champs ENVOYES changent. Ecole qui tient son catalogue ; la
+        classe, la matiere et le formateur sont cherches dans SON ecole.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasseMatiereUpdateInput'
+      responses:
+        '200':
+          description: "Ligne du programme, relue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseMatiereLigne'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            Classe, matiere ou formateur hors de l ecole (un formateur qui
+            n enseigne pas compte comme absent), ou matiere absente du programme
+            de la classe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Aucun etablissement resolu (`no_institution`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Formateur ou coefficient invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Retirer une matiere du programme d une classe"
+      description: |
+        #1653. Retire le couple du programme ; la matiere elle-meme reste.
+        Refuse tant qu une trace pedagogique de CETTE ecole renvoie au couple
+        (lecon, seance, evaluation, quiz, discussion), meme supprimee en
+        douceur : l historique reste lisible avec sa classe et sa matiere.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Matiere retiree de la classe"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe ou matiere hors de l ecole, ou matiere absente du programme de la classe"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            `subject_in_use_in_class` : une trace pedagogique renvoie au couple ;
+            le message dit lesquelles et combien. Ou `no_institution`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Cette matière est employée dans cette classe (2 leçon(s), 1 séance(s)) : elle ne peut pas en être retirée."
+                reason: subject_in_use_in_class
 
   /matieres:
     post:

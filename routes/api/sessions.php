@@ -89,6 +89,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // LocalEnrollmentSource:35-40 lit deja — `matiere_enseignant` n est pas
         // touchee, c est le miroir KLASSCI.
         Route::post('/classes/{classe}/matieres', [LMSClasseMatiereController::class, 'store']);
+        // Le modifier (formateur, coefficient de classe) et en retirer une matiere (#1653) : le
+        // retrait est refuse tant qu une trace pedagogique de l ecole renvoie au couple.
+        Route::patch('/classes/{classe}/matieres/{matiere}', [LMSClasseMatiereController::class, 'update'])
+            ->whereNumber(['classe', 'matiere']);
+        Route::delete('/classes/{classe}/matieres/{matiere}', [LMSClasseMatiereController::class, 'destroy'])
+            ->whereNumber(['classe', 'matiere']);
 
         // Le code d inscription d une classe (#846, ADR-803-03). Rendu EN CLAIR
         // — il circule par telephone et se reaffiche, contrairement au lien

@@ -146,7 +146,7 @@ final class StudentGradesAggregator
                 $countMatieres++;
                 // Une matière sans note mesurée n'entre pas dans la moyenne (règle unique : `null`).
                 if (is_float($matiere['moyenne']) && is_float($matiere['coefficient'])) {
-                    $comptees[] = [$matiere['moyenne'], $matiere['coefficient']];
+                    $comptees[] = [$matiere['moyenne'], 1];
                 }
             }
         }

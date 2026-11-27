@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Student;
 
+use App\Models\DispenseDEvaluation;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Services\Evaluation\Classe\NotesDeLaClasse;
 use App\Services\Evaluation\EvaluationGradingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
  * #1676 : « la note qui compte », en UN seul lieu, pour « Mes notes » et pour le bilan d'une
@@ -116,9 +118,28 @@ final class CopiesFinales
     }
 
     /**
+     * #1698 (C2) : les dispenses de ces évaluations, dans cet établissement : le carnet en tire
+     * l'état `dispense` ; les copies dispensées, elles, sont déjà hors des copies qui comptent.
+     *
+     * @param  list<int>  $evaluations
+     * @return Collection<int, DispenseDEvaluation>
+     */
+    public function dispensesDesEvaluations(array $evaluations, int $etablissement): Collection
+    {
+        if ($evaluations === []) {
+            return new Collection;
+        }
+
+        return DispenseDEvaluation::query()->withoutGlobalScope('institution')
+            ->where('institution_id', $etablissement)
+            ->whereIn('evaluation_id', $evaluations)
+            ->get();
+    }
+
+    /**
      * Les copies qui peuvent porter une note de l'élève : de ces statuts STOCKÉS, hors
-     * entraînement (`feedback` préfixé `[PRACTICE]`), sur une évaluation publiée. Les plus
-     * récentes d'abord.
+     * entraînement (`feedback` préfixé `[PRACTICE]`), sur une évaluation publiée, et hors
+     * dispense ({@see self::nonDispensees()}). Les plus récentes d'abord.
      *
      * @param  Builder<EvaluationSubmission>  $copies
      * @param  list<string>  $statuts
@@ -136,6 +157,28 @@ final class CopiesFinales
             // sans ce préchargement chaque note coûterait une requête de plus.
             ->with(['evaluation' => fn ($query) => $query->where('is_published', true)->with('questions')])
             ->whereRelation('evaluation', 'is_published', true)
+            ->where(static fn (Builder $q) => self::nonDispensees($q))
             ->orderBy('submitted_at', 'desc');
+    }
+
+    /**
+     * #1698 (C2) : une copie d'un élève DISPENSÉ de son évaluation ne compte nulle part : ni dans
+     * Mes notes, ni au tableau de bord, ni dans le bilan, le rang ou le carnet. La dispense désigne
+     * l'élève comme ses copies : par son compte, ou par son identité KLASSCI ; dans le même
+     * établissement que la copie.
+     *
+     * @param  Builder<EvaluationSubmission>  $copies
+     */
+    private static function nonDispensees(Builder $copies): void
+    {
+        $copie = static fn (string $colonne): string => $copies->qualifyColumn($colonne);
+
+        $copies->whereNotExists(static fn (QueryBuilder $dispense) => $dispense->selectRaw('1')
+            ->from('dispenses_d_evaluation')
+            ->whereColumn('dispenses_d_evaluation.evaluation_id', $copie('evaluation_id'))
+            ->whereColumn('dispenses_d_evaluation.institution_id', $copie('institution_id'))
+            ->where(static fn (QueryBuilder $eleve) => $eleve
+                ->whereColumn('dispenses_d_evaluation.student_id', $copie('student_id'))
+                ->orWhereColumn('dispenses_d_evaluation.klassci_etudiant_id', $copie('klassci_etudiant_id'))));
     }
 }

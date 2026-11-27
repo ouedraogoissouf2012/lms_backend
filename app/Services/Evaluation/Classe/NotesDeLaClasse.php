@@ -6,6 +6,7 @@ namespace App\Services\Evaluation\Classe;
 
 use App\Enums\EtatDeLaCase;
 use App\Models\Classe;
+use App\Models\DispenseDEvaluation;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Services\Evaluation\Student\CoefficientsDesMatieres;
@@ -32,6 +33,7 @@ final class NotesDeLaClasse
      * @param  Collection<int, Evaluation>  $evaluations
      * @param  Collection<int, EvaluationSubmission>  $copies
      * @param  Collection<int, EvaluationSubmission>  $sansNoteFinale  #1698 : à corriger ou verrouillées
+     * @param  Collection<int, DispenseDEvaluation>  $dispenses  #1698 (C2)
      * @param  array<int, int>  $matieres  id local de la matière, par id d'évaluation
      * @param  array<int, float>  $coefficients  coefficient de la matière, par id d'évaluation
      */
@@ -39,6 +41,7 @@ final class NotesDeLaClasse
         public readonly Collection $evaluations,
         Collection $copies,
         Collection $sansNoteFinale,
+        Collection $dispenses,
         public readonly array $matieres,
         public readonly array $coefficients,
     ) {
@@ -50,6 +53,9 @@ final class NotesDeLaClasse
         foreach ($sansNoteFinale as $copie) {
             $this->sansNoteFinale[(int) $copie->evaluation_id][] = $copie;
         }
+        foreach ($dispenses as $dispense) {
+            $this->dispenses[$dispense->evaluation_id][] = $dispense;
+        }
     }
 
     /** @var array<int, list<EvaluationSubmission>> */
@@ -57,6 +63,9 @@ final class NotesDeLaClasse
 
     /** @var array<int, list<EvaluationSubmission>> */
     private array $sansNoteFinale = [];
+
+    /** @var array<int, list<DispenseDEvaluation>> */
+    private array $dispenses = [];
 
     public static function lire(
         Classe $classe,
@@ -85,6 +94,7 @@ final class NotesDeLaClasse
             $evaluations,
             $copiesFinales->desEvaluations($ids, $etablissement),
             $copiesFinales->sansNoteFinale($ids, $etablissement),
+            $copiesFinales->dispensesDesEvaluations($ids, $etablissement),
             $coefficients->matieresLocales($evaluations),
             $coefficients->pour($evaluations),
         );
@@ -100,6 +110,18 @@ final class NotesDeLaClasse
         }
 
         return null;
+    }
+
+    /** #1698 (C2) : cet élève est-il dispensé de cette évaluation ? */
+    public function estDispense(EleveDeLaClasse $eleve, int $evaluation): bool
+    {
+        foreach ($this->dispenses[$evaluation] ?? [] as $dispense) {
+            if ($eleve->estDesignePar($dispense)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

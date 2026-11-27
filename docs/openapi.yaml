@@ -4536,6 +4536,24 @@ components:
           type: string
           nullable: true
           maxLength: 2000
+    DispenseDUnEleve:
+      type: object
+      description: "#1698 : l etat de la dispense d un eleve pour une evaluation."
+      required: [evaluation_id, compte_id, klassci_etudiant_id, dispense, motif]
+      properties:
+        evaluation_id:
+          type: integer
+        compte_id:
+          type: integer
+          nullable: true
+        klassci_etudiant_id:
+          type: integer
+          nullable: true
+        dispense:
+          type: boolean
+        motif:
+          type: string
+          nullable: true
     BilanDeClasse:
       type: object
       description: "#1676 : moyennes, rangs et reussite d une classe. L eleve ne recoit que `eleves` (sa ligne), sans `statistiques` ni `couverture`."
@@ -4643,7 +4661,7 @@ components:
                   type: integer
               cellules:
                 type: array
-                description: "#1698 : le carnet de notes. Une case par evaluation, dans l ordre de `evaluations`. Seule une case `rendu` porte une note et compte dans les moyennes : `a_corriger` (remise, correction manuelle attendue), `en_retard` (remise refusee apres l echeance, copie verrouillee), `manquant` (rien de remis)."
+                description: "#1698 : le carnet de notes. Une case par evaluation, dans l ordre de `evaluations`. Seule une case `rendu` porte une note et compte dans les moyennes : `a_corriger` (remise, correction manuelle attendue), `en_retard` (remise refusee apres l echeance, copie verrouillee), `manquant` (rien de remis), `dispense` (eleve dispense : sa note ne compte nulle part, et l evaluation n est pas une note manquante)."
                 items:
                   type: object
                   required: [evaluation_id, etat, note]
@@ -4652,7 +4670,7 @@ components:
                       type: integer
                     etat:
                       type: string
-                      enum: [rendu, a_corriger, en_retard, manquant]
+                      enum: [rendu, a_corriger, en_retard, manquant, dispense]
                     note:
                       type: number
                       nullable: true
@@ -8526,6 +8544,184 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+
+  /evaluations/{id}/dispenses:
+    put:
+      tags:
+        - Evaluations
+      operationId: dispenserUnEleve
+      summary: "Dispenser un eleve d une evaluation (#1698)"
+      description: |
+        L eleve dispense n a plus de note qui compte pour cette evaluation : ni dans
+        « Mes notes » (`/my-grades`), ni dans le bilan, le rang ou le carnet de la classe
+        (`/lms/classes/{classe}/resultats`, case `dispense`). Sa copie, s il en a une, reste
+        lisible. Idempotent : une seconde dispense remplace le motif.
+
+        L eleve est designe comme sur ses copies : `compte_id`, son compte local ; sinon
+        `klassci_etudiant_id`, pour un eleve du roster KLASSCI sans compte. Il doit etre de la
+        classe de l evaluation : inscriptions actives (ecole creee depuis le LMS) ou roster
+        KLASSCI lu avec le jeton de l auteur (ecole KLASSCI).
+
+        **Acces** : la regle de lecture des notes de l evaluation (celle de
+        `/evaluations/{id}/results-by-class`) : l admin et le coordinateur de l ecole,
+        l enseignant proprietaire de l evaluation.
+
+        Dans une ecole KLASSCI, la dispense n est pas poussee a KLASSCI.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                compte_id:
+                  type: integer
+                  nullable: true
+                  description: "Le compte local de l eleve ; requis sans `klassci_etudiant_id`."
+                klassci_etudiant_id:
+                  type: integer
+                  nullable: true
+                  description: "L identite KLASSCI d un eleve du roster sans compte."
+                motif:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+      responses:
+        '200':
+          description: "La dispense accordee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/DispenseDUnEleve'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: "Ni admin ni coordinateur de l ecole, ni enseignant proprietaire de l evaluation ; ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evaluation introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Eleve non designe, eleve hors de la classe de l evaluation (`student_not_in_class`), ou evaluation sans classe dans l etablissement (`evaluation_without_class`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "Roster KLASSCI indisponible (ecole KLASSCI)."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: "Secondes a attendre avant de reessayer."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+    delete:
+      tags:
+        - Evaluations
+      operationId: leverUneDispense
+      summary: "Lever la dispense d un eleve (#1698)"
+      description: |
+        La note de l eleve, s il en a une, compte de nouveau. Idempotent : lever une dispense
+        absente ne change rien. Meme designation de l eleve et meme acces que `PUT`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: compte_id
+          in: query
+          required: false
+          description: "Le compte local de l eleve ; requis sans `klassci_etudiant_id`."
+          schema:
+            type: integer
+        - name: klassci_etudiant_id
+          in: query
+          required: false
+          description: "L identite KLASSCI d un eleve du roster sans compte."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La dispense levee (`dispense: false`)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/DispenseDUnEleve'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: "Ni admin ni coordinateur de l ecole, ni enseignant proprietaire de l evaluation ; ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evaluation introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Eleve non designe, eleve hors de la classe de l evaluation (`student_not_in_class`), ou evaluation sans classe dans l etablissement (`evaluation_without_class`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "Roster KLASSCI indisponible (ecole KLASSCI)."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: "Secondes a attendre avant de reessayer."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /classes:
     post:

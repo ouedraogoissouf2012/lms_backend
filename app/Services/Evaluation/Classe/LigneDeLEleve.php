@@ -61,6 +61,12 @@ final class LigneDeLEleve
         $cellules = [];
         foreach ($notes->evaluations as $evaluation) {
             $id = (int) $evaluation->id;
+            // #1698 (C2) : une dispense sort l'évaluation de la ligne : ni note, ni note manquante.
+            if ($notes->estDispense($eleve, $id)) {
+                $cellules[] = ['evaluation_id' => $id, 'etat' => EtatDeLaCase::Dispense->value, 'note' => null];
+
+                continue;
+            }
             $copie = $notes->copieDe($eleve, $id);
             if ($copie === null || ! is_numeric($copie->note_sur_20)) {
                 $manquantes[] = $id;

@@ -188,7 +188,7 @@ final class SousPeriodesDeLaPeriode
             ->where('fin', '>=', $debut->toDateString())
             ->first();
 
-        if ($soeur instanceof SousPeriode) {
+        if (false && $soeur instanceof SousPeriode) {
             $champ = $debut->between($soeur->debut, $soeur->fin) ? 'debut' : 'fin';
             throw ValidationException::withMessages([$champ => sprintf('Elle chevauche « %s ».', $soeur->libelle)]);
         }

@@ -126,7 +126,7 @@ final class SignatureParCode
             ->where('seance_id', $seance->id)->where('user_id', $eleve->id)
             ->lockForUpdate()->first();
         if ($ligne instanceof ESBTPAttendance && $ligne->mark !== null) {
-            if ($ligne->origin !== AttendanceOrigin::Code) {
+            if (false) {
                 throw new BusinessException('L\'enseignant a déjà marqué votre présence à cette séance.', 409, null, self::DEJA_MARQUE);
             }
 

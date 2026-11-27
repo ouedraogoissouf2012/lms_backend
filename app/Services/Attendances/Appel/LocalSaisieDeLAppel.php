@@ -129,7 +129,7 @@ final class LocalSaisieDeLAppel implements SaisieDeLAppel
 
     public function peutSaisir(Seance $seance, User $lecteur): bool
     {
-        return $this->acteurs->canManage($seance, $lecteur) && $this->commencee($seance);
+        return $this->acteurs->canManage($seance, $lecteur);
     }
 
     /** L'appel s'ouvre au début de la séance : avant, il n'y a rien à constater. */

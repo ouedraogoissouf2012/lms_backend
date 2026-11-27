@@ -8,11 +8,13 @@ use App\Exceptions\BusinessException;
 use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LinkClasseMatiereRequest;
+use App\Http\Requests\UpdateClasseMatiereRequest;
 use App\Services\Catalogue\LocalClasseMatiereLinker;
+use App\Services\Catalogue\ProgrammeDeLaClasse;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Composer le programme d'une classe (#848).
+ * Composer le programme d'une classe (#848), puis le modifier et en retirer une matière (#1653).
  *
  * Troisième et dernier lot de l'ADR-848-01 : après la Classe (#860) et la
  * Matière, ce qui les relie — et le formateur qui l'assure.
@@ -24,7 +26,10 @@ final class LMSClasseMatiereController extends Controller
 {
     use RespondsWithJson;
 
-    public function __construct(private readonly LocalClasseMatiereLinker $liens) {}
+    public function __construct(
+        private readonly LocalClasseMatiereLinker $liens,
+        private readonly ProgrammeDeLaClasse $programme,
+    ) {}
 
     public function store(LinkClasseMatiereRequest $request, int $classe): JsonResponse
     {
@@ -43,5 +48,27 @@ final class LMSClasseMatiereController extends Controller
             'matiere_id' => $request->matiereId(),
             'enseignant_id' => $request->enseignantId(),
         ], 'Matière rattachée à la classe.', 201);
+    }
+
+    public function update(UpdateClasseMatiereRequest $request, int $classe, int $matiere): JsonResponse
+    {
+        try {
+            $ligne = $this->programme->modifier($classe, $matiere, $request->modifications());
+        } catch (BusinessException $e) {
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
+        }
+
+        return $this->successResponse($ligne, 'Programme de la classe modifié.');
+    }
+
+    public function destroy(int $classe, int $matiere): JsonResponse
+    {
+        try {
+            $this->programme->retirer($classe, $matiere);
+        } catch (BusinessException $e) {
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
+        }
+
+        return $this->successResponse(null, 'Matière retirée de la classe.');
     }
 }

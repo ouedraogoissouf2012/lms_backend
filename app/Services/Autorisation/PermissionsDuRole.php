@@ -61,7 +61,7 @@ final class PermissionsDuRole
         $permissions = match ($role) {
             Role::Supradmin => Permission::cases(),
             Role::SuperAdmin => array_filter(Permission::cases(), static fn (Permission $p): bool => ! $p->estDeLaPlateforme()),
-            Role::Admin => [...self::PERSONNEL, ...self::GESTION, Permission::ComptesMotDePasse, Permission::EnseignementConsulter],
+            Role::Admin => [...self::PERSONNEL, ...self::GESTION, Permission::ComptesMotDePasse],
             Role::Coordinateur => [
                 ...self::PERSONNEL,
                 ...self::GESTION,

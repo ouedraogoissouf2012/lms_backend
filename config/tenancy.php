@@ -29,6 +29,8 @@ return [
         // sur ces trois tables neuves, contrairement aux historiques.
         'programs',
         'training_sessions',
+        // #1661 : le catalogue des pièces à fournir (institution_id NOT NULL).
+        'pieces_a_fournir',
         'creneaux',
         'classes',
         'matieres',

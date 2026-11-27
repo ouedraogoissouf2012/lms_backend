@@ -3974,6 +3974,57 @@ components:
           type: string
           format: date-time
 
+    PieceAFournir:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - code
+        - libelle
+        - forme
+        - quantite
+        - portee
+        - obligatoire
+        - en_service
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        libelle:
+          type: string
+        consigne:
+          type: string
+          nullable: true
+        forme:
+          type: string
+          enum: [original, copie]
+        quantite:
+          type: integer
+        portee:
+          type: string
+          enum: [une_fois, chaque_inscription]
+        validite_jours:
+          type: integer
+          nullable: true
+        obligatoire:
+          type: boolean
+        en_service:
+          type: boolean
+
+    PieceAFournirReponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/PieceAFournir'
+
     ValidationFailed:
       type: object
       properties:
@@ -6785,6 +6836,214 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+
+  /pieces-a-fournir:
+    get:
+      tags:
+        - Dossiers
+      operationId: listerLesPiecesAFournir
+      summary: "Le catalogue des pieces a fournir de l ecole"
+      description: |
+        #1661. Gestion d une ecole autonome. Triees par libelle. `en_service` filtre les pieces en service ou
+        desactivees. Une piece vaut pour toute l ecole (ciblage par filiere et niveau apres #1648).
+      security:
+        - sanctum: []
+      parameters:
+        - name: en_service
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: "Le catalogue"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PieceAFournir'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Dossiers
+      operationId: ajouterUnePieceAFournir
+      summary: "Ajouter une piece au catalogue"
+      description: |
+        #1661. Le `code` (minuscules, chiffres, `_`) est unique dans l ecole et ne change plus : une
+        reserve d inscription l attend.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - code
+                - libelle
+                - forme
+                - portee
+              properties:
+                code:
+                  type: string
+                  pattern: '^[a-z0-9_]{2,40}$'
+                libelle:
+                  type: string
+                  maxLength: 150
+                consigne:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+                forme:
+                  type: string
+                  enum: [original, copie]
+                quantite:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                portee:
+                  type: string
+                  enum: [une_fois, chaque_inscription]
+                validite_jours:
+                  type: integer
+                  minimum: 1
+                  maximum: 3650
+                  nullable: true
+                obligatoire:
+                  type: boolean
+      responses:
+        '201':
+          description: "Piece ajoutee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PieceAFournirReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Champ absent ou invalide ; code deja pris dans l ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /pieces-a-fournir/{piece}:
+    put:
+      tags:
+        - Dossiers
+      operationId: modifierUnePieceAFournir
+      summary: "Modifier ou desactiver une piece"
+      description: "#1661. Champs facultatifs ; le `code` ne change pas. `en_service: false` desactive la piece (pas de suppression)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: piece
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 150
+                consigne:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+                forme:
+                  type: string
+                  enum: [original, copie]
+                quantite:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                portee:
+                  type: string
+                  enum: [une_fois, chaque_inscription]
+                validite_jours:
+                  type: integer
+                  minimum: 1
+                  maximum: 3650
+                  nullable: true
+                obligatoire:
+                  type: boolean
+                en_service:
+                  type: boolean
+      responses:
+        '200':
+          description: "Piece mise a jour"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PieceAFournirReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Piece introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Champ invalide, ou code envoye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /users:
     post:

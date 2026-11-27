@@ -49,7 +49,7 @@ final class PiecesAFournirTest extends TestCase
 
         $creee = $this->creer($admin, self::PIECE);
 
-        $creee->assertCreated()->assertJsonPath('data.code', 'extrait_naissance')->assertJsonPath('data.actif', true)
+        $creee->assertCreated()->assertJsonPath('data.code', 'extrait_naissance')->assertJsonPath('data.en_service', true)
             ->assertJsonPath('data.validite_jours', 90);
         $this->assertMatchesOpenApiResponse($creee, '/pieces-a-fournir', 'post');
         $this->creer($admin, ['code' => 'photo', 'libelle' => 'Photo d\'identité', 'forme' => 'copie', 'quantite' => 2, 'portee' => 'chaque_inscription', 'validite_jours' => null, 'obligatoire' => false])->assertCreated();
@@ -75,12 +75,12 @@ final class PiecesAFournirTest extends TestCase
         $admin = $this->membre($this->ecole(), 'admin');
         $id = $this->creer($admin, self::PIECE)->json('data.id');
 
-        $reponse = $this->asTenant($admin)->putJson("/api/pieces-a-fournir/{$id}", ['libelle' => 'Extrait de naissance', 'actif' => false]);
+        $reponse = $this->asTenant($admin)->putJson("/api/pieces-a-fournir/{$id}", ['libelle' => 'Extrait de naissance', 'en_service' => false]);
 
-        $reponse->assertOk()->assertJsonPath('data.libelle', 'Extrait de naissance')->assertJsonPath('data.actif', false)
+        $reponse->assertOk()->assertJsonPath('data.libelle', 'Extrait de naissance')->assertJsonPath('data.en_service', false)
             ->assertJsonPath('data.code', 'extrait_naissance');
         $this->assertMatchesOpenApiResponse($reponse, '/pieces-a-fournir/{piece}', 'put');
-        $this->asTenant($admin)->getJson('/api/pieces-a-fournir?actif=1')->assertJsonCount(0, 'data');
+        $this->asTenant($admin)->getJson('/api/pieces-a-fournir?en_service=1')->assertJsonCount(0, 'data');
         $this->asTenant($admin)->getJson('/api/pieces-a-fournir')->assertJsonCount(1, 'data');
     }
 

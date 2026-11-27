@@ -9,6 +9,7 @@ use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
+use App\Http\Controllers\API\LMS\TrainingSessionEditionController;
 use App\Http\Controllers\API\LMS\TrainingSessionTransitionController;
 use Illuminate\Support\Facades\Route;
 
@@ -57,6 +58,13 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         Route::post('/training-sessions/{trainingSession}/annuler', [TrainingSessionTransitionController::class, 'annuler']);
         Route::post('/training-sessions/{trainingSession}/cloturer', [TrainingSessionTransitionController::class, 'cloturer']);
         Route::post('/training-sessions/{trainingSession}/archiver', [TrainingSessionTransitionController::class, 'archiver']);
+
+        // Modifier une Periode, supprimer un brouillon, designer la periode EN COURS (#1651).
+        // `en-cours` est un geste NOMME, comme les transitions : il deplace une marque unique
+        // par ecole, que la base garde (unicite, et seulement une periode publiee).
+        Route::put('/training-sessions/{trainingSession}', [TrainingSessionEditionController::class, 'update']);
+        Route::delete('/training-sessions/{trainingSession}', [TrainingSessionEditionController::class, 'destroy']);
+        Route::post('/training-sessions/{trainingSession}/en-cours', [TrainingSessionEditionController::class, 'enCours']);
 
         // Creer une classe SANS KLASSCI (#848). Le seul createur d une Classe
         // etait jusqu ici la synchronisation : une ecole autonome n en avait

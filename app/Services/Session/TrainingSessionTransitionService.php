@@ -8,7 +8,6 @@ use App\Enums\TrainingSessionStatus;
 use App\Exceptions\BusinessException;
 use App\Models\TrainingSession;
 use App\Models\User;
-use App\Services\Catalogue\PorteDuCatalogueLocal;
 
 /**
  * Faire avancer une Période dans son cycle de vie (#845, ADR-845-01).
@@ -52,7 +51,7 @@ use App\Services\Catalogue\PorteDuCatalogueLocal;
  */
 final class TrainingSessionTransitionService
 {
-    public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
+    public function __construct(private readonly PeriodesDeLEcole $periodes) {}
 
     /**
      * Publier engage des inscriptions : la période doit avoir un calendrier.
@@ -145,39 +144,19 @@ final class TrainingSessionTransitionService
         }
 
         $periode->status = $vers;
+        // #1651 : seule une période PUBLIÉE est en cours (la base le garantit). Toute sortie de
+        // l'état publiée — clôturer, annuler, archiver — libère la marque dans la MÊME écriture.
+        if ($vers !== TrainingSessionStatus::Publiee) {
+            $periode->en_cours = null;
+        }
         $periode->save();
 
         return $periode;
     }
 
-    /**
-     * La période de l'établissement de l'acteur, ou rien.
-     *
-     * `withoutGlobalScopes` puis un `where` explicite : le scope multi-tenant
-     * est fail-OPEN, s'y fier serait dépendre d'une garde qui se tait quand
-     * aucun tenant n'est résolu.
-     *
-     * Le message ne distingue pas « n'existe pas » de « appartient à une autre
-     * école » : les séparer dirait à un établissement quels identifiants
-     * existent chez ses voisins.
-     *
-     * @throws BusinessException
-     */
+    /** @throws BusinessException */
     private function sienne(User $acteur, int $periodeId): TrainingSession
     {
-        // #1184 : la porte du catalogue local, avant toute recherche ; l'établissement
-        // est celui de l'acteur, comme à la création.
-        $institution = $this->porte->etablissementDe($acteur);
-
-        $periode = TrainingSession::query()->withoutGlobalScopes()
-            ->where('id', $periodeId)
-            ->where('institution_id', $institution)
-            ->first();
-
-        if (! $periode instanceof TrainingSession) {
-            throw new BusinessException('Période introuvable dans cet établissement.', 404);
-        }
-
-        return $periode;
+        return $this->periodes->sienne($acteur, $periodeId);
     }
 }

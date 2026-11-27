@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\API\LMS\LMSClasseBilanController;
 use App\Http\Controllers\API\LMS\LMSClasseLocalDetailsController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\LMS\LMSClassesDeLEtablissementController;
 use App\Http\Controllers\API\LMS\LMSClassesLocalesController;
 use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +39,15 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->whereNumber('classeId')
         ->name('lms.classes.details-local');
 
+    // Les classes de l'établissement par leur id LOCAL, dans les deux volets (#1709) :
+    // le filtre de classe du rapport de présences. Même garde que ce rapport par classe.
+    //
+    // Déclarée AVANT la route paramétrée, pour la même raison que `local` :
+    // `{classeId}` n'a pas de contrainte numérique et capturerait le segment.
+    Route::get('/classes/etablissement', [LMSClassesDeLEtablissementController::class, 'index'])
+        ->middleware('gestion')
+        ->name('lms.classes.etablissement');
+
     // Détails complets d'une classe
     Route::get('/classes/{classeId}', [LMSClassesController::class, 'classeDetails'])
         ->name('lms.classes.details');
@@ -47,6 +58,14 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
         ->middleware('personnel')
         ->name('lms.classes.etudiants');
+
+    // #1676 : moyennes, rangs et réussite d'une classe, par l'id de l'ESPACE SOURCE, comme ses
+    // voisines (`ClasseDeLEspaceSource`). L'accès
+    // (personnel, enseignant de la classe, élève pour sa SEULE ligne) est décidé par
+    // `AccesAuBilanDeClasse`, pas par un middleware de rôle : l'élève y a sa porte.
+    Route::get('/classes/{classe}/resultats', [LMSClasseBilanController::class, 'show'])
+        ->whereNumber('classe')
+        ->name('lms.classes.resultats');
 
     Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
         ->middleware('role:enseignant,coordinateur')

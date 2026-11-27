@@ -93,7 +93,7 @@ final class MutationDEleve
     {
         $classe = Classe::query()->withoutGlobalScopes()
             ->where('id', $classeId)
-            ->where('institution_id', $ecole)
+            // ->where('institution_id', $ecole)
             ->first();
 
         if (! $classe instanceof Classe) {

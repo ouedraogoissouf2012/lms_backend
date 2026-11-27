@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\DatesOrdonneesDeLaPeriode;
 use App\Models\Program;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -34,14 +35,7 @@ use Illuminate\Validation\Rule;
  */
 final class StoreTrainingSessionRequest extends FormRequest
 {
-    /** Les cinq dates, dans l'ordre chronologique (ADR-711-04). */
-    private const DATES = [
-        'enrollment_opens_at',
-        'enrollment_closes_at',
-        'starts_on',
-        'ends_on',
-        'certificate_available_at',
-    ];
+    use DatesOrdonneesDeLaPeriode;
 
     public function authorize(): bool
     {
@@ -69,27 +63,8 @@ final class StoreTrainingSessionRequest extends FormRequest
             'heures_stagiaires' => ['nullable', 'integer', 'min:0'],
         ];
 
-        foreach (self::DATES as $i => $date) {
-            $regles[$date] = array_merge(
-                ['nullable', 'date'],
-                $this->apresLesPrecedentes(array_slice(self::DATES, 0, $i))
-            );
-        }
+        $regles += $this->reglesDesDates(['nullable']);
 
         return $regles;
-    }
-
-    /**
-     * @param  list<string>  $precedentes
-     * @return list<string>
-     */
-    private function apresLesPrecedentes(array $precedentes): array
-    {
-        $renseignees = array_values(array_filter(
-            $precedentes,
-            fn (string $date): bool => $this->filled($date)
-        ));
-
-        return $renseignees === [] ? [] : ['after_or_equal:'.end($renseignees)];
     }
 }

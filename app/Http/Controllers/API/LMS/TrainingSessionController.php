@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Presenters\PeriodeEnVue;
 use App\Http\Requests\ListerLesPeriodesRequest;
 use App\Http\Requests\ListerLesProgrammesRequest;
 use App\Http\Requests\StoreProgramRequest;
@@ -74,7 +75,7 @@ final class TrainingSessionController extends AuthenticatedController
             return $this->refus($e);
         }
 
-        return $this->successResponse($this->enVue($periode), 'Session de formation créée.', 201);
+        return $this->successResponse(PeriodeEnVue::de($periode), 'Session de formation créée.', 201);
     }
 
     public function index(ListerLesPeriodesRequest $request): JsonResponse
@@ -91,7 +92,7 @@ final class TrainingSessionController extends AuthenticatedController
         }
 
         return $this->successResponse(
-            array_map(fn (TrainingSession $p): array => $this->enVue($p), $page->items()),
+            array_map(static fn (TrainingSession $p): array => PeriodeEnVue::de($p), $page->items()),
             '',
             200,
             [
@@ -103,41 +104,6 @@ final class TrainingSessionController extends AuthenticatedController
         );
     }
 
-    /**
-     * `phase` est DÉRIVÉE des dates : elle n'existe en base nulle part, et c'est
-     * ici qu'elle devient visible du client (ADR-711-04).
-     *
-     * @return array<string, mixed>
-     */
-    private function enVue(TrainingSession $periode): array
-    {
-        return [
-            'id' => $periode->getKey(),
-            'libelle' => $periode->libelle,
-            'status' => $periode->status->value,
-            'phase' => $periode->phase->value,
-            'program_id' => $periode->program_id,
-            // Chargé par le service, supprimé en douceur compris (#1206) : le titre se lit
-            // ici, jamais en relisant `program_id`.
-            'program' => $periode->program instanceof Program
-                ? ['id' => $periode->program->getKey(), 'titre' => $periode->program->titre]
-                : null,
-            'enrollment_opens_at' => $periode->enrollment_opens_at?->toDateString(),
-            'enrollment_closes_at' => $periode->enrollment_closes_at?->toDateString(),
-            'starts_on' => $periode->starts_on?->toDateString(),
-            'ends_on' => $periode->ends_on?->toDateString(),
-            'certificate_available_at' => $periode->certificate_available_at?->toDateString(),
-            'min_enrollments' => $periode->min_enrollments,
-            'tarif' => $periode->tarif,
-            'devise' => $periode->devise,
-        ];
-    }
-
-    /**
-     * Le refus du service, avec son motif (#1184 : `catalogue_managed_by_klassci`
-     * dans une école KLASSCI). Aucun rendu global de `BusinessException` n'existe :
-     * sans ce relais, il deviendrait un 500.
-     */
     private function refus(BusinessException $e): JsonResponse
     {
         return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);

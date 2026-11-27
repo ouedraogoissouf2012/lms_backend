@@ -190,15 +190,21 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
      * Le programme de la classe : ses matières, et le formateur désigné pour
      * chacune (0 ou 1 — `classe_matiere` en porte un au plus).
      *
-     * @return list<array{id: int, nom: string, code: string|null, coefficient: int, enseignants: list<array{id: int, nom: string}>}>
+     * `coefficient` reste celui de la MATIÈRE ; `coefficient_classe` (#1653) est
+     * celui que la classe lui donne (`classe_matiere.coefficient`), nul quand la
+     * classe n'en fixe aucun et que celui de la matière s'applique.
+     *
+     * @return list<array{id: int, nom: string, code: string|null, coefficient: int, coefficient_classe: int|null, enseignants: list<array{id: int, nom: string}>}>
      */
     private function programme(Classe $classe): array
     {
-        /** @var array<int|string, mixed> $designations matiere_id => enseignant_id */
-        $designations = DB::table('classe_matiere')
+        $lignes = DB::table('classe_matiere')
             ->where('classe_id', $classe->id)
-            ->pluck('enseignant_id', 'matiere_id')
-            ->all();
+            ->get(['matiere_id', 'enseignant_id', 'coefficient']);
+        /** @var array<int|string, mixed> $designations matiere_id => enseignant_id */
+        $designations = $lignes->pluck('enseignant_id', 'matiere_id')->all();
+        /** @var array<int|string, mixed> $coefficients matiere_id => coefficient de classe */
+        $coefficients = $lignes->pluck('coefficient', 'matiere_id')->all();
 
         $matieres = Matiere::query()
             ->where('institution_id', $classe->institution_id)
@@ -213,15 +219,17 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
             ->get(['id', 'name'])
             ->keyBy('id');
 
-        return array_values($matieres->map(static function (Matiere $matiere) use ($designations, $formateurs): array {
+        return array_values($matieres->map(static function (Matiere $matiere) use ($designations, $coefficients, $formateurs): array {
             $designe = $designations[$matiere->id] ?? null;
             $formateur = is_numeric($designe) ? $formateurs->get((int) $designe) : null;
+            $coefficientClasse = $coefficients[$matiere->id] ?? null;
 
             return [
                 'id' => $matiere->id,
                 'nom' => $matiere->libelle,
                 'code' => $matiere->code,
                 'coefficient' => $matiere->coefficient,
+                'coefficient_classe' => is_numeric($coefficientClasse) ? (int) $coefficientClasse : null,
                 'enseignants' => $formateur instanceof User ? [['id' => $formateur->id, 'nom' => $formateur->name]] : [],
             ];
         })->all());

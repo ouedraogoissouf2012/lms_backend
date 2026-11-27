@@ -6,6 +6,7 @@ use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
+use App\Http\Controllers\API\LMS\LMSHeuresEnseignantController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
@@ -173,6 +174,15 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::post('/seances/{seanceId}/deactivate-visio', [LMSVisioLifecycleController::class, 'deactivateVisio'])
         ->name('lms.seances.deactivate-visio')
         ->middleware('role:enseignant,coordinateur');
+
+    // #1682 : les heures des enseignants, tirées de la visio (HeuresEmargees). La source de l'école
+    // (HeuresDeLEnseignant) est choisie au point de liaison.
+    Route::get('/mes-heures', [LMSHeuresEnseignantController::class, 'mesHeures'])
+        ->name('lms.mes-heures')
+        ->middleware('role:enseignant');
+    Route::get('/heures-enseignants', [LMSHeuresEnseignantController::class, 'rapport'])
+        ->name('lms.heures-enseignants')
+        ->middleware('gestion');
 
     Route::post('/seances/{seanceId}/start-visio', [LMSVisioLifecycleController::class, 'startVisio'])
         ->name('lms.seances.start-visio')

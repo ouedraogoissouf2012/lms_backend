@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\ValidatesAgainstOpenApi;
 use Tests\TestCase;
 
 /**
@@ -32,6 +33,7 @@ final class HeuresDeLEnseignantTest extends TestCase
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
     use RefreshDatabase;
+    use ValidatesAgainstOpenApi;
 
     private Institution $ecole;
 
@@ -114,8 +116,11 @@ final class HeuresDeLEnseignantTest extends TestCase
         $reponse = $this->asTenant($this->coordinateur)->get('/api/lms/heures-enseignants?du=2026-12-01&au=2026-12-31&format=csv')->assertOk();
 
         self::assertStringStartsWith('text/csv', (string) $reponse->headers->get('Content-Type'));
-        $lignes = preg_split('/\R/', trim((string) $reponse->streamedContent()));
-        self::assertSame(['enseignant_id', 'enseignant', 'seances', 'comptees', 'heures'], str_getcsv((string) ($lignes[0] ?? ''), ';', '"', ''));
+        // Le BOM UTF-8 ouvre le fichier : Excel en français lit ainsi les accents des noms.
+        $contenu = (string) $reponse->streamedContent();
+        self::assertStringStartsWith("\u{FEFF}", $contenu);
+        $lignes = preg_split('/\R/', trim(substr($contenu, 3)));
+        self::assertSame(['enseignant_id', 'nom', 'seances', 'comptees', 'heures'], str_getcsv((string) ($lignes[0] ?? ''), ';', '"', ''));
         self::assertSame([(string) $this->enseignant->id, $this->enseignant->name, '1', '1', '2,00'], str_getcsv((string) ($lignes[1] ?? ''), ';', '"', ''));
     }
 
@@ -123,6 +128,20 @@ final class HeuresDeLEnseignantTest extends TestCase
     {
         $this->asTenant($this->enseignant)->getJson('/api/lms/heures-enseignants?du=2026-12-01&au=2026-12-31')->assertForbidden();
         $this->asTenant($this->membre($this->ecole, 'etudiant'))->getJson('/api/lms/mes-heures?mois=2026-12')->assertForbidden();
+    }
+
+    public function test_les_reponses_suivent_la_spec(): void
+    {
+        $this->tenue('2026-12-01 08:00:00', '2026-12-01 10:00:00', $this->enseignant);
+        $mesHeures = $this->asTenant($this->enseignant)->getJson('/api/lms/mes-heures?mois=2026-12')->assertOk();
+        $this->assertMatchesOpenApiResponse($mesHeures, '/lms/mes-heures', 'get');
+        $this->assertOpenApiSchemaRefuseSans($mesHeures, '/lms/mes-heures', 'get', 'data');
+        $rapport = $this->asTenant($this->coordinateur)->getJson('/api/lms/heures-enseignants?du=2026-12-01&au=2026-12-31')->assertOk();
+        $this->assertMatchesOpenApiResponse($rapport, '/lms/heures-enseignants', 'get');
+        $refus = $this->asTenant($this->enseignant)->getJson('/api/lms/heures-enseignants?du=2026-12-01&au=2026-12-31')->assertForbidden();
+        $this->assertMatchesOpenApiResponse($refus, '/lms/heures-enseignants', 'get');
+        $klassci = $this->asTenant($this->membre($this->ecole(InstitutionMode::Klassci), 'enseignant'))->getJson('/api/lms/mes-heures?mois=2026-12');
+        $this->assertMatchesOpenApiResponse($klassci->assertStatus(409), '/lms/mes-heures', 'get');
     }
 
     public function test_une_ecole_klassci_tient_ses_heures_dans_klassci(): void

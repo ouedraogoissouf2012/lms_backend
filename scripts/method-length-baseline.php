@@ -48,7 +48,7 @@ return [
     'app/Services/SeancesHistoryQueryService.php::enrichWithStats' => 42,
     'app/Services/Visio/Lifecycle/VisioActivationService.php::activate' => 48,
     'app/Services/Visio/Lifecycle/VisioSessionService.php::end' => 48,
-    'app/Services/Visio/Lifecycle/VisioSessionService.php::start' => 49,
+    'app/Services/Visio/Lifecycle/VisioSessionService.php::start' => 44,
     'app/Services/Visio/VisioHeartbeatService.php::heartbeat' => 48,
     'app/Services/Visio/VisioParticipantSessionService.php::join' => 52,
     'app/Services/Visio/VisioParticipantSessionService.php::leave' => 42,

@@ -84,7 +84,7 @@ final class ClassesLocalesQuery
     /** @param Builder<Classe> $classes */
     private function pleines(Builder $classes): void
     {
-        $classes->where('effectif', '>', 0)->has('etudiantsActifs', '>=', $this->capacite($classes));
+        $classes->where('effectif', '>', 0)->has('etudiants', '>=', $this->capacite($classes));
     }
 
     /**

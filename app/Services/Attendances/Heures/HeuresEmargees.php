@@ -40,7 +40,6 @@ final class HeuresEmargees
         return match (true) {
             $seance->visio_started_at === null => self::NON_DEMARREE,
             $seance->visio_demarree_par_id === null => self::AUTEUR_INCONNU,
-            $seance->created_by === null || (int) $seance->visio_demarree_par_id !== (int) $seance->created_by => self::PAR_UN_AUTRE,
             $seance->visio_ended_at === null => self::NON_TERMINEE,
             default => self::COMPTEE,
         };

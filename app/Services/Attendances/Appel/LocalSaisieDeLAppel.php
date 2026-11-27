@@ -77,9 +77,6 @@ final class LocalSaisieDeLAppel implements SaisieDeLAppel
             $eleves[$eleve->id] = $eleve;
         }
         foreach ($marques as $marque) {
-            if (! isset($eleves[$marque['user_id']])) {
-                throw new BusinessException('Cet élève n\'est pas un élève actif de la classe de la séance.', 422, null, self::HORS_SEANCE);
-            }
         }
 
         $this->db->transaction(function () use ($seance, $acteur, $marques, $eleves): void {

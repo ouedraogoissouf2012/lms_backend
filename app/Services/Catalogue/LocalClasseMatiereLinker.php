@@ -97,7 +97,7 @@ final class LocalClasseMatiereLinker
             ->first();
 
         if (! $classe instanceof Classe) {
-            throw new BusinessException('Classe introuvable dans cet établissement.', 404);
+            throw new BusinessException('Classe introuvable dans cet établissement.', 404, null, 'class_out_of_scope');
         }
 
         return $classe;
@@ -114,7 +114,7 @@ final class LocalClasseMatiereLinker
             ->first();
 
         if (! $matiere instanceof Matiere) {
-            throw new BusinessException('Matière introuvable dans cet établissement.', 404);
+            throw new BusinessException('Matière introuvable dans cet établissement.', 404, null, 'subject_out_of_scope');
         }
 
         return $matiere;
@@ -140,7 +140,7 @@ final class LocalClasseMatiereLinker
             ->first();
 
         if (! $user instanceof User || Role::tryFromString($user->role) !== Role::Enseignant) {
-            throw new BusinessException('Formateur introuvable dans cet établissement.', 404);
+            throw new BusinessException('Formateur introuvable dans cet établissement.', 404, null, 'teacher_out_of_scope');
         }
 
         return $enseignantId;

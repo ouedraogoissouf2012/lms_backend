@@ -136,11 +136,6 @@ final class ConflitsDHoraire
                 $parSeance[$seance->id] = [$seance, [self::MOTIF_ENSEIGNANT]];
             }
         }
-        if ($creneau->classeId !== null) {
-            foreach ($this->chevauchantes($creneau)->where(fn (Builder $q) => $this->deLaClasse($q, $creneau))->get() as $seance) {
-                $parSeance[$seance->id] = [$seance, [...($parSeance[$seance->id][1] ?? []), self::MOTIF_CLASSE]];
-            }
-        }
 
         return $this->enConflits($parSeance);
     }

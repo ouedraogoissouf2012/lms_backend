@@ -48,7 +48,6 @@ final class ImportConfirmController extends AuthenticatedController
     private function canManage(User $user, Import $import): bool
     {
         return $import->user_id === $user->id
-            || $user->isCoordinator()
-            || $user->isAdmin();
+            || $user->isCoordinator();
     }
 }

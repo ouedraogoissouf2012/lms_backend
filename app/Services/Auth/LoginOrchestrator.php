@@ -98,6 +98,10 @@ final class LoginOrchestrator
             return $this->buildKlassciSuccessResponse($payload, $tenant);
         }
 
+        if ($panne !== null) {
+            throw $panne; // M1
+        }
+
         // #1739 — un refus du COMPTE est un fait sur ce compte : il l'emporte sur une
         // panne ailleurs, et la personne lit le motif de son école.
         if ($refus !== null) {

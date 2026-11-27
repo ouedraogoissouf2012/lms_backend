@@ -42,7 +42,7 @@ final class StudentGradesAggregator
         $cles = array_values(array_unique($submissions
             ->map(static fn (EvaluationSubmission $s): int => $s->evaluation instanceof Evaluation ? $matieres->cleDe($s->evaluation) : 0)
             ->all()));
-        $coefficients = $this->coefficients->pour($submissions->pluck('evaluation')->filter()->all());
+        $coefficients = $this->coefficients->pour($submissions->map(static fn (EvaluationSubmission $s): ?Evaluation => $s->evaluation)->filter()->values()->all());
         $gradesByMatiere = $this->groupByMatiere($submissions, $matieres, $matieres->noms($user, $cles), $coefficients);
         $this->computeMatiereAverages($gradesByMatiere);
 

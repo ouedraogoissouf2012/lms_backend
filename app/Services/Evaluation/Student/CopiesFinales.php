@@ -89,7 +89,7 @@ final class CopiesFinales
             // `questions` est chargée ici : `estFinale()` l'interroge pour chaque copie, et
             // sans ce préchargement chaque note coûterait une requête de plus.
             ->with(['evaluation' => fn ($query) => $query->where('is_published', true)->with('questions')])
-            ->whereHas('evaluation', fn ($query) => $query->where('is_published', true))
+            ->whereRelation('evaluation', 'is_published', true)
             ->orderBy('submitted_at', 'desc')
             ->get();
 

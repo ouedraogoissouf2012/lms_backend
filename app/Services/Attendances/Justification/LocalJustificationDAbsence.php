@@ -63,7 +63,7 @@ final class LocalJustificationDAbsence implements JustificationDAbsence
     public function piece(int $justificatifId, User $lecteur): PieceJustificative
     {
         $j = $this->justificatifs->parId($justificatifId, $lecteur);
-        $autorise = $j->eleve_id === $lecteur->id || $this->justificatifs->estLaGestion($lecteur);
+        $autorise = $lecteur->isStudent() || $this->justificatifs->estLaGestion($lecteur);
         if (! $autorise || $j->piece_chemin === null) {
             throw new BusinessException('Pièce introuvable', 404);
         }

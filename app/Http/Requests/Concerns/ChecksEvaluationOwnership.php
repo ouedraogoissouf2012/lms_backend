@@ -127,8 +127,6 @@ trait ChecksEvaluationOwnership
         if (! $user) {
             return false;
         }
-        $this->evaluationDeLEcoleOuIntrouvable($user);
-
         // Le coordinateur lit les évaluations de SON école : la portée vient d'être établie.
         if ($user->isCoordinator()) {
             return true;

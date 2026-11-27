@@ -93,16 +93,40 @@ final class DispenseDEvaluationTest extends TestCase
         self::assertSame(0, DispenseDEvaluation::query()->withoutGlobalScope('institution')->count());
     }
 
-    public function test_seuls_le_proprietaire_le_coordinateur_et_l_admin_dispensent(): void
+    /**
+     * QUI écrit une dispense, figé : la règle de lecture des notes de l'évaluation
+     * (`ChecksEvaluationOwnership::checkEvaluationReadAccess`). Un élargissement futur de cette
+     * règle changerait ce tableau, et se verrait ici.
+     */
+    public function test_qui_peut_ecrire_une_dispense(): void
     {
         $this->jeu();
-        $awa = ['compte_id' => $this->eleves['Awa']->id];
+        $auteurs = [
+            'admin de l école' => $this->membre($this->ecole, 'superAdmin'),
+            'coordinateur de l école' => $this->membre($this->ecole, 'coordinateur'),
+            'enseignant propriétaire' => $this->proprietaire,
+            'autre enseignant' => $this->membre($this->ecole, 'enseignant'),
+            'élève de la classe' => $this->eleves['Binta'],
+            'coordinateur d une autre école' => $this->membre($this->ecole(), 'coordinateur'),
+        ];
 
-        $this->dispenser($this->proprietaire, $awa)->assertOk();
-        $this->dispenser($this->membre($this->ecole, 'enseignant'), $awa)->assertForbidden();
-        $this->dispenser($this->eleves['Binta'], $awa)->assertForbidden();
-        $this->dispenser($this->membre($this->ecole(), 'coordinateur'), $awa)->assertForbidden();
-        self::assertSame(1, DispenseDEvaluation::query()->withoutGlobalScope('institution')->count());
+        $statuts = [];
+        foreach ($auteurs as $qui => $auteur) {
+            $statuts[$qui] = [
+                $this->dispenser($auteur, ['compte_id' => $this->eleves['Awa']->id])->status(),
+                $this->lever($auteur, $this->eleves['Awa']->id)->status(),
+            ];
+        }
+
+        self::assertSame([
+            'admin de l école' => [200, 200],
+            'coordinateur de l école' => [200, 200],
+            'enseignant propriétaire' => [200, 200],
+            'autre enseignant' => [403, 403],
+            'élève de la classe' => [403, 403],
+            'coordinateur d une autre école' => [403, 403],
+        ], $statuts);
+        self::assertSame(0, DispenseDEvaluation::query()->withoutGlobalScope('institution')->count());
     }
 
     public function test_l_eleve_doit_etre_designe_et_de_la_classe(): void

@@ -92,7 +92,7 @@ final class AsyncReportTenantIsolationTest extends TestCase
         $context = app(AttendanceReportContextBuilder::class)->build([
             'date_start' => '2026-01-01',
             'date_end' => '2026-12-31',
-        ]);
+        ], $instA->id);
 
         $this->assertSame(2, $context['stats']['total'], 'Le rapport ne doit compter que les présences du tenant courant (A), pas celles de B.');
     }

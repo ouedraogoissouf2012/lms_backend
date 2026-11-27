@@ -119,7 +119,10 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
      */
     private function questionsDe(EvaluationSubmission $copie, Evaluation $evaluation, bool $correctionAvailable): Collection
     {
-        $questions = $this->questionsDeLaCopie->de($copie, $evaluation);
+        $questions = $evaluation->questions()->get();
+        if ($evaluation->shuffle_questions) {
+            $questions = $questions->shuffle()->values();
+        }
 
         return $questions->map(static function ($question) use ($correctionAvailable) {
             if ($correctionAvailable) {

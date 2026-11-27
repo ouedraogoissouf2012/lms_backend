@@ -133,6 +133,17 @@ final class JustificatifAbsenceTest extends TestCase
         self::assertSame(1, DB::table('notifications')->where('user_id', $this->awa->id)->count());
     }
 
+    public function test_une_presence_corrigee_avant_la_decision_n_est_pas_ecrasee(): void
+    {
+        $id = $this->deposer($this->awa, ['seance_ids' => [$this->seances['absente']->id]])->assertCreated()->json('data.id');
+        // L'enseignant corrige son appel entre le dépôt et la décision : l'élève était là.
+        $this->marquer($this->seances['absente'], 'present');
+
+        $this->asTenant($this->coordinateur)->postJson("/api/lms/justificatifs/{$id}/valider")->assertOk();
+
+        self::assertSame(AttendanceMark::Present, $this->ligne($this->seances['absente'])->mark);
+    }
+
     public function test_rejeter_exige_un_motif_et_ne_touche_aucune_marque(): void
     {
         $id = $this->deposer($this->awa, ['seance_ids' => [$this->seances['absente']->id]])->json('data.id');

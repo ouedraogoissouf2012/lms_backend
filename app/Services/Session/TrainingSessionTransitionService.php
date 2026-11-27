@@ -146,9 +146,7 @@ final class TrainingSessionTransitionService
         $periode->status = $vers;
         // #1651 : seule une période PUBLIÉE est en cours (la base le garantit). Toute sortie de
         // l'état publiée — clôturer, annuler, archiver — libère la marque dans la MÊME écriture.
-        if ($vers !== TrainingSessionStatus::Publiee) {
-            $periode->en_cours = null;
-        }
+
         $periode->save();
 
         return $periode;

@@ -10420,7 +10420,9 @@ paths:
         Ne compte que les notes FINALES : copies `corrige`, ou `soumis` sans
         question a correction manuelle ; les tentatives d entrainement
         (`feedback` commencant par `[PRACTICE]`) et les evaluations non
-        publiees sont exclues.
+        publiees sont exclues. UNE copie par evaluation (#1715) : la plus recente
+        des copies finales, comme le bilan de la classe ; une evaluation a
+        plusieurs tentatives ne pese qu une fois.
 
         `moyenne` est ponderee par le `coefficient` de chaque evaluation ;
         `moyenne_generale` est la moyenne des moyennes de matiere MESUREES,

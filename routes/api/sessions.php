@@ -83,6 +83,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // d abord de lever `matieres.klassci_id` NOT NULL. Sans elle, une ecole
         // autonome avait des classes mais rien a y enseigner.
         Route::post('/matieres', [LMSMatiereWriteController::class, 'store']);
+        // La modifier (#1653) : une matiere LOCALE de son ecole ; son code y est unique.
+        Route::patch('/matieres/{matiere}', [LMSMatiereWriteController::class, 'update'])->whereNumber('matiere');
 
         // Composer le programme d une classe (#848) : rattacher une matiere, et
         // y designer un formateur. Ecrit `classe_matiere`, le pivot LOCAL que

@@ -12343,10 +12343,16 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, coordinateur, eleve, enseignant non proprietaire, ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404, comme
-            `publish`. Aussi, sans `reason` : etablissement desactive ou supprime
-            (ResolveInstitution, #961).
+            Role insuffisant, coordinateur, eleve, enseignant non proprietaire. Aussi,
+            sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: |
+            Evaluation introuvable : absente, supprimee, ou d une AUTRE ecole. Le meme
+            corps dans les trois cas (isolation : un 403 confirmerait qu elle existe).
           content:
             application/json:
               schema:

@@ -30,8 +30,8 @@ use Tests\TestCase;
  * La publication ne touche ni aux questions ni aux copies : elle est permise sur une évaluation
  * verrouillée. Elle règle aussi l'ouverture du corrigé (`correction_release`, une date
  * seulement pour `at_date`). Les droits sont ceux de la modification
- * ({@see ChecksEvaluationOwnership}) : l'auteur ou un admin ; une
- * évaluation d'une autre école rend 403, comme `publish`.
+ * ({@see ChecksEvaluationOwnership}) : l'auteur ou un admin. Une évaluation d'une autre école
+ * est INTROUVABLE (404), du même corps qu'un id absent : un 403 confirmerait qu'elle existe.
  */
 final class PublierLesNotesTest extends TestCase
 {
@@ -200,12 +200,20 @@ final class PublierLesNotesTest extends TestCase
         $this->refusee($this->asTenant($eleve)->patchJson($this->url($evaluation), ['show_results' => true]), $evaluation);
     }
 
-    public function test_403_l_admin_d_une_autre_ecole(): void
+    /** L'isolation : introuvable, du même corps qu'un id absent. Un 403 dirait qu'elle existe. */
+    public function test_404_l_admin_d_une_autre_ecole_comme_un_id_absent(): void
     {
         [, , $evaluation] = $this->evaluationCorrigee(InstitutionMode::Standalone);
         $ailleurs = $this->membre($this->ecole(), 'admin');
 
-        $this->refusee($this->asTenant($ailleurs)->patchJson($this->url($evaluation), ['show_results' => true]), $evaluation);
+        $autreEcole = $this->asTenant($ailleurs)->patchJson($this->url($evaluation), ['show_results' => true]);
+        $absente = $this->asTenant($ailleurs)->patchJson('/api/evaluations/999999/release', ['show_results' => true]);
+
+        $autreEcole->assertNotFound();
+        $absente->assertNotFound();
+        self::assertSame($absente->json(), $autreEcole->json());
+        $this->assertMatchesOpenApiResponse($autreEcole, self::CHEMIN, 'patch');
+        $this->assertInchangee($evaluation);
     }
 
     public function test_l_admin_de_l_ecole_publie(): void

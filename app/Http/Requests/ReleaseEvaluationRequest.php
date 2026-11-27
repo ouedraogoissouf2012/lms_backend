@@ -6,8 +6,11 @@ namespace App\Http\Requests;
 
 use App\Enums\CorrectionRelease;
 use App\Http\Requests\Concerns\ChecksEvaluationOwnership;
+use App\Models\Evaluation;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Validates `PATCH /api/evaluations/{id}/release` (#1699) : l'enseignant publie les notes
@@ -21,8 +24,12 @@ use Illuminate\Validation\Rule;
  *
  * ## Authorization
  * Celle de la modification ({@see ChecksEvaluationOwnership::checkEvaluationOwnership()}) :
- * l'auteur ou un admin de l'école ; ni un coordinateur ni un autre enseignant. Une évaluation
- * d'une autre école rend 403, comme `publish`.
+ * l'auteur ou un admin de l'école ; ni un coordinateur ni un autre enseignant (403).
+ *
+ * ## Isolation
+ * Une évaluation absente, supprimée ou d'une AUTRE école est introuvable : 404, du même corps
+ * dans les trois cas. Un 403 confirmerait qu'elle existe ailleurs. (`publish` rend encore 403 :
+ * défaut connu, décrit à part.)
  *
  * ## Saisie
  * Au moins un réglage. Une date (`correction_release_at`) n'existe qu'avec `at_date`, qui
@@ -34,7 +41,19 @@ final class ReleaseEvaluationRequest extends FormRequest
 
     public function authorize(): bool
     {
+        $acteur = $this->user();
+        if ($acteur instanceof User && is_int($acteur->institution_id) && ! $this->evaluationDeLEcole($acteur->institution_id)) {
+            // Un message fixe : le même corps pour une évaluation absente et pour celle d'une autre école.
+            throw new NotFoundHttpException('Évaluation introuvable.');
+        }
+
         return $this->checkEvaluationOwnership();
+    }
+
+    /** L'évaluation routée existe-t-elle, non supprimée, dans l'école de l'acteur ? */
+    private function evaluationDeLEcole(int $ecole): bool
+    {
+        return Evaluation::query()->whereKey($this->route('id'))->where('institution_id', $ecole)->exists();
     }
 
     /**

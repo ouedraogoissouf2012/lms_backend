@@ -15,9 +15,9 @@ use Tests\TestCase;
  * Integration tests for `GET /api/files/{id}` and `GET /api/files/{id}/download`
  * authorization (issue #102 fix).
  *
- * Both endpoints use the same `ChecksFileAuthorization::canReadFile()` helper.
+ * Both endpoints read through the single rule of `LecteurDeFichier` (#1768).
  * Public files are accessible intra-tenant; non-public files require ownership
- * or admin role; cross-tenant access is rejected for non-supradmin.
+ * or the school management role; another school is never readable.
  *
  * @see app/Http/Controllers/API/FileController.php
  * @see app/Http/Requests/Concerns/ChecksFileAuthorization.php
@@ -93,7 +93,8 @@ final class FileReadAuthorizationTest extends TestCase
         $otherStudent = $this->createUser($this->instA, 'etudiant');
         Sanctum::actingAs($otherStudent);
 
-        $this->getJson("/api/files/{$file->id}")->assertStatus(403);
+        // #1768 : un fichier illisible répond comme un fichier absent.
+        $this->getJson("/api/files/{$file->id}")->assertStatus(404);
     }
 
     public function test_admin_cannot_read_cross_tenant(): void

@@ -824,6 +824,12 @@ components:
           description: |
             DERIVEE des dates, jamais stockee. Aucune colonne ne la porte : une
             colonne exigerait un job nocturne qui finirait par diverger.
+        en_cours:
+          type: boolean
+          description: |
+            #1651 — la periode en cours de l ecole : UNE au plus, et seulement une
+            periode publiee. Designee par `POST /training-sessions/{id}/en-cours` ;
+            la liste la rend en premier.
         program_id:
           type: integer
         program:
@@ -8435,6 +8441,194 @@ paths:
             Transition interdite depuis le statut courant, que le message
             porte : « transition invalide » n apprend rien a qui vient de
             cliquer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /training-sessions/{trainingSession}:
+    put:
+      tags:
+        - Session de formation
+      summary: "Modifier une periode"
+      description: |
+        #1651. Le libelle et les CINQ dates, d un bloc : un `PUT` remplace la
+        representation, chaque date est presente (eventuellement nulle).
+
+        Une periode `brouillon` ou `publiee` se modifie ; une periode publiee
+        garde sa date de debut. L ordre des dates est verifie ici (422 lisible)
+        et garanti par la base.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle, enrollment_opens_at, enrollment_closes_at, starts_on, ends_on, certificate_available_at]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                enrollment_opens_at:
+                  type: string
+                  format: date
+                  nullable: true
+                enrollment_closes_at:
+                  type: string
+                  format: date
+                  nullable: true
+                starts_on:
+                  type: string
+                  format: date
+                  nullable: true
+                ends_on:
+                  type: string
+                  format: date
+                  nullable: true
+                certificate_available_at:
+                  type: string
+                  format: date
+                  nullable: true
+      responses:
+        '200':
+          description: "Periode modifiee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Role insuffisant, ou ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode introuvable DANS CET ETABLISSEMENT (supprimee comprise)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`training_session_not_editable` : une periode close, annulee ou archivee ne se modifie plus."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Dates dans le desordre ou champ manquant (erreurs par champ), ou
+            `training_session_published_needs_start` : une periode publiee garde
+            sa date de debut.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Supprimer un brouillon de periode"
+      description: |
+        #1651. Seul un BROUILLON sans classe rattachee se supprime, en douceur.
+        Une periode publiee s annule (`/annuler`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Brouillon supprime"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Role insuffisant, ou ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`training_session_not_deletable` : la periode n est pas un brouillon, ou une classe y est rattachee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /training-sessions/{trainingSession}/en-cours:
+    post:
+      tags:
+        - Session de formation
+      summary: "Designer la periode en cours"
+      description: |
+        #1651. Geste NOMME : UNE periode en cours par ecole, et seulement une
+        periode PUBLIEE. La marque se deplace : la precedente la perd dans la
+        meme transaction. La base garde l unicite et l etat publiee ; toute
+        sortie de l etat publiee (cloturer, annuler, archiver) libere la marque.
+
+        Aucun corps de requete : l operation EST dans l URL.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Periode designee en cours"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Role insuffisant, ou ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`training_session_not_publiee` : seule une periode publiee peut etre en cours."
           content:
             application/json:
               schema:

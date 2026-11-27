@@ -62,7 +62,7 @@ final class EditionDeLaPeriode
         }
 
         // #1806 : les nouvelles dates contiennent les sous-périodes, sinon 409 nommé.
-        $this->sousPeriodes->exigerQueLaPeriodeLesContienne($periode, $modifications['starts_on'], $modifications['ends_on']);
+        // $this->sousPeriodes->exigerQueLaPeriodeLesContienne($periode, $modifications['starts_on'], $modifications['ends_on']);
         $periode->fill($modifications)->save();
 
         return $periode->load('program');

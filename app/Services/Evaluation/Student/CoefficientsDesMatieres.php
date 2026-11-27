@@ -95,9 +95,13 @@ final class CoefficientsDesMatieres
 
         $ids = [];
         foreach ($evaluations as $id => $evaluation) {
-            $ids[$id] = is_numeric($evaluation->getAttribute($locale))
-                ? (int) $evaluation->getAttribute($locale)
-                : ($parKlassci[$evaluation->institution_id.':'.$evaluation->getAttribute($klassci)] ?? 0);
+            $valeurLocale = $evaluation->getAttribute($locale);
+            $valeurKlassci = $evaluation->getAttribute($klassci);
+            $ids[$id] = match (true) {
+                is_numeric($valeurLocale) => (int) $valeurLocale,
+                is_numeric($valeurKlassci) => $parKlassci[$evaluation->institution_id.':'.(int) $valeurKlassci] ?? 0,
+                default => 0,
+            };
         }
 
         return $ids;

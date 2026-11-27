@@ -39,8 +39,8 @@ final class LocalMatiereEditor
     {
         $matiere = Matiere::query()->withoutGlobalScope('institution')
             ->whereKey($matiereId)
-            ->where('institution_id', $this->porte->etablissementDe($acteur))
             ->first();
+        $this->porte->etablissementDe($acteur);
 
         if (! $matiere instanceof Matiere) {
             throw new BusinessException('Matière introuvable dans cet établissement.', 404);

@@ -6660,6 +6660,121 @@ paths:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
 
+  /annonces:
+    post:
+      tags:
+        - Notifications
+      operationId: publierUneAnnonce
+      summary: "Annoncer a toute une classe"
+      description: |
+        #1650. Le personnel de l ecole (admin, superAdmin, coordinateur ; l enseignant pour ses
+        seules classes) annonce a toute une classe. L annonce est enregistree, et chaque eleve
+        inscrit et ACTIF de la classe en recoit une notification `annonce` (`data.annonce_id`,
+        `data.classe_id`). Les eleves viennent de la source d inscription de l ecole, dans les deux
+        types d ecole.
+
+        Si un canal de courriel existe, une tache en file ecrit aussi a chaque destinataire
+        (`courriel` vrai) ; sans canal, aucun courriel (`courriel` faux). Une classe sans eleve
+        n est pas une erreur : `destinataires` vaut 0.
+
+        `classe_id` est l id LOCAL de la classe. Limite nommee `annonce` (10 par minute et par
+        compte).
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - classe_id
+                - titre
+                - message
+              properties:
+                classe_id:
+                  type: integer
+                  minimum: 1
+                titre:
+                  type: string
+                  maxLength: 150
+                message:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: "Annonce envoyee"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - classe_id
+                      - titre
+                      - destinataires
+                      - courriel
+                    properties:
+                      id:
+                        type: integer
+                      classe_id:
+                        type: integer
+                      titre:
+                        type: string
+                      destinataires:
+                        type: integer
+                        minimum: 0
+                        description: "Le nombre d eleves prevenus."
+                      courriel:
+                        type: boolean
+                        description: "Vrai si un courriel part aussi (canal disponible et au moins un eleve)."
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role hors du personnel de l ecole (eleve), ou enseignant hors de ses classes. Aussi,
+            sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: |
+            Classe introuvable : absente, supprimee, ou d une AUTRE ecole. Le meme corps dans tous
+            les cas (isolation).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Classe, titre (150 au plus) ou message (2 000 au plus) absent ou invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /users:
     post:
       tags:

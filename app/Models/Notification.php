@@ -68,6 +68,9 @@ class Notification extends Model
 
     public const TYPE_EVALUATION_APPROACHING = 'evaluation_approaching';
 
+    /** #1650 : une annonce du personnel à toute une classe (`data.annonce_id`). */
+    public const TYPE_ANNONCE = 'annonce';
+
     /**
      * Relation: Utilisateur destinataire
      *

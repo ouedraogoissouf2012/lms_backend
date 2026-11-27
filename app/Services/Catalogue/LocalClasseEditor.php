@@ -37,8 +37,8 @@ final class LocalClasseEditor
     {
         $classe = Classe::query()->withoutGlobalScopes()
             ->whereKey($classeId)
-            ->where('institution_id', $this->porte->etablissementDe($acteur))
             ->first();
+        $this->porte->etablissementDe($acteur);
 
         if (! $classe instanceof Classe) {
             throw new BusinessException('Classe introuvable dans cet établissement.', 404);

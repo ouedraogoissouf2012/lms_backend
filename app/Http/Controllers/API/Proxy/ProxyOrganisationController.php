@@ -171,7 +171,7 @@ final class ProxyOrganisationController extends Controller
     public function filieres(InstitutionStructureReader $structure): JsonResponse
     {
         try {
-            $data = $structure->filieres();
+            $data = $this->klassciService->getFilieres();
 
             return response()->json($data);
         } catch (\Exception $e) {

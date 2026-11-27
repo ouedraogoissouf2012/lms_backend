@@ -114,6 +114,7 @@ final class AttendanceReportContextBuilder
         }
 
         return Classe::query()->withoutGlobalScope('institution')
+            ->where('institution_id', $institutionId)
             ->whereKey($classeId)
             ->firstOrFail(['id', 'klassci_id']);
     }

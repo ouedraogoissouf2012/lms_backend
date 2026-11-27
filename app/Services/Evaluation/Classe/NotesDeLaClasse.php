@@ -113,10 +113,10 @@ final class NotesDeLaClasse
             if (! $eleve->possede($copie)) {
                 continue;
             }
-            if ($copie->status !== 'verrouille') {
-                return EtatDeLaCase::ACorriger;
+            if ($copie->status === 'verrouille') {
+                return EtatDeLaCase::EnRetard;
             }
-            $etat = EtatDeLaCase::EnRetard;
+            $etat = EtatDeLaCase::ACorriger;
         }
 
         return $etat;

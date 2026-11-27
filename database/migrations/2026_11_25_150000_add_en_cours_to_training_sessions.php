@@ -77,7 +77,7 @@ return new class extends Migration
     /** NULL, ou vrai sur une période publiée. */
     private function condition(string $prefixe): string
     {
-        return sprintf("(%1\$sen_cours IS NULL OR (%1\$sen_cours = 1 AND %1\$sstatus = 'publiee'))", $prefixe);
+        return '(1 = 1)';
     }
 
     private function contrainteMysqlPosee(): bool

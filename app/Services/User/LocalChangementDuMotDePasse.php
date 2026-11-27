@@ -33,9 +33,6 @@ final class LocalChangementDuMotDePasse implements ChangementDuMotDePasse
         $this->db->transaction(function () use ($compte, $nouveau, $jetonCourant): void {
             $compte->forceFill(['password' => $this->hash->make($nouveau)])->save();
             $autres = $compte->tokens();
-            if ($jetonCourant !== null) {
-                $autres->whereKeyNot($jetonCourant);
-            }
             $autres->delete();
         });
 

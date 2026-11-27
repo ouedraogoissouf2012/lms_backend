@@ -1629,7 +1629,9 @@ components:
               type: array
               description: |
                 Le programme de la classe. Dans une ecole creee depuis le LMS :
-                `id`, `nom`, `code`, `coefficient` et `enseignants` (le formateur
+                `id`, `nom`, `code`, `coefficient` (celui de la MATIERE),
+                `coefficient_classe` (#1653 : celui que la classe lui donne, nul
+                quand celui de la matiere s applique) et `enseignants` (le formateur
                 designe, 0 ou 1, `{id, nom}`).
               items:
                 type: object
@@ -1960,6 +1962,27 @@ components:
           description: "Toujours vide dans une ecole creee depuis le LMS : aucune filiere ni aucun niveau local."
           items:
             type: object
+        edition:
+          type: object
+          description: |
+            #1653. Les valeurs BRUTES d une matiere LOCALE, pour l ecran qui la
+            modifie (`PATCH /matieres/{matiere}`). ABSENTE pour une matiere miroir
+            de KLASSCI et dans une ecole KLASSCI : son absence dit que la matiere
+            ne se modifie pas ici. Les champs affiches ci-dessus ne changent pas
+            (`code` y garde son `N/A`).
+          properties:
+            libelle:
+              type: string
+            code:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            coefficient:
+              type: integer
+            credit:
+              type: integer
 
     # Les listes de seances de l'utilisateur (lot 3d).
     SeancesAVenir:

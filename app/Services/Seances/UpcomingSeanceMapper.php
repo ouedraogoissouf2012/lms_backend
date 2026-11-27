@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use Illuminate\Support\Collection;
 
 /**
@@ -51,6 +52,7 @@ final class UpcomingSeanceMapper
             // Heures réalignées sur la date de la séance ; fin rendue par KLASSCI.
             'programmation' => SeanceProgrammationNormalizer::blocKlassci($prog),
             'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
+            'type_seance' => TypeDeSeance::depuisKlassci($seance['type_cours'] ?? null)?->value, // #1668
             'matiere' => [
                 'id' => $matiere['id'] ?? null,
                 'libelle' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A', // KLASSCI utilise 'nom'

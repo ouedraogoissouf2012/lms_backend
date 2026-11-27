@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TypeDeSeance;
 use App\Models\Contracts\MirroredFromKlassci;
 use App\Models\Traits\BelongsToInstitution;
 use App\Models\Traits\ResolvesMirroredIdentifier;
@@ -41,6 +42,7 @@ class Seance extends Model implements MirroredFromKlassci
         'matiere_nom',
         'classe_nom',
         'titre',
+        'type_seance',
         'date_seance',
         'fin_seance',
         'synced_at',
@@ -71,6 +73,7 @@ class Seance extends Model implements MirroredFromKlassci
         'archived_at' => 'datetime',
         'date_seance' => 'datetime',
         'fin_seance' => 'datetime',
+        'type_seance' => TypeDeSeance::class,
         // #582 — dernière confirmation de la séance par KLASSCI. Sert de critère
         // d'archivage : non confirmée depuis le début du cycle courant = disparue.
         'synced_at' => 'datetime',
@@ -124,13 +127,6 @@ class Seance extends Model implements MirroredFromKlassci
     public function scopeByTeacher($query, int $teacherId)
     {
         return $query->where('klassci_enseignant_id', $teacherId);
-    }
-
-    /** @param Builder<Seance> $query
-     * @return Builder<Seance> */
-    public function scopeByClasse($query, int $classeId)
-    {
-        return $query->where('klassci_classe_id', $classeId);
     }
 
     /** @param Builder<Seance> $query

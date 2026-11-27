@@ -54,7 +54,11 @@ final class OuvertureDuCorrige
             return self::FERME;
         }
 
-        $ouvreLe = $choisie->greaterThan($fermeture) ? $choisie : $fermeture;
+        // SONDE #1699 : plancher retiré. with_results s'ouvre dès la publication, at_date à sa date.
+        if ($mode === CorrectionRelease::WithResults) {
+            return ['ouvert' => true, 'ouvre_le' => $fermeture];
+        }
+        $ouvreLe = $choisie;
 
         return ['ouvert' => $maintenant->greaterThanOrEqualTo($ouvreLe), 'ouvre_le' => $ouvreLe];
     }

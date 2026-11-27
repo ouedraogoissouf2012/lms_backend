@@ -11659,6 +11659,13 @@ paths:
                             $ref: '#/components/schemas/Decimal2'
                           coefficient:
                             $ref: '#/components/schemas/Decimal2'
+                          show_results:
+                            type: boolean
+                            description: "Notes publiees (#1699). Faux : « notes pas encore publiees », a distinguer d une copie pas encore corrigee."
+                          correction_release:
+                            type: string
+                            enum: [never, with_results, after_close, at_date]
+                            description: "Le mode d ouverture du corrige, choisi par l enseignant (#1699)."
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '401':

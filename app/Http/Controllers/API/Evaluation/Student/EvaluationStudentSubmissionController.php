@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
+use App\Enums\CorrectionRelease;
 use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
@@ -74,6 +75,10 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                     'titre' => $evaluation->titre,
                     'bareme' => $evaluation->bareme,
                     'coefficient' => $evaluation->coefficient,
+                    // front#693 : « notes pas encore publiées » se lit ici, pas sur une note
+                    // `null`, qu'a aussi une dissertation pas encore corrigée.
+                    'show_results' => $visibles,
+                    'correction_release' => ($evaluation->correction_release ?? CorrectionRelease::WithResults)->value,
                 ],
             ]);
         } catch (\Exception $e) {

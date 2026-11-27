@@ -9,6 +9,7 @@ use App\Models\Concerns\EcheanceDeLaCopie;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\QuestionsDeLaCopie;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -35,6 +36,7 @@ final class EvaluationAttemptStateService
         private readonly EvaluationWindowGate $windowGate,
         private readonly LearnerEvaluationScope $scope,
         private readonly LoggerInterface $logger,
+        private readonly QuestionsDeLaCopie $questionsDeLaCopie,
     ) {}
 
     /**
@@ -206,6 +208,8 @@ final class EvaluationAttemptStateService
                 // Scope tenant explicite herite de l'evaluation (fix E2E #211).
                 'institution_id' => $evaluation->institution_id,
                 'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
+                // #1702 (D2) : les questions posées et leur ordre, figés pour la tentative.
+                'presentation' => $this->questionsDeLaCopie->presenter($evaluation),
             ]);
         } catch (UniqueConstraintViolationException $conflit) {
             if (! ConflitDeCopie::estUneCourse($conflit)) {

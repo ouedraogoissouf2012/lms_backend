@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\QuestionsDeLaCopie;
 use App\Services\Evaluation\Student\ResultatsVisibles;
 use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
@@ -31,6 +32,7 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
 
     public function __construct(
         private readonly CaughtExceptionLog $journal,
+        private readonly QuestionsDeLaCopie $questionsDeLaCopie,
     ) {}
 
     public function getMySubmission(int $id, Request $request): JsonResponse
@@ -58,7 +60,7 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 ? $submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS)->toIso8601String()
                 : null;
 
-            $questionsData = $this->questionsDe($evaluation, $correctionAvailable);
+            $questionsData = $this->questionsDe($submission, $evaluation, $correctionAvailable);
 
             $score = $submission->score;
             $note = $submission->note_sur_20;
@@ -104,8 +106,8 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
     }
 
     /**
-     * Les questions de la copie, dans l'ordre de l'évaluation (mélangées si elle le
-     * demande).
+     * Les questions de la copie, dans l'ordre PRÉSENTÉ à l'élève et figé à son démarrage
+     * (#1702, {@see QuestionsDeLaCopie}). Avant, le mélange était recalculé à chaque lecture.
      *
      * Le corrigé est masqué par défaut sur le modèle ({@see
      * \App\Models\EvaluationQuestion}). Ce chemin — la copie de l'élève lui-même,
@@ -115,12 +117,9 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function questionsDe(Evaluation $evaluation, bool $correctionAvailable): Collection
+    private function questionsDe(EvaluationSubmission $copie, Evaluation $evaluation, bool $correctionAvailable): Collection
     {
-        $questions = $evaluation->questions()->get();
-        if ($evaluation->shuffle_questions) {
-            $questions = $questions->shuffle()->values();
-        }
+        $questions = $this->questionsDeLaCopie->de($copie, $evaluation);
 
         return $questions->map(static function ($question) use ($correctionAvailable) {
             if ($correctionAvailable) {

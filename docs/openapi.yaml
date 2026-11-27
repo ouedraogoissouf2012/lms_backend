@@ -178,9 +178,9 @@ components:
           maxLength: 50
           nullable: true
           description: |
-            FACULTATIF, et volontairement SANS contrainte d unicite : mesure
-            faite sur app/, aucun acces ne retrouve une matiere par son code.
-            En poser une garderait un chemin qui n existe pas.
+            FACULTATIF. Unique dans l ecole parmi les matieres LOCALES, sans
+            tenir compte de la casse ni des blancs (#1653) : sinon 422
+            `subject_code_already_used`. Un code vide devient nul.
         description:
           type: string
           maxLength: 2000
@@ -195,6 +195,31 @@ components:
           minimum: 1
           maximum: 60
           default: 1
+
+    MatiereUpdateInput:
+      type: object
+      description: "#1653 : un PATCH ; chaque champ est facultatif, seul un champ envoye change."
+      properties:
+        libelle:
+          type: string
+          maxLength: 191
+        code:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: "Vide ou nul : efface le code. Unique dans l ecole parmi les matieres locales."
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        coefficient:
+          type: integer
+          minimum: 1
+          maximum: 20
+        credit:
+          type: integer
+          minimum: 1
+          maximum: 60
 
     MatiereCreated:
       type: object
@@ -213,10 +238,49 @@ components:
             code:
               type: string
               nullable: true
+            description:
+              type: string
+              nullable: true
             coefficient:
               type: integer
             credit:
               type: integer
+
+    ClasseMatiereUpdateInput:
+      type: object
+      description: "#1653 : un PATCH ; seul un champ envoye change, nul est une valeur."
+      properties:
+        enseignant_id:
+          type: integer
+          nullable: true
+          description: "Un enseignant de l ecole ; nul retire le formateur."
+        coefficient:
+          type: integer
+          minimum: 1
+          maximum: 20
+          nullable: true
+          description: "Coefficient propre a la classe ; nul : celui de la matiere s applique."
+
+    ClasseMatiereLigne:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            classe_id:
+              type: integer
+            matiere_id:
+              type: integer
+            enseignant_id:
+              type: integer
+              nullable: true
+            coefficient:
+              type: integer
+              nullable: true
 
     ClasseMatiereInput:
       type: object
@@ -1565,7 +1629,9 @@ components:
               type: array
               description: |
                 Le programme de la classe. Dans une ecole creee depuis le LMS :
-                `id`, `nom`, `code`, `coefficient` et `enseignants` (le formateur
+                `id`, `nom`, `code`, `coefficient` (celui de la MATIERE),
+                `coefficient_classe` (#1653 : celui que la classe lui donne, nul
+                quand celui de la matiere s applique) et `enseignants` (le formateur
                 designe, 0 ou 1, `{id, nom}`).
               items:
                 type: object
@@ -1896,6 +1962,27 @@ components:
           description: "Toujours vide dans une ecole creee depuis le LMS : aucune filiere ni aucun niveau local."
           items:
             type: object
+        edition:
+          type: object
+          description: |
+            #1653. Les valeurs BRUTES d une matiere LOCALE, pour l ecran qui la
+            modifie (`PATCH /matieres/{matiere}`). ABSENTE pour une matiere miroir
+            de KLASSCI et dans une ecole KLASSCI : son absence dit que la matiere
+            ne se modifie pas ici. Les champs affiches ci-dessus ne changent pas
+            (`code` y garde son `N/A`).
+          properties:
+            libelle:
+              type: string
+            code:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            coefficient:
+              type: integer
+            credit:
+              type: integer
 
     # Les listes de seances de l'utilisateur (lot 3d).
     SeancesAVenir:
@@ -4197,6 +4284,7 @@ components:
           enum:
             - enrolment_not_active
             - no_institution
+            - klassci_account_refused
             - account_quota_exceeded
             - account_daily_cap_reached
             - institution_cap_reached
@@ -4227,6 +4315,144 @@ components:
     # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
     # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
     # le code machine est `reason` (ADR-906-01, ADR-919-01).
+    BilanDeClasse:
+      type: object
+      description: "#1676 : moyennes, rangs et reussite d une classe. L eleve ne recoit que `eleves` (sa ligne), sans `statistiques` ni `couverture`."
+      required: [classe, periode, source, seuil_reussite, evaluations, matieres, eleves]
+      properties:
+        classe:
+          type: object
+          properties:
+            id:
+              type: integer
+            libelle:
+              type: string
+        periode:
+          type: object
+          properties:
+            du:
+              type: string
+              format: date
+              nullable: true
+            au:
+              type: string
+              format: date
+              nullable: true
+        source:
+          type: string
+          enum: [lms]
+          description: "Les seules notes du LMS : dans une ecole KLASSCI, KLASSCI peut en tenir d autres."
+        seuil_reussite:
+          type: number
+        evaluations:
+          type: array
+          description: "Les colonnes de la grille : les evaluations publiees, aux resultats visibles, de la periode."
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              titre:
+                type: string
+              matiere_id:
+                type: integer
+                nullable: true
+                description: "Id LOCAL de la matiere ; `null` sans matiere."
+              date_evaluation:
+                type: string
+                format: date-time
+                nullable: true
+              coefficient:
+                type: number
+        matieres:
+          type: array
+          items:
+            type: object
+            properties:
+              matiere_id:
+                type: integer
+              libelle:
+                type: string
+                nullable: true
+              coefficient:
+                type: number
+                description: "Coefficient de la matiere dans la classe : il pondere la moyenne generale."
+        eleves:
+          type: array
+          items:
+            type: object
+            properties:
+              compte_id:
+                type: integer
+                nullable: true
+                description: "Le compte local ; `null` pour un eleve du roster KLASSCI sans compte LMS."
+              nom:
+                type: string
+              moyenne_generale:
+                type: number
+                nullable: true
+              rang:
+                type: integer
+                nullable: true
+                description: "Absent pour l eleve si l ecole ne l autorise pas ; `null` pour un eleve non classe."
+              matieres:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    matiere_id:
+                      type: integer
+                      nullable: true
+                    moyenne:
+                      type: number
+                      nullable: true
+              notes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    evaluation_id:
+                      type: integer
+                    note:
+                      type: number
+              notes_manquantes:
+                type: array
+                description: "Les evaluations de la periode sans note finale de l eleve."
+                items:
+                  type: integer
+        statistiques:
+          type: object
+          properties:
+            effectif:
+              type: integer
+            classes:
+              type: integer
+              description: "Les eleves qui ont une moyenne generale."
+            moyenne_classe:
+              type: number
+              nullable: true
+            taux_reussite:
+              type: number
+              nullable: true
+              description: "Pourcentage des eleves classes dont la moyenne atteint le seuil."
+        couverture:
+          type: object
+          properties:
+            matieres_sans_evaluation:
+              type: array
+              items:
+                type: object
+                properties:
+                  matiere_id:
+                    type: integer
+                  libelle:
+                    type: string
+                    nullable: true
+            evaluations_sans_note:
+              type: array
+              items:
+                type: integer
+
     ErrorResponse:
       type: object
       properties:
@@ -7266,6 +7492,123 @@ paths:
               schema:
                 $ref: '#/components/schemas/KlassciIndisponible'
 
+  /lms/classes/{classe}/resultats:
+    get:
+      tags:
+        - Classes
+      operationId: getBilanDeClasse
+      summary: "Moyennes, rangs et reussite d une classe (#1676)"
+      description: |
+        `classe` est l identifiant de l ESPACE SOURCE de l ecole, comme pour
+        `/lms/classes/{classeId}/etudiants` : l identifiant local dans une ecole creee depuis
+        le LMS, l identite KLASSCI dans une ecole KLASSCI (resolue sur le miroir local de la
+        classe ; tant que ce miroir n existe pas, 404). Une classe d une autre ecole, ou
+        inexistante : 404 `class_out_of_scope`.
+
+        **Les memes regles que « Mes notes »** (`/my-grades`) : seules les copies FINALES
+        comptent (corrigees, ou remises sans question a correction manuelle ; ni
+        entrainement, ni evaluation non publiee), la plus recente par eleve et par
+        evaluation. Seules les evaluations aux resultats VISIBLES (`show_results`) comptent :
+        une note non publiee n entre pas dans le rang (quand la publication des notes
+        deviendra un geste explicite, #1699, le rang suivra). La moyenne d une matiere est
+        ponderee par le coefficient de chaque evaluation ; la moyenne generale par le
+        coefficient de la MATIERE dans la classe (`classe_matiere.coefficient`, a defaut
+        celui de la matiere, a defaut 1). Rien a moyenner : `null`, jamais un 0 fabrique ;
+        une note manquante n entre dans aucune moyenne.
+
+        **Rang** de competition, avec ex aequo (1, 2, 2, 4). Un eleve sans moyenne n est pas
+        classe (`rang: null`) et n entre ni dans `moyenne_classe` ni dans `taux_reussite`.
+        **Taux de reussite** : la part des eleves classes dont la moyenne atteint
+        `seuil_reussite` (reglage de l ecole `settings.seuil_reussite`, 10 sur 20 par defaut).
+
+        **Source** : `source: "lms"`. Les deux types d ecole calculent sur les notes du LMS ;
+        dans une ecole KLASSCI, KLASSCI peut tenir d autres notes, que ce bilan ne voit pas.
+        Les eleves : les inscriptions actives (ecole creee depuis le LMS), ou le roster
+        KLASSCI lu avec le jeton du lecteur (ecole KLASSCI ; sans jeton, 401
+        `klassci_token_missing` ; panne, 503).
+
+        **Acces** : le coordinateur et l admin de l ecole voient la classe entiere ;
+        l enseignant aussi, s il y est designe formateur d une matiere (sinon 403
+        `class_not_taught`). L eleve ne recoit que SA ligne, sans `statistiques` ni
+        `couverture` ; son `rang` n y figure que si l ecole l autorise
+        (`settings.rang_visible_eleve`). Hors de la classe : 403 `not_in_class`.
+
+        Concu pour le carnet de notes (#1698) : `evaluations` (les colonnes) et
+        `eleves[].notes` forment la grille eleves x evaluations.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          description: "Identifiant de l espace source : local dans une ecole creee depuis le LMS, KLASSCI dans une ecole KLASSCI."
+          schema:
+            type: integer
+        - name: du
+          in: query
+          required: false
+          description: "Debut de la periode, sur la date d evaluation (incluse). Sans borne : l annee entiere."
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: false
+          description: "Fin de la periode (incluse), egale ou posterieure a `du`."
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: "Le bilan de la classe (ou la seule ligne de l eleve)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/BilanDeClasse'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Classe non enseignee (`class_not_taught`), eleve hors de la classe (`not_in_class`), role sans acces, ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable dans l etablissement (`class_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Periode invalide (`du`, `au`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "Roster KLASSCI indisponible (ecole KLASSCI)."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: "Secondes a attendre avant de reessayer."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
   /classes:
     post:
       tags:
@@ -8090,6 +8433,145 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /classes/{classe}/matieres/{matiere}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une matiere au programme d une classe"
+      description: |
+        #1653. Le formateur (de l ecole, et enseignant ; nul le retire) et le
+        coefficient PROPRE a la classe (nul : celui de la matiere s applique).
+        Seuls les champs ENVOYES changent. Ecole qui tient son catalogue ; la
+        classe, la matiere et le formateur sont cherches dans SON ecole.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasseMatiereUpdateInput'
+      responses:
+        '200':
+          description: "Ligne du programme, relue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseMatiereLigne'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            Classe, matiere ou formateur hors de l ecole (un formateur qui
+            n enseigne pas compte comme absent), ou matiere absente du programme
+            de la classe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Aucun etablissement resolu (`no_institution`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Formateur ou coefficient invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Retirer une matiere du programme d une classe"
+      description: |
+        #1653. Retire le couple du programme ; la matiere elle-meme reste.
+        Refuse tant qu une trace pedagogique de CETTE ecole renvoie au couple
+        (lecon, seance, evaluation, quiz, discussion), meme supprimee en
+        douceur : l historique reste lisible avec sa classe et sa matiere.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Matiere retiree de la classe"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe ou matiere hors de l ecole, ou matiere absente du programme de la classe"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            `subject_in_use_in_class` : une trace pedagogique renvoie au couple ;
+            le message dit lesquelles et combien. Ou `no_institution`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Cette matière est employée dans cette classe (2 leçon(s), 1 séance(s)) : elle ne peut pas en être retirée."
+                reason: subject_in_use_in_class
+
   /matieres:
     post:
       tags:
@@ -8160,7 +8642,77 @@ paths:
                 message: "Aucun établissement résolu."
                 reason: no_institution
         '422':
-          description: "Libelle manquant ou ponderation hors bornes"
+          description: |
+            Libelle manquant ou ponderation hors bornes ; ou code deja employe par
+            une autre matiere locale de l ecole (#1653), motif
+            `subject_code_already_used` sur `code`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /matieres/{matiere}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une Matiere locale"
+      description: |
+        #1653. Modifie une matiere LOCALE de l ecole de l appelant : seuls les
+        champs ENVOYES changent. Un `code` vide ou nul EFFACE le code.
+
+        Le code d une matiere locale est unique dans son ecole, sans tenir
+        compte de la casse ni des blancs : la BASE le tranche (colonne generee
+        `code_local`, unique `(institution_id, code_local)`), et sa violation
+        rend 422 `subject_code_already_used`. Les matieres miroir de KLASSCI
+        en sont exclues : leurs codes sont a KLASSCI.
+      security:
+        - sanctum: []
+      parameters:
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatiereUpdateInput'
+      responses:
+        '200':
+          description: "Matiere modifiee, relue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatiereCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant ; etablissement dont le catalogue vient de KLASSCI,
+            ou matiere MIROIR de KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Aucune matiere de ce numero dans l ecole de l appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Libelle vide, ponderation hors bornes, ou code deja employe par une
+            autre matiere locale de l ecole (`subject_code_already_used` sur `code`).
           content:
             application/json:
               schema:
@@ -9014,13 +9566,222 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          $ref: '#/components/responses/EtablissementDesactive'
+          description: |
+            Deux refus, departages par `reason` :
+            - `klassci_account_refused` (#1739) : KLASSCI refuse le COMPTE
+              (non reinscrit, inactif) a des identifiants justes. `message` est
+              le motif de KLASSCI, nettoye (sans balises, 300 caracteres au
+              plus), a montrer tel quel ; vide, un texte du LMS.
+            - sans `reason` : etablissement desactive ou supprime
+              (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RefusMotive'
+                  - $ref: '#/components/schemas/RefusDeLaResolution'
         '422':
           description: "Validation error"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{user}:
+    put:
+      tags:
+        - Users
+      operationId: modifierUnCompte
+      summary: "Modifier un compte de son ecole"
+      description: |
+        #1728. Reserve au coordinateur et a l'admin d'ecole (`admin`, `superAdmin`). La
+        CIBLE doit etre de rang strictement inferieur a celui de l'acteur, et jamais
+        l'acteur lui-meme (`GestionDeCompte`, #932) : sinon 403. Le NOUVEAU role, s'il est
+        envoye, doit lui aussi etre strictement inferieur (`AssignableRole`) : sinon 422
+        sur `role`, pas un 403.
+
+        Tous les champs sont facultatifs : seuls ceux envoyes changent. Le mot de passe
+        ne se change pas ici (voir `PUT /users/{user}/password`), ni l'etablissement. Un
+        compte d'une autre ecole est introuvable (404).
+      security:
+        - sanctum: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte (jamais un identifiant KLASSCI)."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                  description: "Unique dans l'ecole de la cible, hors la cible elle-meme."
+                role:
+                  type: string
+                  enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                  description: "Strictement inferieur au role de l'acteur. Un alias (`teacher`...) est ecrit sous sa valeur canonique."
+                klassci_id:
+                  type: integer
+                  nullable: true
+      responses:
+        '200':
+          description: "Compte modifie, relu avec son etablissement"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                    example: "Utilisateur mis à jour"
+                  data:
+                    type: object
+                    description: "Le compte modifie, relu avec son etablissement (`institution`)."
+                    required:
+                      - id
+                      - name
+                      - email
+                      - role
+                      - institution_id
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                        enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                      institution_id:
+                        type: integer
+                      klassci_id:
+                        type: integer
+                        nullable: true
+                      institution:
+                        type: object
+                        nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role de l'acteur hors gestion (eleve, enseignant) ; cible de rang egal ou
+            superieur, ou l'acteur lui-meme ; acteur sans etablissement
+            (`reason: no_institution`). Aussi, sans `reason` : etablissement desactive
+            ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Compte introuvable dans l'etablissement (autre ecole, ou compte supprime)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Validation, detail par champ dans `errors` : `name` trop long, `email` invalide
+            ou deja pris dans l'ecole, `role` hors liste, egal ou superieur a celui de
+            l'acteur, `klassci_id` non entier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Users
+      operationId: desactiverUnCompte
+      summary: "Desactiver un compte de son ecole (suppression logique)"
+      description: |
+        #1728. Reserve au coordinateur et a l'admin d'ecole, sur une cible de rang
+        strictement inferieur, jamais soi-meme (#932) : sinon 403.
+
+        Suppression LOGIQUE (#566) : le dossier academique du compte est conserve, ses
+        jetons sont revoques dans la meme transaction (ses sessions se ferment), et
+        l'acte est trace a l'audit (`user.soft_deleted`). Un compte d'une autre ecole,
+        ou deja desactive, est introuvable (404).
+      security:
+        - sanctum: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte (jamais un identifiant KLASSCI)."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Compte desactive"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                    example: "Utilisateur supprimé"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role de l'acteur hors gestion (eleve, enseignant) ; cible de rang egal ou
+            superieur, ou l'acteur lui-meme ; acteur sans etablissement
+            (`reason: no_institution`). Aussi, sans `reason` : etablissement desactive
+            ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Compte introuvable dans l'etablissement (autre ecole, ou deja desactive)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /users/{user}/password:
     put:
@@ -10593,10 +11354,14 @@ paths:
         Ne compte que les notes FINALES : copies `corrige`, ou `soumis` sans
         question a correction manuelle ; les tentatives d entrainement
         (`feedback` commencant par `[PRACTICE]`) et les evaluations non
-        publiees sont exclues.
+        publiees sont exclues. UNE copie par evaluation (#1715) : la plus recente
+        des copies finales, comme le bilan de la classe ; une evaluation a
+        plusieurs tentatives ne pese qu une fois.
 
-        `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
-        moyenne simple des moyennes de matiere MESUREES. Regle unique des agregats
+        `moyenne` est ponderee par le `coefficient` de chaque evaluation ;
+        `moyenne_generale` est la moyenne des moyennes de matiere MESUREES,
+        ponderee par le `coefficient` de la MATIERE (#1676, la regle du bilan d une
+        classe ; avec tous les coefficients a 1, la moyenne simple). Regle unique des agregats
         sans mesure : toutes deux valent `null` quand il n y a rien a moyenner
         (aucune note visible, ou un coefficient total nul), jamais un 0 fabrique.
 
@@ -10643,6 +11408,12 @@ paths:
                               type: number
                               nullable: true
                               description: "`null` quand la matiere n a aucune note a moyenner"
+                            coefficient:
+                              type: number
+                              description: |
+                                #1676 : le coefficient de la MATIERE, qui pondere `moyenne_generale` :
+                                celui de la matiere dans la classe de sa copie la plus recente
+                                (`classe_matiere`), a defaut celui de la matiere, a defaut 1.
                             total_evaluations:
                               type: integer
                             evaluations:

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\API\LMS\LMSClasseArchiveController;
 use App\Http\Controllers\API\LMS\LMSClasseCapaciteController;
+use App\Http\Controllers\API\LMS\LMSClasseEleveMutationController;
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
@@ -125,4 +126,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
             ->whereNumber('classe');
         Route::post('/classes/{classe}/desarchiver', [LMSClasseArchiveController::class, 'desarchiver'])
             ->whereNumber('classe');
+
+        // Changer un eleve de classe dans son ecole (#1652) : en une transaction, l ancienne
+        // adhesion se ferme (inactif, datee, motif mutation) et la nouvelle s ouvre.
+        Route::post('/classes/{classe}/eleves/{eleve}/muter', [LMSClasseEleveMutationController::class, 'store'])
+            ->whereNumber(['classe', 'eleve']);
     });

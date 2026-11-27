@@ -34,7 +34,7 @@ final class QuestionsDeLaCopie
         $ids = array_values($evaluation->questions()->pluck('id')
             ->map(static fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)->all());
 
-        return ['questions' => $evaluation->shuffle_questions ? $this->hasard->shuffleArray($ids) : $ids];
+        return ['questions' => $evaluation->shuffle_questions ? array_values($this->hasard->shuffleArray($ids)) : $ids];
     }
 
     /**

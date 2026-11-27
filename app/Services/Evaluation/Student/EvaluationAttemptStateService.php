@@ -9,7 +9,6 @@ use App\Models\Concerns\EcheanceDeLaCopie;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
-use App\Services\Evaluation\QuestionsDeLaCopie;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -36,7 +35,7 @@ final class EvaluationAttemptStateService
         private readonly EvaluationWindowGate $windowGate,
         private readonly LearnerEvaluationScope $scope,
         private readonly LoggerInterface $logger,
-        private readonly QuestionsDeLaCopie $questionsDeLaCopie,
+        private readonly NouvelleTentative $nouvelleTentative,
     ) {}
 
     /**
@@ -191,26 +190,7 @@ final class EvaluationAttemptStateService
         $debut = now();
 
         try {
-            $submission = EvaluationSubmission::create([
-                'evaluation_id' => $evaluation->id,
-                // Les DEUX espaces sont écrits, et chacun pour sa raison :
-                // `student_id` porte la propriété (EvaluationSubmission::
-                // scopeOwnedBy, unique `eval_sub_student_unique`, D72) ;
-                // `klassci_etudiant_id`, nul dans une école créée depuis le LMS,
-                // sert l'unique `eval_sub_unique` et le renvoi des notes vers KLASSCI.
-                'student_id' => $user->id,
-                'klassci_etudiant_id' => $user->klassci_id,
-                'attempt' => $tentative,
-                'status' => 'en_cours',
-                'started_at' => $debut,
-                // C28 : l'échéance, figée au démarrage ; la remise la compare sans KLASSCI.
-                'ends_at' => EcheanceDeTentative::pour($evaluation, $window, $debut, $isPracticeMode),
-                // Scope tenant explicite herite de l'evaluation (fix E2E #211).
-                'institution_id' => $evaluation->institution_id,
-                'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
-                // #1702 (D2) : les questions posées et leur ordre, figés pour la tentative.
-                'presentation' => $this->questionsDeLaCopie->presenter($evaluation),
-            ]);
+            $submission = EvaluationSubmission::create($this->nouvelleTentative->attributs($evaluation, $user, $tentative, $isPracticeMode, $window, $debut));
         } catch (UniqueConstraintViolationException $conflit) {
             if (! ConflitDeCopie::estUneCourse($conflit)) {
                 throw $conflit;

@@ -129,9 +129,11 @@ trait ChecksEvaluationOwnership
         }
         $this->evaluationDeLEcoleOuIntrouvable($user);
 
-        // Le coordinateur lit les évaluations de SON école : la portée vient d'être établie.
+        // Le coordinateur lit les évaluations de SON école. La portée est relue ici, et non
+        // déduite du contrôle ci-dessus : la règle tient d'elle-même si ce contrôle venait à
+        // manquer (défense en profondeur).
         if ($user->isCoordinator()) {
-            return true;
+            return $this->routedEvaluationForInstitution($user) !== null;
         }
 
         return $this->mayActOnRoutedEvaluation($user);

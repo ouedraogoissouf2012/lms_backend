@@ -2068,6 +2068,159 @@ components:
                     format: date-time
                     nullable: true
 
+    JustificatifAbsence:
+      type: object
+      additionalProperties: false
+      required: [id, eleve_id, eleve_nom, motif, du, au, seances, piece, etat, motif_rejet, decide_le, cree_le]
+      properties:
+        id:
+          type: integer
+        eleve_id:
+          type: integer
+        eleve_nom:
+          type: string
+          nullable: true
+        motif:
+          type: string
+        du:
+          type: string
+          format: date
+          nullable: true
+        au:
+          type: string
+          format: date
+          nullable: true
+        seances:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, titre, date_seance]
+            properties:
+              id:
+                type: integer
+              titre:
+                type: string
+                nullable: true
+              date_seance:
+                type: string
+                format: date-time
+                nullable: true
+        piece:
+          type: boolean
+          description: "Une piece a ete deposee (lisible par GET /lms/justificatifs/{id}/piece)."
+        etat:
+          type: string
+          enum: [en_attente, validee, rejetee]
+        motif_rejet:
+          type: string
+          nullable: true
+        decide_le:
+          type: string
+          format: date-time
+          nullable: true
+        cree_le:
+          type: string
+          format: date-time
+          nullable: true
+
+    JustificatifAbsenceRendu:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/JustificatifAbsence'
+
+    JustificatifsDeLEleve:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/JustificatifAbsence'
+
+    JustificatifsDeLaGestion:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [justificatifs, compteurs, page, derniere_page, total]
+          properties:
+            justificatifs:
+              type: array
+              items:
+                $ref: '#/components/schemas/JustificatifAbsence'
+            compteurs:
+              type: object
+              additionalProperties: false
+              required: [en_attente, validee, rejetee]
+              properties:
+                en_attente:
+                  type: integer
+                validee:
+                  type: integer
+                rejetee:
+                  type: integer
+            page:
+              type: integer
+            derniere_page:
+              type: integer
+            total:
+              type: integer
+
+    AbsencesDeLEleve:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [seance_id, titre, date_seance, marque, justificatif_etat]
+            properties:
+              seance_id:
+                type: integer
+              titre:
+                type: string
+                nullable: true
+              date_seance:
+                type: string
+                format: date-time
+                nullable: true
+              marque:
+                type: string
+                nullable: true
+                enum: [absent, null]
+                description: "La presence retenue : `absent` (marque, ou exclu de la visio) ; `null` quand rien ne la dit."
+              justificatif_etat:
+                type: string
+                nullable: true
+                enum: [en_attente, validee, rejetee, null]
+
     SeanceCalendrier:
       type: object
       description: |
@@ -4203,6 +4356,9 @@ components:
             - attendance_managed_by_klassci
             - seance_not_started
             - student_not_in_seance
+            - seance_not_justifiable
+            - no_absence_in_range
+            - justification_already_decided
             - account_quota_exceeded
             - account_daily_cap_reached
             - institution_cap_reached
@@ -5110,6 +5266,449 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/ValidationFailed'
                   - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/mes-absences:
+    get:
+      tags:
+        - Visio
+      operationId: mesAbsences
+      summary: "Les absences justifiables de l'eleve"
+      description: |
+        #1681. Ses seances PASSEES, dans ses classes actives, ou sa presence retenue
+        n'est pas « present » (un retard est une presence ; une absence deja
+        excusee n'y figure plus), de la plus recente a la plus ancienne, avec l'etat
+        du justificatif qui la vise.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les absences"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsencesDeLEleve'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/mes-justificatifs:
+    get:
+      tags:
+        - Visio
+      operationId: mesJustificatifs
+      summary: "Les justificatifs deposes par l'eleve"
+      description: |
+        #1681. Du plus recent au plus ancien, avec leur etat et le motif d'un rejet.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les justificatifs"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifsDeLEleve'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs:
+    post:
+      tags:
+        - Visio
+      operationId: deposerJustificatif
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [motif]
+              properties:
+                motif:
+                  type: string
+                  maxLength: 1000
+                seance_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: integer
+                    minimum: 1
+                  description: "Les seances nommees ; sinon `du` et `au`."
+                du:
+                  type: string
+                  format: date
+                au:
+                  type: string
+                  format: date
+                piece:
+                  type: string
+                  format: binary
+                  description: "Facultative : pdf, jpg ou png, 10 Mo au plus."
+      summary: "L'eleve depose un justificatif d'absence"
+      description: |
+        #1681. Un motif, les seances nommees OU une plage de dates, une piece
+        facultative ; la piece a son propre stockage. Chaque seance nommee doit etre
+        une absence justifiable de l'eleve ; une plage vise ses absences
+        justifiables.
+      security:
+        - sanctum: []
+      responses:
+        '201':
+          description: "Le justificatif depose"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifAbsenceRendu'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance hors des classes actives de l'eleve."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Seance a venir (`seance_not_started`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide (`errors`), seance qui n'est pas une absence (`seance_not_justifiable`), ou plage sans absence (`no_absence_in_range`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationFailed'
+                  - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "La piece n'a pas pu etre enregistree."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Visio
+      operationId: listerJustificatifs
+      parameters:
+        - name: etat
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [en_attente, validee, rejetee]
+        - name: eleve_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: du
+          in: query
+          required: false
+          description: "Date de depot, a partir de."
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Les justificatifs de l'ecole, pour la gestion"
+      description: |
+        #1681. Filtres par etat, eleve et dates de depot ; 25 par page, du plus
+        recent au plus ancien. Les compteurs par etat ignorent le filtre d'etat.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les justificatifs et les compteurs"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifsDeLaGestion'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole (coordinateur, admin d'ecole) ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Filtres invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs/{justificatifId}/valider:
+    post:
+      tags:
+        - Visio
+      operationId: validerJustificatif
+      parameters:
+        - name: justificatifId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      summary: "La gestion valide un justificatif"
+      description: |
+        #1681. Chaque seance visee dont la presence retenue n'est pas « present »
+        passe a `excused` (origine `delegated`, qui et quand) ; une presence n'est
+        jamais ecrasee ; l'ancienne marque est journalisee. Decision definitive ;
+        l'eleve est notifie.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le justificatif valide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifAbsenceRendu'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole (coordinateur, admin d'ecole) ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Justificatif introuvable dans l'ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Deja tranche (`justification_already_decided`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs/{justificatifId}/rejeter:
+    post:
+      tags:
+        - Visio
+      operationId: rejeterJustificatif
+      parameters:
+        - name: justificatifId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [motif]
+              properties:
+                motif:
+                  type: string
+                  maxLength: 1000
+      summary: "La gestion rejette un justificatif"
+      description: |
+        #1681. Motif obligatoire ; aucune marque n'est touchee. Decision definitive ;
+        l'eleve est notifie.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le justificatif rejete"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifAbsenceRendu'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole (coordinateur, admin d'ecole) ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Justificatif introuvable dans l'ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Deja tranche (`justification_already_decided`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Motif absent ou trop long."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs/{justificatifId}/piece:
+    get:
+      tags:
+        - Visio
+      operationId: lirePieceJustificative
+      parameters:
+        - name: justificatifId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      summary: "La piece d'un justificatif"
+      description: |
+        #1681. Pour l'eleve deposant et la gestion de son ecole ; pour tout autre
+        lecteur, la piece n'existe pas (404).
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "La piece, en piece jointe."
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Piece introuvable pour ce lecteur."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

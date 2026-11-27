@@ -39,6 +39,8 @@ return [
         'evaluation_submissions',
         'seances',
         'esbtp_attendance',
+        // #1681 : les justificatifs d'absence (le pivot des séances n'a pas d'école propre).
+        'justificatifs_absence',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\ValidatesAgainstOpenApi;
 use Tests\TestCase;
 
 /**
@@ -37,6 +38,7 @@ final class JustificatifAbsenceTest extends TestCase
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
     use RefreshDatabase;
+    use ValidatesAgainstOpenApi;
 
     private Institution $ecole;
 
@@ -183,6 +185,24 @@ final class JustificatifAbsenceTest extends TestCase
         $this->asTenant($this->membre($this->ecole(), 'admin'))->getJson($piece)->assertNotFound();
         $supradmin = User::factory()->create(['role' => 'supradmin', 'institution_id' => null, 'klassci_token' => null, 'klassci_id' => null]);
         self::assertContains($this->asTenant($supradmin)->getJson($piece)->status(), [400, 403, 404]);
+    }
+
+    public function test_les_reponses_suivent_la_spec(): void
+    {
+        $this->assertMatchesOpenApiResponse($this->asTenant($this->awa)->getJson('/api/lms/mes-absences')->assertOk(), '/lms/mes-absences', 'get');
+        $depot = $this->deposer($this->awa, ['seance_ids' => [$this->seances['absente']->id]], true)->assertCreated();
+        $this->assertMatchesOpenApiResponse($depot, '/lms/justificatifs', 'post');
+        $this->assertOpenApiSchemaRefuseSans($depot, '/lms/justificatifs', 'post', 'data');
+        $id = $depot->json('data.id');
+        $gestion = $this->asTenant($this->coordinateur)->getJson('/api/lms/justificatifs')->assertOk();
+        $this->assertMatchesOpenApiResponse($gestion, '/lms/justificatifs', 'get');
+        $valide = $this->asTenant($this->coordinateur)->postJson("/api/lms/justificatifs/{$id}/valider")->assertOk();
+        $this->assertMatchesOpenApiResponse($valide, '/lms/justificatifs/{justificatifId}/valider', 'post');
+        $refus = $this->asTenant($this->coordinateur)->postJson("/api/lms/justificatifs/{$id}/rejeter", ['motif' => 'x'])->assertStatus(409);
+        $this->assertMatchesOpenApiResponse($refus, '/lms/justificatifs/{justificatifId}/rejeter', 'post');
+        $this->assertMatchesOpenApiResponse($this->asTenant($this->awa)->getJson('/api/lms/mes-justificatifs')->assertOk(), '/lms/mes-justificatifs', 'get');
+        $aVenir = $this->deposer($this->awa, ['seance_ids' => [$this->seances['future']->id]])->assertStatus(409);
+        $this->assertMatchesOpenApiResponse($aVenir, '/lms/justificatifs', 'post');
     }
 
     public function test_une_ecole_klassci_justifie_dans_klassci(): void

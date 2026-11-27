@@ -68,6 +68,9 @@ class Notification extends Model
 
     public const TYPE_EVALUATION_APPROACHING = 'evaluation_approaching';
 
+    /** #1681 : la gestion a tranché un justificatif d'absence de l'élève. */
+    public const TYPE_ABSENCE_JUSTIFICATION_DECIDED = 'absence_justification_decided';
+
     /**
      * Relation: Utilisateur destinataire
      *

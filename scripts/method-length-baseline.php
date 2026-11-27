@@ -37,7 +37,6 @@ return [
     'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::preview' => 61,
     'app/Services/Institution/InstitutionConnectionTester.php::test' => 43,
     'app/Services/Quiz/QuizAttemptStateService.php::checkTimeRemaining' => 42,
-    'app/Services/Report/AttendanceReportContextBuilder.php::build' => 44,
     'app/Services/Report/ReportGenerationService.php::generateGrades' => 49,
     'app/Services/SeanceDetailQueryService.php::getSeanceDetailsArray' => 41,
     'app/Services/Seances/Mutations/SeanceDeleteService.php::delete' => 44,

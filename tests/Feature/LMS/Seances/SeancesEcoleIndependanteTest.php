@@ -639,6 +639,8 @@ final class SeancesEcoleIndependanteTest extends TestCase
         ] + $visio + [
             // #1121 : une séance à venir, lue par son auteur ou par la gestion.
             'can_be_edited' => true,
+            // front#719 : à venir, donc pas encore commencée : l'appel n'est pas ouvert.
+            'can_take_attendance' => false,
         ];
     }
 }

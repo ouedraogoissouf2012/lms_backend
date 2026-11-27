@@ -7,6 +7,7 @@ use App\Http\Controllers\API\ConfigurationController;
 use App\Http\Controllers\API\InscriptionParCodeController;
 use App\Http\Controllers\API\InstitutionDirectoryController;
 use App\Http\Controllers\API\IntegrationController;
+use App\Http\Controllers\API\MonCompteController;
 use App\Http\Controllers\API\MotDePasseDuCompteController;
 use App\Http\Controllers\API\PasswordResetController;
 use App\Http\Controllers\API\Proxy\ProxyAcademicController;
@@ -122,6 +123,12 @@ Route::prefix('auth')->middleware(['auth:sanctum', 'plateforme'])->group(functio
     // son compte, révoquer son propre jeton.
     Route::get('/me', [AuthController::class, 'me'])->middleware('tout.compte');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('tout.compte');
+    // #1667 : le compte connecté change SON mot de passe et SON profil (nom, téléphone). Ouvertes à tout compte,
+    // même sans établissement (le supradmin de plateforme a un compte local) ; la source du compte décide.
+    Route::put('/me/password', [MonCompteController::class, 'changerMotDePasse'])
+        ->middleware(['tout.compte', 'throttle:mot-de-passe-change']);
+    Route::patch('/me', [MonCompteController::class, 'modifierProfil'])
+        ->middleware(['tout.compte', 'throttle:profil-modifie']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::get('/check', [AuthController::class, 'check']);
 });

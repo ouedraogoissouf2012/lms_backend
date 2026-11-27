@@ -30,6 +30,8 @@ return [
         'programs',
         'training_sessions',
         'creneaux',
+        // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
+        'sous_periodes',
         'classes',
         'matieres',
         'lessons',

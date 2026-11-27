@@ -44,6 +44,9 @@ final class PlatformRoutesListTest extends TestCase
         'POST auth/logout',
         'POST auth/refresh',
         'GET auth/check',
+        // #1667 : le compte connecté change SON mot de passe et SON profil, supradmin compris (compte local).
+        'PATCH auth/me',
+        'PUT auth/me/password',
         'GET user',
         'GET proxy/test-connection',
         'GET configuration',

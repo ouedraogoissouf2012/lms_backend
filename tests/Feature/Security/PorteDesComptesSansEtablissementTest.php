@@ -113,7 +113,9 @@ final class PorteDesComptesSansEtablissementTest extends TestCase
         $marquees = array_values(array_unique($marquees));
         sort($marquees);
 
-        self::assertSame(['GET auth/me', 'POST auth/logout'], $marquees);
+        // #1667 (relu) : changer son mot de passe et son profil vaut pour tout compte, même sans établissement (le
+        // supradmin de plateforme a un compte local) ; la source du compte décide (SourceDuCompte).
+        self::assertSame(['GET auth/me', 'PATCH auth/me', 'POST auth/logout', 'PUT auth/me/password'], $marquees);
     }
 
     /** #801 : le seul compte sans établissement enregistrable est le supradmin. */

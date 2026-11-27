@@ -38,14 +38,16 @@ final class ComptesDuRoster
             static fn (?int $id): bool => $id !== null,
         ));
 
-        return new self(
-            $emails === [] ? collect() : User::query()->whereIn('email', $emails)->get()->keyBy('email'),
-            $etablissement === null || $ids === [] ? collect() : User::query()
-                ->where('institution_id', $etablissement)
-                ->whereIn('klassci_id', $ids)
-                ->get()
-                ->keyBy('klassci_id'),
-        );
+        /** @var Collection<string, User> $parEmail */
+        $parEmail = $emails === [] ? collect() : User::query()->whereIn('email', $emails)->get()->keyBy('email');
+        /** @var Collection<int, User> $parKlassci */
+        $parKlassci = $etablissement === null || $ids === [] ? collect() : User::query()
+            ->where('institution_id', $etablissement)
+            ->whereIn('klassci_id', $ids)
+            ->get()
+            ->keyBy('klassci_id');
+
+        return new self($parEmail, $parKlassci);
     }
 
     /** @param  array<string, mixed>  $etudiant */

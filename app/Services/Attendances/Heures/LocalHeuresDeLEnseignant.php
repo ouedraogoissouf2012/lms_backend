@@ -100,6 +100,6 @@ final class LocalHeuresDeLEnseignant implements HeuresDeLEnseignant
         return Seance::query()->withoutGlobalScope('institution')
             ->where('institution_id', $ecole)
             ->where('is_active', true)
-            ->whereBetween('date_seance', [$debut, $fin->min(now())]);
+            ->whereBetween('date_seance', [$debut, $fin]);
     }
 }

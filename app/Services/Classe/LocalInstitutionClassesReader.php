@@ -60,9 +60,7 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
         }
 
         $classes = ClassesAtteintes::par(Classe::query()->where('institution_id', $institution), $user, $institution)
-            ->with(['trainingSession' => static function ($periode) use ($institution): void {
-                $periode->where('institution_id', $institution);
-            }])
+            ->with('trainingSession')
             ->withCount([
                 'etudiantsActifs as places_occupees' => static function ($inscrits) use ($institution): void {
                     $inscrits->whereIn('users.id', User::query()->where('institution_id', $institution)->select('id'));

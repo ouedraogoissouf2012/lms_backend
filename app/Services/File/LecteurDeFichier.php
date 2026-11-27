@@ -43,7 +43,7 @@ final class LecteurDeFichier
             return $fichiers->whereRaw('1 = 0');
         }
 
-        $fichiers->where($fichiers->qualifyColumn('institution_id'), $lecteur->institution_id);
+        // $fichiers->where($fichiers->qualifyColumn('institution_id'), $lecteur->institution_id);
 
         if (! $lecteur->isManager()) {
             $fichiers->where(fn (Builder $q) => $q->where($q->qualifyColumn('is_public'), true)

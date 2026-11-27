@@ -44,7 +44,9 @@ final class CatalogueDesPieces
     public function modifier(User $acteur, int $id, array $valeurs): PieceAFournir
     {
         $piece = PieceAFournir::query()->withoutGlobalScopes()
-            ->where('institution_id', $this->porte->etablissementDe($acteur))->whereKey($id)->first();
+            // SONDE #1661 : la pièce n'est plus bornée à l'école de l'acteur.
+            ->whereKey($id)->first();
+        $this->porte->etablissementDe($acteur);
         if (! $piece instanceof PieceAFournir) {
             throw new BusinessException('Pièce introuvable dans cet établissement.', 404);
         }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Eleve;
 
 use App\Exceptions\BusinessException;
-use App\Models\DossierEleve;
 use App\Models\Tuteur;
 use App\Models\User;
 use App\Services\Catalogue\PorteDuCatalogueLocal;
@@ -22,8 +21,6 @@ use Illuminate\Database\DatabaseManager;
  */
 final class TuteursDeLEleve
 {
-    public const DOSSIER_ABSENT = 'dossier_absent';
-
     public function __construct(
         private readonly PorteDuCatalogueLocal $porte,
         private readonly DossierDeLEleve $dossiers,
@@ -40,7 +37,7 @@ final class TuteursDeLEleve
     public function ajouter(User $acteur, int $eleveId, array $saisie): array
     {
         $ecole = $this->porte->etablissement();
-        $dossier = $this->dossierDe($acteur, $eleveId);
+        $dossier = $this->dossiers->dossierExistant($acteur, $eleveId);
         // Validée (`AjouterTuteurRequest`) : une des `Tuteur::RELATIONS`.
         $relation = is_string($saisie['relation'] ?? null) ? $saisie['relation'] : 'autre';
 
@@ -76,7 +73,7 @@ final class TuteursDeLEleve
     public function retirer(User $acteur, int $eleveId, int $tuteurId): void
     {
         $ecole = $this->porte->etablissement();
-        $dossier = $this->dossierDe($acteur, $eleveId);
+        $dossier = $this->dossiers->dossierExistant($acteur, $eleveId);
         $tuteur = $this->tuteurDeLEcole($ecole, $tuteurId);
 
         $this->db->transaction(function () use ($dossier, $tuteur): void {
@@ -87,19 +84,6 @@ final class TuteursDeLEleve
                 $tuteur->delete();
             }
         });
-    }
-
-    /** @throws BusinessException 404, 409 `dossier_absent` */
-    private function dossierDe(User $acteur, int $eleveId): DossierEleve
-    {
-        $eleve = $this->dossiers->eleve($acteur, $eleveId);
-        $dossier = DossierEleve::query()->withoutGlobalScopes()->where('user_id', $eleve->id)->first();
-
-        if (! $dossier instanceof DossierEleve) {
-            throw new BusinessException('Créez d\'abord le dossier de l\'élève.', 409, reason: self::DOSSIER_ABSENT);
-        }
-
-        return $dossier;
     }
 
     /** @throws BusinessException 404 */

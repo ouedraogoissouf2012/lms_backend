@@ -44,7 +44,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Déclarée AVANT la route paramétrée, pour la même raison que `local` :
     // `{classeId}` n'a pas de contrainte numérique et capturerait le segment.
     Route::get('/classes/etablissement', [LMSClassesDeLEtablissementController::class, 'index'])
-        ->middleware('gestion')
+        ->middleware('permission:classes.gerer')
         ->name('lms.classes.etablissement');
 
     // Détails complets d'une classe
@@ -55,11 +55,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // n'existe que pour lister des élèves, et un élève ne reçoit jamais de
     // données sur un autre élève. Même garde que /seances/{id}/attendances.
     Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
-        ->middleware('personnel')
+        ->middleware('permission:classes.eleves')
         ->name('lms.classes.etudiants');
 
     Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
-        ->middleware('role:enseignant,coordinateur')
+        ->middleware('permission:enseignement.consulter')
         ->name('lms.teacher.classes');
 });
 
@@ -76,5 +76,5 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 //
 // Même garde de rôle que l'émission du code : un apprenant qui lirait les codes
 // des autres classes y entrerait sans y avoir été invité.
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:classes.gerer'])
     ->get('/classes', [LMSClassesLocalesController::class, 'index']);

@@ -13372,27 +13372,102 @@ paths:
     get:
       tags:
         - Notifications
-      summary: "List notifications"
+      summary: "Les notifications de l appelant, paginees"
+      description: |
+        Les notifications de l APPELANT seul, les plus recentes d abord. `type` filtre sur un
+        type connu : `type=annonce` est le fil « Mes annonces » (#1650, front#690). La page
+        est gardee en cache 60 s, par appelant, filtre, taille et numero de page.
       security:
         - sanctum: []
       parameters:
-        - name: read
+        - name: unread_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: type
           in: query
           schema:
             type: string
-            enum: [true, false]
+            enum: [lesson_published, forum_reply, quiz_available, grade_received, lesson_updated, forum_solution, quiz_deadline, visio_scheduled, visio_starting, evaluation_approaching, annonce]
         - name: per_page
           in: query
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
             default: 10
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
       responses:
         '200':
-          description: "List of notifications"
+          description: "Une page de notifications"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - meta
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      required:
+                        - id
+                        - type
+                        - title
+                        - message
+                      properties:
+                        id:
+                          type: integer
+                        type:
+                          type: string
+                        title:
+                          type: string
+                        message:
+                          type: string
+                        data:
+                          type: object
+                          additionalProperties: true
+                          description: "Les donnees du type (`annonce_id`, `classe_id` pour une annonce). Toujours un objet, `{}` quand il est vide."
+                        read_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      last_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '422':
+          description: "`type` inconnu, `per_page` hors bornes, `page` ou `unread_only` invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

@@ -94,7 +94,6 @@ final class SignatureParCode
     private function codeValide(User $eleve, string $code): CodeEmargement
     {
         $ligne = CodeEmargement::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $eleve->institution_id)
             ->where('code_hash', $this->empreinte->de($code))
             ->latest('id')
             ->first();

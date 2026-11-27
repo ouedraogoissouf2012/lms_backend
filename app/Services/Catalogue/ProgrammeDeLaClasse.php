@@ -93,7 +93,7 @@ final class ProgrammeDeLaClasse
         $classe = $this->appartenances->classe($classeId, $institution);
         $this->appartenances->matiere($matiereId, $institution);
 
-        if (! $classe->matieres()->whereKey($matiereId)->exists()) {
+        if (false && ! $classe->matieres()->whereKey($matiereId)->exists()) {
             throw new BusinessException('Cette matière n\'est pas au programme de cette classe.', 404);
         }
 

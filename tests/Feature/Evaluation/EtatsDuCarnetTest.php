@@ -26,7 +26,7 @@ use Tests\TestCase;
  *
  * | élève | QCM                                              | Dissertation                  |
  * |-------|--------------------------------------------------|-------------------------------|
- * | Awa   | remis, 12 → rendu                                | remise non corrigée → à corriger |
+ * | Awa   | remis, 12 → rendu                                | remise non corrigée, puis une 2e tentative refusée → à corriger |
  * | Binta | remise refusée (`verrouille`) → en retard        | corrigée, 15 → rendu          |
  * | Coffi | ouverte, échéance passée (lue verrouillée) → en retard | entraînement seul → manquant |
  * | Dédé  | 8, puis une 2e tentative refusée → rendu, 8      | rien → manquant               |
@@ -125,6 +125,8 @@ final class EtatsDuCarnetTest extends TestCase
 
         $this->copie($qcm, $this->eleves['Awa'], ['note_sur_20' => '12.00']);
         $this->copie($dissertation, $this->eleves['Awa'], ['note_sur_20' => '0.00']);
+        // La remise à corriger l'emporte sur la tentative verrouillée : la note viendra.
+        $this->copie($dissertation, $this->eleves['Awa'], ['attempt' => 2, 'status' => 'verrouille', 'note_sur_20' => null, 'submitted_at' => null]);
         $this->copie($qcm, $this->eleves['Binta'], ['status' => 'verrouille', 'note_sur_20' => null, 'submitted_at' => null]);
         $this->copie($dissertation, $this->eleves['Binta'], ['status' => 'corrige', 'note_sur_20' => '15.00']);
         $this->copie($qcm, $this->eleves['Coffi'], ['status' => 'en_cours', 'note_sur_20' => null, 'submitted_at' => null, 'ends_at' => now()->subDays(3)]);

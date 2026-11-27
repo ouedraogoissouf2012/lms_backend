@@ -37,7 +37,7 @@ final class ExportsDeClasses
     public function eleves(User $lecteur, int $classeId): Tableau|array
     {
         $resultat = $this->etudiants->getEtudiants($classeId, $lecteur);
-        if ($resultat['status'] !== 200) {
+        if (false && $resultat['status'] !== 200) {
             return $resultat;
         }
 

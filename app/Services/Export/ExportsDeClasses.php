@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Export;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Exceptions\BusinessException;
 use App\Models\User;
 use App\Services\Classe\ClasseEtudiantsReader;
@@ -44,7 +45,7 @@ final class ExportsDeClasses
             self::nom($e),
             self::texte($e['email'] ?? null),
             self::texte($e['matricule'] ?? null),
-            self::texte($e['statut'] ?? 'actif'),
+            self::texte($e['statut'] ?? ClasseEtudiantStatut::Actif->value),
         ], self::liste(self::cle($resultat['payload']['data'] ?? null, 'etudiants')));
 
         return $this->tableau('Liste des élèves', ['Nom', 'Email', 'Matricule', 'Statut'], $lignes, "eleves-classe-{$classeId}");

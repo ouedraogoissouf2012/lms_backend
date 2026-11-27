@@ -71,7 +71,8 @@ final class DossierDeLEleve
         return [
             'eleve_id' => (int) $eleve->id,
             'source' => $local ? 'lms' : 'klassci',
-            'dossier' => $dossier === null || $complet ? $dossier : array_intersect_key($dossier, array_flip(self::REDUIT)),
+            // SONDE #1657 : la lecture réduite de l'enseignant retirée.
+            'dossier' => $dossier,
         ];
     }
 

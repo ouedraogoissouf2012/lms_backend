@@ -444,6 +444,14 @@ final class MatieresEtablissementTest extends TestCase
             'nb_seances_programmees' => null,
             'nb_lecons' => $lecons,
             'combinaisons' => [],
+            // #1653 (PR C) : une matière LOCALE porte ses valeurs brutes, pour l'écran qui modifie.
+            'edition' => [
+                'libelle' => $matiere->libelle,
+                'code' => $matiere->code,
+                'description' => $matiere->description,
+                'coefficient' => $matiere->coefficient,
+                'credit' => $matiere->credit,
+            ],
         ];
     }
 }

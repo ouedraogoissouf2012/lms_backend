@@ -46,7 +46,7 @@ final class RenduDeTableau
         $csv = Writer::createFromString();
         $csv->setDelimiter(';');
         $csv->setEscape('');
-        $csv->addFormatter(new EscapeFormula);
+        // $csv->addFormatter(new EscapeFormula);
         $csv->insertOne($tableau->entetes);
         $csv->insertAll($tableau->lignes);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciCompteRefuse;
 use App\Exceptions\KlassciUnavailableException;
 use App\Services\Klassci\KlassciBatchFetcher;
 use Illuminate\Http\Client\ConnectionException;
@@ -46,6 +47,11 @@ use Psr\Log\LoggerInterface;
  * Le caller essaie chaque tenant trouvé ; il décide, une fois la boucle finie,
  * si un refus conclusif (401) ou une panne (503) l'emporte.
  *
+ * ## Le 403 refuse le COMPTE (#1739)
+ *
+ * Un 403 n'est ni un refus d'identifiants ni une panne : {@see KlassciCompteRefuse}, porteur
+ * du motif de KLASSCI nettoyé, que l'orchestrateur fait passer avant la panne et le 401.
+ *
  * @see app/Http/Controllers/API/AuthController.php (avant refactor) lignes 160-234
  * @see .claude/specs/auth-controller-refactor/design.md §2.3
  */
@@ -78,12 +84,31 @@ class KlassciAuthClient
      * @return array<string, mixed>|null Payload JSON sur succès, null sur refus conclusif
      *
      * @throws KlassciUnavailableException réponse indéterminée (#687)
+     * @throws KlassciCompteRefuse compte refusé par KLASSCI, 403 (#1739)
      */
     public function attemptLogin(string $tenantUrl, string $username, string $password): ?array
     {
         $response = $this->sendLoginRequest($tenantUrl, $username, $password);
+        $this->exigerLeCompteAdmis($response, $tenantUrl);
 
         return $this->parseLoginResponse($response, $tenantUrl);
+    }
+
+    /**
+     * Un 403 refuse le COMPTE, pas les identifiants (#1739) : KLASSCI le répond à des
+     * identifiants justes quand le compte ne peut pas entrer (non réinscrit, inactif), avec
+     * un motif écrit pour l'élève.
+     *
+     * @throws KlassciCompteRefuse
+     */
+    private function exigerLeCompteAdmis(Response $response, string $tenantUrl): void
+    {
+        if ($response->status() !== 403) {
+            return;
+        }
+        $this->logger->info('KLASSCI login refused the account', ['tenant_url' => $tenantUrl]);
+
+        throw KlassciCompteRefuse::depuisLeMessageDeKlassci($response->json('message'));
     }
 
     /**

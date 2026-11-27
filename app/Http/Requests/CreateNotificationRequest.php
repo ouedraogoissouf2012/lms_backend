@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\Auth;
  * 2. **Caller role** is one of `coordinateur`, `superAdmin`, `supradmin` (defense in
  *    depth: route middleware `role:` enforces this too).
  * 3. **Tenant isolation**: unless caller is `supradmin` (platform manager, cross-tenant
- *    by design — cf. `EnsureRole::userHasRole()` L107-108), `targetUser.institution_id`
+ *    by design — cf. `PermissionsDuRole`), `targetUser.institution_id`
  *    MUST equal `caller.institution_id`. Otherwise the request is rejected (403).
  *
  * Without check 3, a coordinator of institution A could send notifications to users of
@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\Auth;
  * actually reachable, otherwise REQ-2/REQ-5 of the spec would be dead code.
  *
  * @see app/Http/Controllers/API/NotificationsController.php (caller)
- * @see app/Http/Middleware/EnsureRole.php L107-108 (supradmin semantics)
+ * @see \App\Services\Autorisation\PermissionsDuRole (supradmin semantics)
  * @see .claude/specs/notifications-cross-tenant/design.md §2.1
  */
 final class CreateNotificationRequest extends FormRequest
@@ -75,7 +75,7 @@ final class CreateNotificationRequest extends FormRequest
         // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
         // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
         // ce qui briserait la distinction délibérée du contrôle cross-tenant
-        // (cf. `EnsureRole::userHasRole` L107-108 et `.claude/specs/notifications-cross-tenant/`).
+        // (cf. `PermissionsDuRole` et `.claude/specs/notifications-cross-tenant/`).
         // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
         if ($caller->isPlatformSupradmin()) {
             return true;

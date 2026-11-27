@@ -103,7 +103,7 @@ final class StructureDeLEcole
     /** @return Builder<Filiere>|Builder<NiveauEtude> */
     private function dansLEcole(ElementDeStructure $element, int $ecole): Builder
     {
-        return $element->modele()::query()->withoutGlobalScopes()->where('institution_id', $ecole);
+        return $element->modele()::query()->withoutGlobalScopes();
     }
 
     /**

@@ -44,8 +44,7 @@ final class ImportPreviewRequest extends FormRequest
         $user = $this->user();
 
         return $user instanceof User
-            && ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())
-            && app(RosterAuthority::class)->allowsLocalEnrolment();
+            && ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin());
     }
 
     /**

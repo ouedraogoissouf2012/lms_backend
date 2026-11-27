@@ -35,6 +35,9 @@ use Tests\TestCase;
  *   école KLASSCI, un élève inscrit par la synchronisation (`user_classes`) en fait partie.
  * - L'enseignant n'annonce qu'à SES classes (`classeIdsForTeacher`). Une classe d'une autre école est introuvable (404),
  *   du même corps qu'un id absent.
+ * - `classe_id` est l'id de l'ESPACE SOURCE de l'école (`ClasseDeLEspaceSource`, comme `/lms/classes/{classe}/resultats`) :
+ *   l'id KLASSCI dans une école KLASSCI, celui que donnent ses écrans de classe ; l'id local dans une école autonome.
+ *   L'annonce garde l'id local.
  * - Le courriel ne part que si le canal existe (`CanalDeCourriel`) : une tâche en file, qui écrit à chaque destinataire.
  */
 final class AnnonceAUneClasseTest extends TestCase
@@ -69,10 +72,11 @@ final class AnnonceAUneClasseTest extends TestCase
         [$ecole, $classe, $inscrits] = $this->classeAvecEleves($mode);
         $admin = $this->membre($ecole, 'admin');
 
-        $reponse = $this->asTenant($admin)->postJson(self::URL, ['classe_id' => $classe->getKey()] + self::CORPS);
+        $reponse = $this->asTenant($admin)->postJson(self::URL, ['classe_id' => $this->idSource($classe)] + self::CORPS);
 
+        // La réponse rend l'id reçu (espace source) ; l'annonce garde l'id LOCAL.
         $reponse->assertCreated()
-            ->assertJsonPath('data.classe_id', $classe->getKey())
+            ->assertJsonPath('data.classe_id', $this->idSource($classe))
             ->assertJsonPath('data.titre', 'Sortie au musée')
             ->assertJsonPath('data.destinataires', 2)
             ->assertJsonPath('data.courriel', false);
@@ -109,13 +113,31 @@ final class AnnonceAUneClasseTest extends TestCase
         $enseignant = $this->membre($ecole, 'enseignant');
         $this->enseigneDans($enseignant, $classe);
         $autre = $this->classe($ecole, '3e B');
+        if ($mode === InstitutionMode::Klassci) {
+            $autre->forceFill(['klassci_id' => 7003])->save();
+        }
 
-        $this->asTenant($enseignant)->postJson(self::URL, ['classe_id' => $classe->getKey()] + self::CORPS)->assertCreated();
+        $this->asTenant($enseignant)->postJson(self::URL, ['classe_id' => $this->idSource($classe)] + self::CORPS)->assertCreated();
 
-        $refus = $this->asTenant($enseignant)->postJson(self::URL, ['classe_id' => $autre->getKey()] + self::CORPS);
+        $refus = $this->asTenant($enseignant)->postJson(self::URL, ['classe_id' => $this->idSource($autre)] + self::CORPS);
         $refus->assertForbidden();
         $this->assertMatchesOpenApiResponse($refus, self::CHEMIN, 'post');
         self::assertSame(1, Annonce::query()->withoutGlobalScopes()->count());
+    }
+
+    /**
+     * École KLASSCI : ses écrans désignent une classe par son id KLASSCI (`/lms/teacher/classes`, `/lms/classes/{id}`).
+     * L'id LOCAL n'y désigne rien : introuvable, comme sur `/lms/classes/{classe}/resultats` (#1676).
+     */
+    public function test_ecole_klassci_l_id_local_d_une_classe_est_introuvable(): void
+    {
+        [$ecole, $classe] = $this->classeAvecEleves(InstitutionMode::Klassci);
+
+        $reponse = $this->asTenant($this->membre($ecole, 'admin'))->postJson(self::URL, ['classe_id' => $classe->getKey()] + self::CORPS);
+
+        $reponse->assertNotFound();
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $this->assertRienDEnvoye();
     }
 
     public function test_403_un_eleve_n_annonce_pas(): void
@@ -300,6 +322,12 @@ final class AnnonceAUneClasseTest extends TestCase
             'classe_id' => $classe->getKey(), 'matiere_id' => $matiere->getKey(), 'enseignant_id' => $enseignant->getKey(),
             'institution_id' => $classe->institution_id, 'created_at' => now(), 'updated_at' => now(),
         ]);
+    }
+
+    /** L'id de la classe dans l'espace SOURCE de son école : KLASSCI s'il existe, local sinon (#1676). */
+    private function idSource(Classe $classe): int
+    {
+        return (int) ($classe->klassci_id ?? $classe->getKey());
     }
 
     private function assertRienDEnvoye(): void

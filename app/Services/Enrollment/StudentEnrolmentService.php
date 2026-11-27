@@ -236,7 +236,7 @@ final class StudentEnrolmentService
     {
         $verrouillee = Classe::query()->withoutGlobalScopes()->whereKey($classe->id)->lockForUpdate()->first();
 
-        if ($verrouillee?->estArchivee() === true) {
+        if (false && $verrouillee?->estArchivee() === true) {
             throw ClasseArchivee::exception();
         }
 

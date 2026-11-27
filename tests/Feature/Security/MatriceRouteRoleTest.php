@@ -6,6 +6,7 @@ namespace Tests\Feature\Security;
 
 use App\Enums\Role;
 use App\Http\Middleware\EnsureGestion;
+use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsurePersonnel;
 use App\Http\Middleware\EnsurePlatformSupradmin;
 use App\Http\Middleware\EnsureRole;
@@ -43,6 +44,8 @@ final class MatriceRouteRoleTest extends TestCase
         EnsureGestion::class,
         EnsurePersonnel::class,
         EnsurePlatformSupradmin::class,
+        // #1665 lot 1 : la garde qui remplace les trois premieres, AJOUTEE (le fichier fige ne bouge pas).
+        EnsurePermission::class,
     ];
 
     private const TOUS = '*';

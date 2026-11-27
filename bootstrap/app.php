@@ -5,6 +5,7 @@ use App\Exceptions\UncaughtExceptionReporting;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureGestion;
 use App\Http\Middleware\EnsureKlassciSync;
+use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsurePersonnel;
 use App\Http\Middleware\EnsurePlatformSupradmin;
 use App\Http\Middleware\EnsureRole;
@@ -89,6 +90,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
             // D499/D502 : une garde par prédicat de rôle, au lieu de listes recopiées.
             EnsureGestion::ALIAS => EnsureGestion::class,
             EnsurePersonnel::ALIAS => EnsurePersonnel::class,
+            // #1665 : la garde de route par permission (catalogue App\Enums\Permission).
+            EnsurePermission::ALIAS => EnsurePermission::class,
             'institution' => ResolveInstitution::class,
             'institution.header' => RequireInstitutionHeader::class,
             // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).

@@ -21,7 +21,8 @@ use Tests\TestCase;
  * 2. un `match` dont le sujet est un rôle ;
  * 3. un filtre `'role'` ou `'users.role'` sur une seule `Role::X->value`, qui doit lire
  *    `Role::X->aliases()` ;
- * 4. un paramètre `role:…` de `routes/` qui n'est pas une valeur canonique de `Role`.
+ * 4. un paramètre `role:…` dans `routes/` : depuis #1665, une route exige une PERMISSION
+ *    (`permission:…`, catalogue `App\Enums\Permission`), jamais une liste de rôles.
  */
 final class AucuneListeDeRolesEnDurTest extends TestCase
 {
@@ -104,26 +105,28 @@ final class AucuneListeDeRolesEnDurTest extends TestCase
         self::assertSame([], $sites, "Un filtre sur une seule valeur manque les alias : whereIn(…, Role::X->aliases()).\n".implode("\n", $sites));
     }
 
-    public function test_les_routes_ne_citent_que_des_roles_canoniques(): void
+    public function test_les_routes_ne_citent_aucun_role(): void
     {
-        $parametres = 0;
+        // Migration déclarée (#1665 lot 1) : ce test vérifiait que les listes `role:` ne citaient que des valeurs
+        // canoniques ; il n'en reste aucune. Les permissions citées sont vérifiées par PermissionsDesRoutesTest.
+        $permissions = 0;
         $ecarts = [];
         foreach ($this->fichiersPhp('routes') as $relatif => $jetons) {
             foreach ($jetons as $jeton) {
-                if (! is_array($jeton) || $jeton[0] !== T_CONSTANT_ENCAPSED_STRING || ! str_starts_with(substr($jeton[1], 1), 'role:')) {
+                if (! is_array($jeton) || $jeton[0] !== T_CONSTANT_ENCAPSED_STRING) {
                     continue;
                 }
-                foreach (explode(',', substr($jeton[1], 6, -1)) as $valeur) {
-                    $parametres++;
-                    if (Role::tryFrom($valeur) === null) {
-                        $ecarts[] = "{$relatif}:{$jeton[2]}  {$valeur}";
-                    }
+                $valeur = substr($jeton[1], 1, -1);
+                if (str_starts_with($valeur, 'permission:')) {
+                    $permissions++;
+                } elseif (str_starts_with($valeur, 'role:')) {
+                    $ecarts[] = "{$relatif}:{$jeton[2]}  {$valeur}";
                 }
             }
         }
 
-        self::assertGreaterThan(0, $parametres, 'Aucun paramètre role: trouvé : chemin faux ?');
-        self::assertSame([], $ecarts, "Un paramètre de route qui n'est pas une valeur canonique de Role :\n".implode("\n", $ecarts));
+        self::assertGreaterThan(0, $permissions, 'Aucun paramètre permission: trouvé : chemin faux ?');
+        self::assertSame([], $ecarts, "Une route exige une liste de rôles au lieu d'une permission :\n".implode("\n", $ecarts));
     }
 
     /**

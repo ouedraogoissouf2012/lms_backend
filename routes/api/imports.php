@@ -24,14 +24,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     Route::post('/imports/preview', [ImportPreviewController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:imports'])
+        ->middleware(['permission:imports.importer', 'throttle:imports'])
         ->name('lms.imports.preview');
     Route::post('/imports/{id}/confirm', [ImportConfirmController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:imports'])
+        ->middleware(['permission:imports.importer', 'throttle:imports'])
         ->whereNumber('id')
         ->name('lms.imports.confirm');
     Route::get('/imports/{id}', [ImportShowController::class, 'show'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin'])
+        ->middleware(['permission:imports.importer'])
         ->whereNumber('id')
         ->name('lms.imports.show');
 });

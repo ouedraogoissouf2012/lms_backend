@@ -4319,6 +4319,21 @@ components:
                 description: "Les evaluations de la periode sans note finale de l eleve."
                 items:
                   type: integer
+              cellules:
+                type: array
+                description: "#1698 : le carnet de notes. Une case par evaluation, dans l ordre de `evaluations`. Seule une case `rendu` porte une note et compte dans les moyennes : `a_corriger` (remise, correction manuelle attendue), `en_retard` (remise refusee apres l echeance, copie verrouillee), `manquant` (rien de remis)."
+                items:
+                  type: object
+                  required: [evaluation_id, etat, note]
+                  properties:
+                    evaluation_id:
+                      type: integer
+                    etat:
+                      type: string
+                      enum: [rendu, a_corriger, en_retard, manquant]
+                    note:
+                      type: number
+                      nullable: true
         statistiques:
           type: object
           properties:

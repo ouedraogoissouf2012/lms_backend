@@ -36,10 +36,6 @@ final class CodeDeMatiere
      */
     public static function ecrire(Closure $ecriture): mixed
     {
-        try {
-            return $ecriture();
-        } catch (UniqueConstraintViolationException) {
-            throw CodeDeMatiereDejaEmploye::surLeCode();
-        }
+        return $ecriture();
     }
 }

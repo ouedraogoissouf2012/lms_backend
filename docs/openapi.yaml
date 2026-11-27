@@ -6677,8 +6677,10 @@ paths:
         (`courriel` vrai) ; sans canal, aucun courriel (`courriel` faux). Une classe sans eleve
         n est pas une erreur : `destinataires` vaut 0.
 
-        `classe_id` est l id LOCAL de la classe. Limite nommee `annonce` (10 par minute et par
-        compte).
+        `classe_id` est l id de la classe dans l ESPACE SOURCE de l ecole (`ClasseDeLEspaceSource`,
+        comme `/lms/classes/{classe}/resultats`) : l id KLASSCI dans une ecole KLASSCI, celui que
+        donnent ses ecrans de classe ; l id local dans une ecole autonome. La reponse le rend tel
+        quel. Limite nommee `annonce` (10 par minute et par compte).
       security:
         - sanctum: []
       requestBody:
@@ -6760,8 +6762,9 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '404':
           description: |
-            Classe introuvable : absente, supprimee, ou d une AUTRE ecole. Le meme corps dans tous
-            les cas (isolation).
+            Classe introuvable : absente, supprimee, d une AUTRE ecole, ou designee hors de
+            l espace source (un id local dans une ecole KLASSCI). Le meme corps dans tous les cas
+            (isolation).
           content:
             application/json:
               schema:

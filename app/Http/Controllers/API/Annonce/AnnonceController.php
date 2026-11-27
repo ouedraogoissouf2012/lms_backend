@@ -23,7 +23,9 @@ final class AnnonceController extends AuthenticatedController
     public function store(PublierUneAnnonceRequest $request): JsonResponse
     {
         $acteur = $this->authenticatedUser($request);
-        $classe = $this->annonces->classeDe($acteur, $request->integer('classe_id'));
+        // L'id de l'ESPACE SOURCE de l'école (KLASSCI ou local), celui des écrans de classe ; rendu tel quel.
+        $idSource = $request->integer('classe_id');
+        $classe = $this->annonces->classeDe($acteur, $idSource);
 
         if ($classe === null) {
             return $this->errorResponse('Classe introuvable.', 404);
@@ -42,7 +44,7 @@ final class AnnonceController extends AuthenticatedController
 
         return $this->successResponse([
             'id' => $annonce->id,
-            'classe_id' => $annonce->classe_id,
+            'classe_id' => $idSource,
             'titre' => $annonce->titre,
             'destinataires' => $annonce->destinataires,
             'courriel' => $courriel,

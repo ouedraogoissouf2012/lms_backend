@@ -11,15 +11,21 @@ use App\Models\Classe;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\Audience\ElevesDeLaClasse;
+use App\Services\Classe\KlassciClasseDeLEspaceSource;
+use App\Services\Classe\LocalClasseDeLEspaceSource;
 use App\Services\Enrollment\EnrollmentSource;
 use App\Services\Mail\CanalDeCourriel;
 use App\Services\Notification\NotificationDispatcher;
+use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Database\DatabaseManager;
 
 /**
  * Le personnel annonce à TOUTE une classe (#1650), dans les deux types d'école.
  *
- * - La classe se cherche dans l'école de l'acteur, explicitement : hors de son école, elle est introuvable.
+ * - La classe se désigne par l'id de l'ESPACE SOURCE de l'école de l'acteur (`ClasseDeLEspaceSource`, #1676) : l'id
+ *   KLASSCI dans une école KLASSCI, celui que donnent ses écrans de classe ; l'id local dans une école autonome. Elle
+ *   se cherche dans l'école de l'acteur, explicitement : hors de son école, elle est introuvable. La source est
+ *   choisie à l'appel, par l'école du compte (ADR-EI-01, règle 3).
  * - L'admin, le superAdmin et le coordinateur annoncent à toute classe de leur école ; l'enseignant à SES classes, celles
  *   que lui donne la source d'inscription de l'école (`EnrollmentSource::classeIdsForTeacher`).
  * - Les destinataires sont les élèves inscrits et actifs de la classe, selon la même source ({@see ElevesDeLaClasse}) :
@@ -38,16 +44,19 @@ final class AnnonceAUneClasse
         private readonly NotificationDispatcher $notifications,
         private readonly CanalDeCourriel $courriel,
         private readonly DatabaseManager $db,
+        private readonly RosterAuthorityFactory $autorites,
     ) {}
 
-    /** La classe, si elle existe dans l'école de l'acteur. */
-    public function classeDe(User $acteur, int $classeId): ?Classe
+    /** La classe désignée par son id dans l'espace source, si elle existe dans l'école de l'acteur. */
+    public function classeDe(User $acteur, int $idSource): ?Classe
     {
         if (! is_int($acteur->institution_id)) {
             return null;
         }
 
-        return Classe::query()->whereKey($classeId)->where('institution_id', $acteur->institution_id)->first();
+        $source = $this->autorites->sourceForAccount($acteur, KlassciClasseDeLEspaceSource::class, LocalClasseDeLEspaceSource::class);
+
+        return $source->trouver($idSource, $acteur->institution_id);
     }
 
     /** L'acteur peut-il annoncer à cette classe de son école ? */

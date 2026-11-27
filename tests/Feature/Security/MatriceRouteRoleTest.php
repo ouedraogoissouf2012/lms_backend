@@ -39,7 +39,7 @@ final class MatriceRouteRoleTest extends TestCase
     private const GARDES = [
         EnsurePlatformSupradmin::class,
         // #1665 lot 1 : EnsurePermission remplace EnsureRole (`role:`), EnsureGestion et EnsurePersonnel, retirées.
-        // Le fichier figé est la matrice qu'ELLES donnaient (commit 6d2a0af1) : il n'a pas bougé.
+        // Le fichier figé est la matrice qu'ELLES donnaient (figée sur #1760, avant la bascule) : il n'a pas bougé.
         EnsurePermission::class,
     ];
 

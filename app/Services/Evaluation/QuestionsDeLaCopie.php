@@ -28,11 +28,33 @@ final class QuestionsDeLaCopie
 {
     public function __construct(private readonly Randomizer $hasard) {}
 
-    /** @return array{questions: list<int>} la présentation d'une nouvelle tentative */
+    /**
+     * La présentation d'une nouvelle tentative : les questions sans tirage, posées à tous, et,
+     * pour chaque règle de tirage (#1702, D3), `nombre` questions tirées au sort dans son vivier ;
+     * dans l'ordre de l'évaluation, puis mélangées si elle le demande.
+     *
+     * @return array{questions: list<int>}
+     */
     public function presenter(Evaluation $evaluation): array
     {
-        $ids = array_values($evaluation->questions()->pluck('id')
-            ->map(static fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)->all());
+        // Dans l'ordre de l'évaluation (`ordre`) : un seul passage les garde dans cet ordre.
+        $questions = $evaluation->questions()->get(['id', 'tirage_id']);
+        $parTirage = [];
+        foreach ($questions as $question) {
+            $parTirage[is_numeric($question->tirage_id) ? (int) $question->tirage_id : 0][] = (int) $question->id;
+        }
+        $retenues = array_fill_keys($parTirage[0] ?? [], true);
+        foreach ($evaluation->tirages()->get(['id', 'nombre']) as $tirage) {
+            foreach ($this->tirer($parTirage[$tirage->id] ?? [], $tirage->nombre) as $id) {
+                $retenues[$id] = true;
+            }
+        }
+        $ids = [];
+        foreach ($questions as $question) {
+            if (isset($retenues[(int) $question->id])) {
+                $ids[] = (int) $question->id;
+            }
+        }
 
         return ['questions' => $evaluation->shuffle_questions ? array_values($this->hasard->shuffleArray($ids)) : $ids];
     }
@@ -63,5 +85,16 @@ final class QuestionsDeLaCopie
         }
 
         return $rendues;
+    }
+
+    /**
+     * `nombre` questions au hasard du vivier (tout le vivier s'il n'en a pas plus).
+     *
+     * @param  list<int>  $vivier
+     * @return list<int>
+     */
+    private function tirer(array $vivier, int $nombre): array
+    {
+        return $nombre >= count($vivier) ? $vivier : array_slice(array_values($this->hasard->shuffleArray($vivier)), 0, $nombre);
     }
 }

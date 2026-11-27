@@ -7,6 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Support\Evaluation\NombreDeQuestionsPosees;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,8 +30,8 @@ final class LocalStudentEvaluationsReader implements StudentEvaluationsReader
      */
     public function evaluationsFor(User $user): array
     {
-        $evaluations = $this->audience->visibleFor($user)
-            ->withCount('questions')
+        // #1702 (D3) : le nombre de questions POSÉES (un tirage n'annonce jamais son vivier).
+        $evaluations = NombreDeQuestionsPosees::charger($this->audience->visibleFor($user))
             ->orderBy('date_evaluation', 'desc')
             ->get();
         $copies = $this->dernieresCopies($evaluations->modelKeys(), $user);
@@ -71,7 +72,7 @@ final class LocalStudentEvaluationsReader implements StudentEvaluationsReader
                 'date_evaluation' => $evaluation->date_evaluation?->toIso8601String(),
                 'window' => LocalEvaluationWindow::of($evaluation),
             ],
-            'questions_count' => is_numeric($nombre = $evaluation->getAttribute('questions_count')) ? (int) $nombre : 0,
+            'questions_count' => NombreDeQuestionsPosees::de($evaluation),
             // Sans sa note si les résultats ne sont pas visibles (C25).
             'student_submission' => ResultatsVisibles::masquer($copie, $evaluation),
         ]);

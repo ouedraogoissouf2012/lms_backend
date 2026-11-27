@@ -15,6 +15,8 @@ class EvaluationQuestion extends Model
 
     protected $fillable = [
         'evaluation_id',
+        'tirage_id',
+        'question_de_banque_id',
         'question',
         'type',
         'ordre',

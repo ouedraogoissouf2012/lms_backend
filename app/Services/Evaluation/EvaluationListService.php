@@ -165,12 +165,13 @@ final class EvaluationListService
         }
 
         // #1702 (D2) : l'élève compose sur SA copie : les questions posées, dans l'ordre figé à son
-        // démarrage. Sans copie (avant le démarrage), l'évaluation telle quelle, comme avant.
+        // démarrage. Sans copie (avant le démarrage), l'évaluation hors des viviers de tirage (D3) :
+        // le vivier n'est jamais exposé, seules les questions posées à tous le sont, comme avant.
         if ($user->isLearnerAudience()) {
             $copie = EvaluationSubmission::query()->where('evaluation_id', $evaluation->id)->ownedBy($user)->orderByDesc('attempt')->first();
-            if ($copie instanceof EvaluationSubmission) {
-                $evaluation->setRelation('questions', $this->questionsDeLaCopie->de($copie, $evaluation));
-            }
+            $evaluation->setRelation('questions', $copie instanceof EvaluationSubmission
+                ? $this->questionsDeLaCopie->de($copie, $evaluation)
+                : $evaluation->questions->whereNull('tirage_id')->values());
         }
 
         return $this->catalogue()->presenter(collect([$evaluation]), $user)[0];

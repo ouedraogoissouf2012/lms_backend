@@ -106,6 +106,16 @@ class Evaluation extends Model
     }
 
     /**
+     * #1702 (D3) : les règles de tirage de l'évaluation.
+     *
+     * @return HasMany<TirageDEvaluation, $this>
+     */
+    public function tirages(): HasMany
+    {
+        return $this->hasMany(TirageDEvaluation::class)->orderBy('id');
+    }
+
+    /**
      * Une évaluation a plusieurs soumissions (étudiants)
      *
      * @return HasMany<EvaluationSubmission, $this>

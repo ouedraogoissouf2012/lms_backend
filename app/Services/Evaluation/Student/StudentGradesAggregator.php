@@ -8,7 +8,6 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\DureeDeLaCopie;
-use App\Services\Evaluation\EvaluationGradingService;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -30,7 +29,8 @@ use Illuminate\Database\Eloquent\Collection;
 final class StudentGradesAggregator
 {
     public function __construct(
-        private readonly EvaluationGradingService $grading,
+        private readonly CopiesFinales $copies,
+        private readonly CoefficientsDesMatieres $coefficients,
     ) {}
 
     /**
@@ -38,11 +38,12 @@ final class StudentGradesAggregator
      */
     public function getGradesAggregatedByMatiere(User $user, MatieresDesNotes $matieres): array
     {
-        $submissions = $this->fetchFinalSubmissions($user);
+        $submissions = $this->copies->deLEleve($user);
         $cles = array_values(array_unique($submissions
             ->map(static fn (EvaluationSubmission $s): int => $s->evaluation instanceof Evaluation ? $matieres->cleDe($s->evaluation) : 0)
             ->all()));
-        $gradesByMatiere = $this->groupByMatiere($submissions, $matieres, $matieres->noms($user, $cles));
+        $coefficients = $this->coefficients->pour($submissions->pluck('evaluation')->filter()->all());
+        $gradesByMatiere = $this->groupByMatiere($submissions, $matieres, $matieres->noms($user, $cles), $coefficients);
         $this->computeMatiereAverages($gradesByMatiere);
 
         $gradesList = array_values($gradesByMatiere);
@@ -59,62 +60,12 @@ final class StudentGradesAggregator
     }
 
     /**
-     * @return Collection<int, EvaluationSubmission>
-     */
-    private function fetchFinalSubmissions(User $user): Collection
-    {
-        // Les copies de CET élève, dans SON établissement : la portée de propriété,
-        // et non l'identifiant KLASSCI seul, qui désignerait aussi les copies d'un
-        // homonyme d'une autre école quand aucun tenant n'est résolu.
-        /** @var Collection<int, EvaluationSubmission> $soumissions */
-        $soumissions = EvaluationSubmission::query()->ownedBy($user)
-            ->whereIn('status', ['soumis', 'corrige'])
-            ->where(function ($q) {
-                $q->whereNull('feedback')
-                    ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
-            })
-            // `questions` est chargée ici : `noteEstFinale()` l'interroge pour
-            // chaque soumission, et sans ce préchargement chaque note coûterait
-            // une requête de plus.
-            ->with(['evaluation' => fn ($query) => $query->where('is_published', true)->with('questions')])
-            ->whereHas('evaluation', fn ($query) => $query->where('is_published', true))
-            ->orderBy('submitted_at', 'desc')
-            ->get();
-
-        return $soumissions->filter(fn (EvaluationSubmission $s): bool => $this->noteEstFinale($s));
-    }
-
-    /**
-     * La note ne peut-elle plus changer ?
-     *
-     * `corrige` : l'enseignant a tranché. `soumis` sans question à correction
-     * manuelle : l'auto-correction est le dernier mot. `soumis` AVEC une
-     * dissertation non notée : la note est DÉFLATÉE — la dissertation compte 0
-     * au dénominateur tant qu'elle n'est pas corrigée — donc la montrer
-     * annoncerait à l'élève un échec qui n'a pas eu lieu.
-     *
-     * C'est le critère que la synchro KLASSCI applique déjà pour refuser de
-     * pousser (409). L'élève voit ainsi ce qui est, ou sera, transmis comme
-     * officiel — et rien d'autre.
-     */
-    private function noteEstFinale(EvaluationSubmission $submission): bool
-    {
-        if ($submission->status === 'corrige') {
-            return true;
-        }
-
-        $evaluation = $submission->evaluation;
-
-        return $evaluation instanceof Evaluation
-            && ! $this->grading->evaluationRequiresManualGrading($evaluation);
-    }
-
-    /**
      * @param  Collection<int, EvaluationSubmission>  $submissions
      * @param  array<int, string>  $matieresData  clé de la source => nom
+     * @param  array<int, float>  $coefficients  le coefficient de la matière, par id d'évaluation
      * @return array<int, array<string, mixed>> Indexé par la clé de la source
      */
-    private function groupByMatiere(Collection $submissions, MatieresDesNotes $matieres, array $matieresData): array
+    private function groupByMatiere(Collection $submissions, MatieresDesNotes $matieres, array $matieresData, array $coefficients): array
     {
         $gradesByMatiere = [];
         foreach ($submissions as $submission) {
@@ -132,6 +83,9 @@ final class StudentGradesAggregator
                     'matiere_nom' => $matiereNom,
                     'evaluations' => [],
                     'moyenne' => null,
+                    // #1676 : le coefficient de la MATIÈRE, dans la classe de sa copie la plus
+                    // récente ({@see CoefficientsDesMatieres}) ; il pondère la moyenne générale.
+                    'coefficient' => $coefficients[$evaluation->id] ?? CoefficientsDesMatieres::NEUTRE,
                     'total_evaluations' => 0,
                 ];
             }
@@ -176,20 +130,27 @@ final class StudentGradesAggregator
     }
 
     /**
+     * #1676 : la moyenne générale est pondérée par le coefficient de la MATIÈRE, la règle du
+     * bilan d'une classe (une seule règle : le rang suit la moyenne affichée à l'élève). Avec
+     * tous les coefficients à 1, c'est exactement l'ancienne moyenne simple.
+     *
      * @param  array<int, array<string, mixed>>  $gradesList
      * @return array{0: float|null, 1: int} [moyenne_generale, count_matieres]
      */
     private function computeOverallAverage(array $gradesList): array
     {
-        $moyennes = [];
+        $comptees = [];
         $countMatieres = 0;
         foreach ($gradesList as $matiere) {
             if ($matiere['total_evaluations'] > 0) {
-                $moyennes[] = is_float($matiere['moyenne']) ? $matiere['moyenne'] : null;
                 $countMatieres++;
+                // Une matière sans note mesurée n'entre pas dans la moyenne (règle unique : `null`).
+                if (is_float($matiere['moyenne']) && is_float($matiere['coefficient'])) {
+                    $comptees[] = [$matiere['moyenne'], $matiere['coefficient']];
+                }
             }
         }
 
-        return [Moyennes::simple($moyennes), $countMatieres];
+        return [Moyennes::ponderee($comptees), $countMatieres];
     }
 }

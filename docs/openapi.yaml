@@ -10170,8 +10170,10 @@ paths:
         (`feedback` commencant par `[PRACTICE]`) et les evaluations non
         publiees sont exclues.
 
-        `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
-        moyenne simple des moyennes de matiere MESUREES. Regle unique des agregats
+        `moyenne` est ponderee par le `coefficient` de chaque evaluation ;
+        `moyenne_generale` est la moyenne des moyennes de matiere MESUREES,
+        ponderee par le `coefficient` de la MATIERE (#1676, la regle du bilan d une
+        classe ; avec tous les coefficients a 1, la moyenne simple). Regle unique des agregats
         sans mesure : toutes deux valent `null` quand il n y a rien a moyenner
         (aucune note visible, ou un coefficient total nul), jamais un 0 fabrique.
 
@@ -10218,6 +10220,12 @@ paths:
                               type: number
                               nullable: true
                               description: "`null` quand la matiere n a aucune note a moyenner"
+                            coefficient:
+                              type: number
+                              description: |
+                                #1676 : le coefficient de la MATIERE, qui pondere `moyenne_generale` :
+                                celui de la matiere dans la classe de sa copie la plus recente
+                                (`classe_matiere`), a defaut celui de la matiere, a defaut 1.
                             total_evaluations:
                               type: integer
                             evaluations:

@@ -70,7 +70,7 @@ class GenerateAttendanceReportRequest extends FormRequest
         $institution = $this->user()?->institution_id;
 
         return is_int($institution)
-            ? Rule::exists('classes', 'id')->where('institution_id', $institution)
+            ? Rule::exists('classes', 'id')
             : 'prohibited';
     }
 

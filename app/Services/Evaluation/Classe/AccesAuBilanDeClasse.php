@@ -8,6 +8,7 @@ use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Classe\ClasseDeLEspaceSource;
 use App\Services\Classe\ClassesEnseignees;
 
 /**
@@ -19,6 +20,7 @@ use App\Services\Classe\ClassesEnseignees;
  * - L'élève : SA seule ligne, sans aucune donnée sur un autre élève. Son rang n'y figure que si
  *   l'école l'autorise (`settings.rang_visible_eleve`, faux par défaut). Hors de la classe : 403.
  * - Une classe d'une autre école, ou inexistante : 404 (bornage explicite par l'établissement).
+ *   Dans une école KLASSCI, aussi tant que le miroir local de la classe n'existe pas (déclaré).
  */
 final class AccesAuBilanDeClasse
 {
@@ -26,11 +28,12 @@ final class AccesAuBilanDeClasse
 
     public const ELEVE = 'eleve';
 
+    public function __construct(private readonly ClasseDeLEspaceSource $classes) {}
+
+    /** La classe désignée par l'identifiant de l'espace SOURCE de l'école ({@see ClasseDeLEspaceSource}). */
     public function classe(int $id, User $lecteur): Classe
     {
-        $classe = $lecteur->institution_id === null ? null : Classe::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $lecteur->institution_id)
-            ->find($id);
+        $classe = is_numeric($lecteur->institution_id) ? $this->classes->trouver($id, (int) $lecteur->institution_id) : null;
 
         if (! $classe instanceof Classe) {
             throw new BusinessException('Classe introuvable dans cet établissement.', 404, null, 'class_out_of_scope');

@@ -44,6 +44,9 @@ final class BilanDeClasseTest extends TestCase
 
     private const CHEMIN = '/lms/classes/{classe}/resultats';
 
+    /** L'identité KLASSCI d'une classe : loin des ids locaux, qui ne repartent pas de 1 sous MySQL. */
+    public const KLASSCI = 900077;
+
     private Institution $ecole;
 
     private Classe $classe;
@@ -132,23 +135,40 @@ final class BilanDeClasseTest extends TestCase
     public function test_ecole_klassci_le_roster_de_klassci_fait_foi(): void
     {
         $ecole = $this->ecole(InstitutionMode::Klassci);
-        $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => 77, 'libelle' => 'BTS 1']);
+        $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => self::KLASSCI, 'libelle' => 'BTS 1']);
         $eleve = $this->membre($ecole, 'etudiant');
         $eleve->forceFill(['klassci_id' => 9001])->save();
         $this->roster([['id' => 9001, 'nom' => 'Kouassi', 'prenom' => 'Ama', 'email' => 'inconnu@ecole.test'], ['id' => 9002, 'nom' => 'Sans', 'prenom' => 'Compte']]);
-        $devoir = $this->evaluation($ecole, null, 'Devoir KLASSCI', ['classe_id' => null, 'klassci_classe_id' => 77]);
+        $devoir = $this->evaluation($ecole, null, 'Devoir KLASSCI', ['classe_id' => null, 'klassci_classe_id' => self::KLASSCI]);
         $this->note($devoir, $eleve, '12.00');
         $coordinateur = $this->membre($ecole, 'coordinateur');
         $coordinateur->forceFill(['klassci_token' => 'jeton-coordinateur'])->save();
         $this->disableKlassciMiddleware();
 
-        $reponse = $this->bilan($coordinateur, '', $classe)->assertOk();
+        // L'identifiant de l'espace SOURCE, comme `/classes/{classeId}/etudiants` : l'identité KLASSCI.
+        $reponse = $this->bilan($coordinateur, '', self::KLASSCI)->assertOk();
 
-        $reponse->assertJsonPath('data.source', 'lms');
+        $reponse->assertJsonPath('data.source', 'lms')->assertJsonPath('data.classe.id', $classe->id);
         self::assertSame([[$eleve->id, 12, 1], [null, null, null]], array_map(
             static fn (array $l): array => [$l['compte_id'], $l['moyenne_generale'], $l['rang']],
             (array) $reponse->json('data.eleves'),
         ));
+    }
+
+    /** École KLASSCI : l'id LOCAL n'est pas l'espace de la route, et une identité sans miroir n'est rien. */
+    public function test_ecole_klassci_seule_l_identite_klassci_d_un_miroir_designe_la_classe(): void
+    {
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => self::KLASSCI]);
+        $coordinateur = $this->membre($ecole, 'coordinateur');
+        $coordinateur->forceFill(['klassci_token' => 'jeton-coordinateur'])->save();
+        $this->roster([]);
+        $this->disableKlassciMiddleware();
+        self::assertNotSame(self::KLASSCI, $classe->id, 'Le test exige deux espaces distincts.');
+
+        $this->bilan($coordinateur, '', $classe->id)->assertNotFound()->assertJsonPath('reason', 'class_out_of_scope');
+        $this->bilan($coordinateur, '', self::KLASSCI + 1)->assertNotFound()->assertJsonPath('reason', 'class_out_of_scope');
+        $this->bilan($coordinateur, '', self::KLASSCI)->assertOk();
     }
 
     /** @param  array<string, mixed>  $reglages */
@@ -222,14 +242,14 @@ final class BilanDeClasseTest extends TestCase
 
             public function etudiants(int $classeId, string $userToken): array
             {
-                return $classeId === 77 && $userToken === 'jeton-coordinateur' ? $this->etudiants : [];
+                return $classeId === BilanDeClasseTest::KLASSCI && $userToken === 'jeton-coordinateur' ? $this->etudiants : [];
             }
         });
     }
 
-    private function bilan(User $lecteur, string $periode = '', ?Classe $classe = null): TestResponse
+    private function bilan(User $lecteur, string $periode = '', ?int $classe = null): TestResponse
     {
-        $reponse = $this->asTenant($lecteur)->getJson('/api/lms/classes/'.($classe ?? $this->classe)->id.'/resultats'.$periode);
+        $reponse = $this->asTenant($lecteur)->getJson('/api/lms/classes/'.($classe ?? $this->classe->id).'/resultats'.$periode);
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
 
         return $reponse;

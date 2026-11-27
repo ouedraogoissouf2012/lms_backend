@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Presenters;
 
 use App\Enums\Role;
+use App\Exceptions\KlassciCompteRefuse;
 use App\Exceptions\KlassciRoleInconnuException;
 use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Institution;
@@ -145,6 +146,19 @@ class AuthResponsePresenter
             'success' => false,
             'message' => 'Identifiants incorrects',
         ], 401);
+    }
+
+    /**
+     * #1739 — KLASSCI refuse le compte (non réinscrit, inactif) : 403 motivé, avec le message de
+     * KLASSCI déjà nettoyé par {@see KlassciCompteRefuse}.
+     */
+    public function compteRefuse(string $message): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'reason' => KlassciCompteRefuse::REASON,
+        ], 403);
     }
 
     public function loginError(): JsonResponse

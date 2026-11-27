@@ -96,15 +96,16 @@ final class LoginOrchestrator
 
         // #1739 — une école qui a refusé le COMPTE a jugé le mot de passe juste : son motif
         // l'emporte sur une panne et sur un refus d'identifiants ailleurs.
+        if ($panne !== null) {
+            throw $panne;
+        }
+
         if ($refus !== null) {
             return $this->compteRefuse($refus, null, $username);
         }
 
         // #687 — une école trouvée qui n'a pas pu juger le mot de passe : seul un refus
         // de TOUTES vaut « identifiants incorrects ». Sinon, c'est une panne (503).
-        if ($panne !== null) {
-            throw $panne;
-        }
 
         $this->auditLogger->logAuthEvent('login_failed', null, ['username' => $username]);
 

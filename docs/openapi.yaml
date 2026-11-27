@@ -9461,6 +9461,202 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /users/{user}:
+    put:
+      tags:
+        - Users
+      operationId: modifierUnCompte
+      summary: "Modifier un compte de son ecole"
+      description: |
+        #1728. Reserve au coordinateur et a l'admin d'ecole (`admin`, `superAdmin`). La
+        CIBLE doit etre de rang strictement inferieur a celui de l'acteur, et jamais
+        l'acteur lui-meme (`GestionDeCompte`, #932) : sinon 403. Le NOUVEAU role, s'il est
+        envoye, doit lui aussi etre strictement inferieur (`AssignableRole`) : sinon 422
+        sur `role`, pas un 403.
+
+        Tous les champs sont facultatifs : seuls ceux envoyes changent. Le mot de passe
+        ne se change pas ici (voir `PUT /users/{user}/password`), ni l'etablissement. Un
+        compte d'une autre ecole est introuvable (404).
+      security:
+        - sanctum: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte (jamais un identifiant KLASSCI)."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                  description: "Unique dans l'ecole de la cible, hors la cible elle-meme."
+                role:
+                  type: string
+                  enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                  description: "Strictement inferieur au role de l'acteur. Un alias (`teacher`...) est ecrit sous sa valeur canonique."
+                klassci_id:
+                  type: integer
+                  nullable: true
+      responses:
+        '200':
+          description: "Compte modifie, relu avec son etablissement"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                    example: "Utilisateur mis à jour"
+                  data:
+                    type: object
+                    description: "Le compte modifie, relu avec son etablissement (`institution`)."
+                    required:
+                      - id
+                      - name
+                      - email
+                      - role
+                      - institution_id
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                        enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+                      institution_id:
+                        type: integer
+                      klassci_id:
+                        type: integer
+                        nullable: true
+                      institution:
+                        type: object
+                        nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role de l'acteur hors gestion (eleve, enseignant) ; cible de rang egal ou
+            superieur, ou l'acteur lui-meme ; acteur sans etablissement
+            (`reason: no_institution`). Aussi, sans `reason` : etablissement desactive
+            ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Compte introuvable dans l'etablissement (autre ecole, ou compte supprime)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Validation, detail par champ dans `errors` : `name` trop long, `email` invalide
+            ou deja pris dans l'ecole, `role` hors liste, egal ou superieur a celui de
+            l'acteur, `klassci_id` non entier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Users
+      operationId: desactiverUnCompte
+      summary: "Desactiver un compte de son ecole (suppression logique)"
+      description: |
+        #1728. Reserve au coordinateur et a l'admin d'ecole, sur une cible de rang
+        strictement inferieur, jamais soi-meme (#932) : sinon 403.
+
+        Suppression LOGIQUE (#566) : le dossier academique du compte est conserve, ses
+        jetons sont revoques dans la meme transaction (ses sessions se ferment), et
+        l'acte est trace a l'audit (`user.soft_deleted`). Un compte d'une autre ecole,
+        ou deja desactive, est introuvable (404).
+      security:
+        - sanctum: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte (jamais un identifiant KLASSCI)."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Compte desactive"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                    example: "Utilisateur supprimé"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role de l'acteur hors gestion (eleve, enseignant) ; cible de rang egal ou
+            superieur, ou l'acteur lui-meme ; acteur sans etablissement
+            (`reason: no_institution`). Aussi, sans `reason` : etablissement desactive
+            ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Compte introuvable dans l'etablissement (autre ecole, ou deja desactive)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /users/{user}/password:
     put:
       tags:

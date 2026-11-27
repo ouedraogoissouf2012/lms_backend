@@ -578,6 +578,10 @@ components:
         code:
           type: string
           nullable: true
+        description:
+          type: string
+          nullable: true
+          description: "Pour preremplir sa modification sans relire la fiche (front#659)."
         training_session_id:
           type: integer
           nullable: true

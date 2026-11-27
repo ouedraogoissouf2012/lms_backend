@@ -105,6 +105,8 @@ final class TrainingSessionCrudService
             ->where('institution_id', $this->etablissementDe($acteur))
             ->whereNotIn('status', $ecartes)
             ->with(self::avecSonProgramme())
+            // #1651 : la période en cours d'abord ; NULL passe après, sous MySQL comme sous SQLite.
+            ->orderByDesc('en_cours')
             ->orderByDesc('starts_on')
             ->paginate($parPage);
     }

@@ -32,7 +32,7 @@ final class ReportGenerationService
     ) {}
 
     /**
-     * Rapport de présences (filtre classe via `Classe.klassci_id` ↔ `seance.klassci_classe_id`).
+     * Rapport de présences, de l'école ou d'une classe de l'établissement de l'acteur (#1709).
      * La conversion des statuts visio de {@see ESBTPAttendance::$status} vers
      * les compteurs pédagogiques est centralisée dans le context builder.
      *
@@ -42,7 +42,7 @@ final class ReportGenerationService
     public function generateAttendance(array $data, User $user): array
     {
         try {
-            $context = $this->attendanceContext->build($data);
+            $context = $this->attendanceContext->build($data, $user->institution_id);
 
             return $this->renderPdf('reports.attendance', $context, 'rapport-presences');
         } catch (Throwable $e) {

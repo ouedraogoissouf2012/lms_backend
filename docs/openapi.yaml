@@ -7247,8 +7247,10 @@ paths:
                     $ref: '#/components/schemas/BilanDeClasse'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Classe non enseignee, eleve hors de la classe, ou role sans acces."
+          description: "Classe non enseignee (`class_not_taught`), eleve hors de la classe (`not_in_class`), role sans acces, ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
           content:
             application/json:
               schema:

@@ -114,7 +114,7 @@ final class BilanDeClasse
     private static function programme(Classe $classe): array
     {
         return array_values(DB::table('classe_matiere')->where('classe_id', $classe->id)
-            ->pluck('matiere_id')->map(static fn ($id): int => (int) $id)->all());
+            ->pluck('matiere_id')->map(static fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)->all());
     }
 
     /** @return list<array<string, mixed>> les colonnes de la grille */
@@ -125,7 +125,7 @@ final class BilanDeClasse
             'titre' => (string) $evaluation->titre,
             'matiere_id' => ($notes->matieres[$evaluation->id] ?? 0) ?: null,
             'date_evaluation' => $evaluation->date_evaluation?->toIso8601String(),
-            'coefficient' => is_numeric($evaluation->coefficient) ? (float) $evaluation->coefficient : 1.0,
+            'coefficient' => (float) $evaluation->coefficient,
         ])->all());
     }
 
@@ -147,7 +147,7 @@ final class BilanDeClasse
     }
 
     /**
-     * @param  array<string, array<string, mixed>>  $lignes
+     * @param  array<string, array{notes: list<array{evaluation_id: int, note: float}>}>  $lignes
      * @param  array<int, string>  $libelles
      * @return array{matieres_sans_evaluation: list<array{matiere_id: int, libelle: string|null}>, evaluations_sans_note: list<int>}
      */
@@ -171,7 +171,7 @@ final class BilanDeClasse
         return [
             'matieres_sans_evaluation' => $sansEvaluation,
             'evaluations_sans_note' => array_values(array_filter(
-                array_map(static fn ($id): int => (int) $id, $notes->evaluations->pluck('id')->all()),
+                array_values($notes->evaluations->map(static fn (Evaluation $evaluation): int => (int) $evaluation->id)->all()),
                 static fn (int $id): bool => ! isset($notees[$id]),
             )),
         ];

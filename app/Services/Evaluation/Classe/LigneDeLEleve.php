@@ -64,7 +64,7 @@ final class LigneDeLEleve
 
             $note = (float) $copie->note_sur_20;
             $notees[] = ['evaluation_id' => $id, 'note' => $note];
-            $coefficient = is_numeric($evaluation->coefficient) ? (float) $evaluation->coefficient : 1.0;
+            $coefficient = (float) $evaluation->coefficient;
             $parMatiere[$notes->matieres[$id] ?? 0][] = [$note, $coefficient];
         }
 

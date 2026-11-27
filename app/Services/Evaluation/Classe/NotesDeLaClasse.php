@@ -72,7 +72,7 @@ final class NotesDeLaClasse
 
         return new self(
             $evaluations,
-            $copiesFinales->desEvaluations(array_values($evaluations->pluck('id')->map(static fn ($id): int => (int) $id)->all()), $etablissement),
+            $copiesFinales->desEvaluations(array_values($evaluations->map(static fn (Evaluation $evaluation): int => (int) $evaluation->id)->all()), $etablissement),
             $coefficients->matieresLocales($evaluations),
             $coefficients->pour($evaluations),
         );

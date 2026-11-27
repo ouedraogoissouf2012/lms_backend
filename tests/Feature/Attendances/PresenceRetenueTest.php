@@ -69,7 +69,8 @@ final class PresenceRetenueTest extends TestCase
         $parRequete = PresenceRetenue::presentes(ESBTPAttendance::query())->pluck('id')->sort()->values()->all();
 
         self::assertSame($parLigne, $parRequete);
-        self::assertCount(5, $parRequete);
+        // Présent malgré l'exclusion, en retard, connecté sans marque, déconnecté sans marque.
+        self::assertCount(4, $parRequete);
     }
 
     public function test_le_rapport_compte_un_absent_marque_absent_meme_connecte(): void

@@ -55,8 +55,10 @@ final class BilanDeClasse
             $lignes[$eleve->cle()] = LigneDeLEleve::calculer($eleve, $notes, $coefficients);
         }
         $moyennes = array_map(static fn (array $ligne): ?float => $ligne['moyenne_generale'], $lignes);
-        foreach (Classement::rangs($moyennes) as $cle => $rang) {
-            $lignes[$cle]['rang'] = $rang;
+        $rangs = Classement::rangs($moyennes);
+        foreach ($lignes as $cle => $ligne) {
+            $ligne['rang'] = $rangs[$cle] ?? null;
+            $lignes[$cle] = $ligne;
         }
         $seuil = self::seuil($classe);
 

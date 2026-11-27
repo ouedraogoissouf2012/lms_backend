@@ -75,6 +75,7 @@ final class LoginOrchestrator
 
         $panne = null;
         $refus = null;
+        $ecoleDuRefus = null;
         foreach ($matchingTenants as $tenant) {
             try {
                 $payload = $this->klassciAuthClient->attemptLogin($tenant['api_base_url'], $username, $password);
@@ -83,7 +84,10 @@ final class LoginOrchestrator
 
                 continue;
             } catch (KlassciCompteRefuseException $e) {
-                $refus ??= ['exception' => $e, 'ecole' => $tenant['code']];
+                if ($refus === null) {
+                    $refus = $e;
+                    $ecoleDuRefus = $tenant['code'];
+                }
 
                 continue;
             }
@@ -99,10 +103,10 @@ final class LoginOrchestrator
         if ($refus !== null) {
             $this->auditLogger->logAuthEvent('login_refused_by_klassci', null, [
                 'username' => $username,
-                'ecole' => $refus['ecole'],
+                'ecole' => $ecoleDuRefus,
             ]);
 
-            throw $refus['exception'];
+            throw $refus;
         }
 
         // #687 — une école trouvée qui n'a pas pu juger le mot de passe : seul un refus

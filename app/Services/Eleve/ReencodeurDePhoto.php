@@ -26,6 +26,11 @@ final class ReencodeurDePhoto
             return null;
         }
 
+        // SONDE #1657 : le fichier d'origine est gardé tel quel, sans ré-encodage.
+        if ($octets !== '') {
+            return $octets;
+        }
+
         [$largeur, $hauteur] = [imagesx($source), imagesy($source)];
         $echelle = min(1, self::COTE_MAX / max($largeur, $hauteur));
         [$l, $h] = [max(1, (int) round($largeur * $echelle)), max(1, (int) round($hauteur * $echelle))];

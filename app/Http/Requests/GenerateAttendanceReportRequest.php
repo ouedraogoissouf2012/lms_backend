@@ -8,6 +8,8 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 
 /**
  * Rapport période (coordo/admin) ou export d'une séance (#726) par seances.id.
@@ -36,7 +38,7 @@ class GenerateAttendanceReportRequest extends FormRequest
         return [
             'date_start' => 'nullable|date|date_format:Y-m-d',
             'date_end' => 'nullable|date|date_format:Y-m-d|after_or_equal:date_start',
-            'classe_id' => 'nullable|integer|exists:classes,id',
+            'classe_id' => ['nullable', 'integer', $this->classeDeLEtablissement()],
             'seance_id' => 'nullable|integer|exists:seances,id',
             'format' => 'nullable|string|in:pdf,excel,xlsx',
         ];
@@ -54,6 +56,22 @@ class GenerateAttendanceReportRequest extends FormRequest
                 'date_end' => now()->format('Y-m-d'),
             ]);
         }
+    }
+
+    /**
+     * La classe est cherchée dans l'établissement de l'acteur (#1709) : une règle
+     * `exists` interroge la table sans le scope de l'école.
+     *
+     * `where('institution_id', null)` deviendrait un `whereNull` : un acteur sans
+     * établissement — que la porte de l'API refuse déjà — n'envoie donc aucune classe.
+     */
+    private function classeDeLEtablissement(): Exists|string
+    {
+        $institution = $this->user()?->institution_id;
+
+        return is_int($institution)
+            ? Rule::exists('classes', 'id')->where('institution_id', $institution)
+            : 'prohibited';
     }
 
     private function canExportSeance(User $user): bool

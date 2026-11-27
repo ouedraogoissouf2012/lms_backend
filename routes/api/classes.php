@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\API\LMS\LMSClasseLocalDetailsController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\LMS\LMSClassesDeLEtablissementController;
 use App\Http\Controllers\API\LMS\LMSClassesLocalesController;
 use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,15 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/classes/local/{classeId}', [LMSClasseLocalDetailsController::class, 'show'])
         ->whereNumber('classeId')
         ->name('lms.classes.details-local');
+
+    // Les classes de l'établissement par leur id LOCAL, dans les deux volets (#1709) :
+    // le filtre de classe du rapport de présences. Même garde que ce rapport par classe.
+    //
+    // Déclarée AVANT la route paramétrée, pour la même raison que `local` :
+    // `{classeId}` n'a pas de contrainte numérique et capturerait le segment.
+    Route::get('/classes/etablissement', [LMSClassesDeLEtablissementController::class, 'index'])
+        ->middleware('gestion')
+        ->name('lms.classes.etablissement');
 
     // Détails complets d'une classe
     Route::get('/classes/{classeId}', [LMSClassesController::class, 'classeDetails'])

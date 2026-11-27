@@ -79,6 +79,8 @@ class TrainingSession extends Model
     {
         return [
             'status' => TrainingSessionStatus::class,
+            // #1651 : vrai, ou NULL — jamais faux (contrainte en base).
+            'en_cours' => 'boolean',
             'enrollment_opens_at' => 'date',
             'enrollment_closes_at' => 'date',
             'starts_on' => 'date',

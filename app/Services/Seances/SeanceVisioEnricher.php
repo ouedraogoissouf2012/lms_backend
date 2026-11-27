@@ -59,59 +59,7 @@ final class SeanceVisioEnricher
             return null;
         }
 
-        // La seance est DECRITE depuis la ligne locale -- elle n'est plus
-        // fabriquee (#870).
-        //
-        // Ce bloc affirmait sept valeurs : `'B2 COM'` en dur comme nom de
-        // classe, la date du JOUR, un horaire 08h-10h, une salle `'TEAM'`,
-        // `matiere.id = 1` a defaut, `duree_minutes = 120`, `statut` fige.
-        //
-        // Aucune ne compensait une donnee manquante. Mesure de production du
-        // 22/09/2026, sur les 6 seances en base : `classe_nom`, `matiere_nom`,
-        // `enseignant_nom`, `date_seance` et `klassci_matiere_id` sont peuples
-        // partout -- zero nul. Et `date_seance` porte de VRAIES heures (14h30,
-        // 07h00, 16h30...), jamais minuit.
-        //
-        // Le litteral tombait juste par accident : cinq seances sur six sont
-        // reellement « B2 COM ». La sixieme est une « 1ere annee BTS Genie Civil
-        // Option Batiment » du 19 mai, affichee « B2 COM » a la date du jour.
-        //
-        // Ce qui n'a pas de source n'est plus affirme : `salle` n'a AUCUNE
-        // colonne, et `heure_fin` non plus. Le frontend gere deja leur absence
-        // (EventSeanceDetails.vue:59, ClassePlanningTab.vue:30).
-        $debut = $visioData->date_seance ? Carbon::parse($visioData->date_seance) : null;
-
-        $seance = [
-            'id' => $visioData->klassci_seance_id ?? $visioData->id,
-            'classe' => [
-                'id' => $visioData->klassci_classe_id,
-                'nom' => $visioData->classe_nom,
-            ],
-            'programmation' => [
-                'date' => $debut?->format('Y-m-d'),
-                'heure_debut' => $debut?->toISOString(),
-                'heure_fin' => null,
-                'salle' => null,
-            ],
-            'enseignant' => [
-                'nom' => $visioData->enseignant_nom,
-                'prenom' => '',
-            ],
-            'matiere' => [
-                'id' => $visioData->klassci_matiere_id,
-                'nom' => $visioData->matiere_nom,
-                'code' => null,
-            ],
-            'visio_enabled' => $visioData->visio_enabled ?? false,
-            'visio_type' => $visioData->visio_type ?? 'jitsi',
-            'visio_room_id' => $visioData->visio_room_id,
-            'visio_status' => $visioData->visio_status,
-            'visio_participants_count' => $visioData->current_participants_count ?? 0,
-            // La table ne porte pas d'heure de fin : la duree est donc inconnue,
-            // et le dire vaut mieux que rendre 120 pour tout le monde.
-            'duree_minutes' => null,
-            'statut' => $visioData->is_active ? 'programme' : 'archive',
-        ];
+        $seance = $this->seanceDecrite($visioData);
 
         $matiereInfo = $seance['matiere'];
 
@@ -262,5 +210,69 @@ final class SeanceVisioEnricher
         }
 
         return $students;
+    }
+
+    /**
+     * La séance DÉCRITE depuis sa ligne locale, extraite de {@see loadFromLocalDbFallback()}
+     * (§5, #1668). `matiere` est relue par l'appelant : sa forme est déclarée.
+     *
+     * @return array{matiere: array{id: int|null, nom: string|null, code: null}}&array<string, mixed>
+     */
+    private function seanceDecrite(Seance $visioData): array
+    {
+        // La seance est DECRITE depuis la ligne locale -- elle n'est plus
+        // fabriquee (#870).
+        //
+        // Ce bloc affirmait sept valeurs : `'B2 COM'` en dur comme nom de
+        // classe, la date du JOUR, un horaire 08h-10h, une salle `'TEAM'`,
+        // `matiere.id = 1` a defaut, `duree_minutes = 120`, `statut` fige.
+        //
+        // Aucune ne compensait une donnee manquante. Mesure de production du
+        // 22/09/2026, sur les 6 seances en base : `classe_nom`, `matiere_nom`,
+        // `enseignant_nom`, `date_seance` et `klassci_matiere_id` sont peuples
+        // partout -- zero nul. Et `date_seance` porte de VRAIES heures (14h30,
+        // 07h00, 16h30...), jamais minuit.
+        //
+        // Le litteral tombait juste par accident : cinq seances sur six sont
+        // reellement « B2 COM ». La sixieme est une « 1ere annee BTS Genie Civil
+        // Option Batiment » du 19 mai, affichee « B2 COM » a la date du jour.
+        //
+        // Ce qui n'a pas de source n'est plus affirme : `salle` n'a AUCUNE
+        // colonne, et `heure_fin` non plus. Le frontend gere deja leur absence
+        // (EventSeanceDetails.vue:59, ClassePlanningTab.vue:30).
+        $debut = $visioData->date_seance ? Carbon::parse($visioData->date_seance) : null;
+
+        return [
+            'id' => $visioData->klassci_seance_id ?? $visioData->id,
+            'type_seance' => $visioData->type_seance?->value,
+            'classe' => [
+                'id' => $visioData->klassci_classe_id,
+                'nom' => $visioData->classe_nom,
+            ],
+            'programmation' => [
+                'date' => $debut?->format('Y-m-d'),
+                'heure_debut' => $debut?->toISOString(),
+                'heure_fin' => null,
+                'salle' => null,
+            ],
+            'enseignant' => [
+                'nom' => $visioData->enseignant_nom,
+                'prenom' => '',
+            ],
+            'matiere' => [
+                'id' => $visioData->klassci_matiere_id,
+                'nom' => $visioData->matiere_nom,
+                'code' => null,
+            ],
+            'visio_enabled' => $visioData->visio_enabled ?? false,
+            'visio_type' => $visioData->visio_type ?? 'jitsi',
+            'visio_room_id' => $visioData->visio_room_id,
+            'visio_status' => $visioData->visio_status,
+            'visio_participants_count' => $visioData->current_participants_count ?? 0,
+            // La table ne porte pas d'heure de fin : la duree est donc inconnue,
+            // et le dire vaut mieux que rendre 120 pour tout le monde.
+            'duree_minutes' => null,
+            'statut' => $visioData->is_active ? 'programme' : 'archive',
+        ];
     }
 }

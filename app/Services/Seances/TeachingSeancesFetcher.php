@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Jobs\SyncKlassciClasse;
 use App\Models\Seance;
 use App\Models\User;
@@ -243,6 +244,7 @@ final class TeachingSeancesFetcher
             'heure_fin' => $heureFin !== null ? substr($heureFin, 11, 5) : null,
             'heure_fin_estimee' => false,
             'salle' => $prog['salle'] ?? null,
+            'type_seance' => TypeDeSeance::depuisKlassci($seance['type_cours'] ?? null)?->value, // #1668
             // Ajouter structure programmation pour cohérence avec autres endpoints
             // Heures réalignées sur la date de la séance ; fin rendue par KLASSCI.
             'programmation' => SeanceProgrammationNormalizer::blocKlassci($prog),
@@ -260,6 +262,18 @@ final class TeachingSeancesFetcher
                 'id' => $user->klassci_id,
                 'nom' => $user->name,
             ],
+        ] + $this->champsVisio($visioData);
+    }
+
+    /**
+     * Les champs visio de la carte, extraits de {@see mapSeance()} (§5, #1668) : structure plate
+     * ET objet imbriqué, pour les deux générations d'écrans.
+     *
+     * @return array<string, mixed>
+     */
+    private function champsVisio(?Seance $visioData): array
+    {
+        return [
             // Infos visio (structure plate pour compatibilité frontend)
             'visio_enabled' => $visioData ? $visioData->visio_enabled : false,
             'visio_active' => $visioData ? $visioData->visio_active : false,

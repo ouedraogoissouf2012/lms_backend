@@ -20,18 +20,24 @@ use Illuminate\Support\Facades\Route;
 | à l'identique : ce déplacement ne change aucun comportement, et la table
 | de routage complète a été comparée avant/après.
 |
+| #1708 : le rôle `admin` rejoint les trois gardes. L'écran d'import s'ouvre
+| à l'admin d'école, et la couche métier l'admettait déjà (`authorize()` de
+| la requête, `isAdmin()` des contrôleurs) : seule la route le refusait.
+| Le superAdmin n'a jamais eu besoin d'y figurer, `EnsureRole` le laisse
+| passer partout ; il reste listé pour que la garde se lise d'elle-même.
+|
 */
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     Route::post('/imports/preview', [ImportPreviewController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:imports'])
+        ->middleware(['role:enseignant,coordinateur,admin,superAdmin', 'throttle:imports'])
         ->name('lms.imports.preview');
     Route::post('/imports/{id}/confirm', [ImportConfirmController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:imports'])
+        ->middleware(['role:enseignant,coordinateur,admin,superAdmin', 'throttle:imports'])
         ->whereNumber('id')
         ->name('lms.imports.confirm');
     Route::get('/imports/{id}', [ImportShowController::class, 'show'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin'])
+        ->middleware(['role:enseignant,coordinateur,admin,superAdmin'])
         ->whereNumber('id')
         ->name('lms.imports.show');
 });

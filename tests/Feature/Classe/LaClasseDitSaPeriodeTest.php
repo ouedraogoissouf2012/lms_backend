@@ -9,6 +9,8 @@ use App\Enums\TrainingSessionStatus;
 use App\Models\Institution;
 use App\Models\Program;
 use App\Models\TrainingSession;
+use App\Services\Classe\LocalInstitutionClassesReader;
+use App\Services\TenantManager;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -68,13 +70,19 @@ final class LaClasseDitSaPeriodeTest extends TestCase
         $this->assertPeriodeNulle($this->asTenant($this->membre($ecole, 'coordinateur'))->getJson(self::LISTE)->assertOk()->json('data.0'));
     }
 
+    /**
+     * SANS tenant résolu : sous jeton, le scope global masquerait une borne explicite manquante (mesuré par la sonde
+     * de #1786). La borne d'école du chargement doit tenir seule.
+     */
     public function test_une_periode_d_une_autre_ecole_ne_se_dit_pas(): void
     {
         $ecole = $this->ecole();
         $ailleurs = $this->periodeDe($this->ecole(), 'Autre école');
         $this->classe($ecole, 'A')->forceFill(['training_session_id' => $ailleurs->id])->save();
+        $coordinateur = $this->membre($ecole, 'coordinateur');
+        app(TenantManager::class)->reset();
 
-        $this->assertPeriodeNulle($this->asTenant($this->membre($ecole, 'coordinateur'))->getJson(self::LISTE)->assertOk()->json('data.0'));
+        $this->assertPeriodeNulle(app(LocalInstitutionClassesReader::class)->list($coordinateur, [])['data'][0] ?? null);
     }
 
     public function test_aucune_requete_par_classe(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Catalogue;
 
 use App\Exceptions\BusinessException;
+use App\Exceptions\CodeDeMatiereDejaEmploye;
 use App\Models\Matiere;
 
 /**
@@ -26,12 +27,12 @@ use App\Models\Matiere;
  * Par `PorteDuCatalogueLocal` (#910), la seule porte du catalogue local : elle
  * dit pourquoi la garde vit au point d'appel, et dans quel ordre.
  *
- * ## Ce qui N'EST PAS repris de la Classe
+ * ## Le code (#1653)
  *
- * Aucune normalisation du code vide en nul, et aucun unique sur `matieres.code` :
- * mesuré, **aucun accès par code** n'existe sur les matières dans `app/`. La
- * normalisation de #860 servait une contrainte réelle ; ici elle serait un geste
- * sans cause.
+ * Unique dans l'établissement pour une matière LOCALE, et un code vide devient
+ * NULL : `CodeDeMatiere` les tient, commun à la création et à la modification.
+ * (Jusqu'à #1653 ce service n'en posait aucun : aucun accès par code n'existait ;
+ * l'écran de #654 a montré qu'un admin distingue ses matières par leur code.)
  *
  * @see docs/adr/2026-09-18-848-01-catalogue-pedagogique-local.md
  */
@@ -46,14 +47,15 @@ final class LocalMatiereCreator
      *
      * @throws BusinessException si l'établissement ne tient pas son catalogue,
      *                           ou si aucun tenant n'est résolu.
+     * @throws CodeDeMatiereDejaEmploye 422 sur `code`, déjà employé dans l'établissement (#1653).
      */
     public function creer(array $donnees): Matiere
     {
         $institution = $this->porte->etablissement();
 
-        return Matiere::create([
+        return CodeDeMatiere::ecrire(fn (): Matiere => Matiere::create([
             'libelle' => $donnees['libelle'],
-            'code' => $donnees['code'] ?? null,
+            'code' => CodeDeMatiere::normalise($donnees['code'] ?? null),
             'description' => $donnees['description'] ?? null,
             'coefficient' => $donnees['coefficient'] ?? 1,
             'credit' => $donnees['credit'] ?? 1,
@@ -63,6 +65,6 @@ final class LocalMatiereCreator
             // correspondances par `whereIn('klassci_id', …)` où elle n'a rien à
             // faire.
             'klassci_id' => null,
-        ]);
+        ]));
     }
 }

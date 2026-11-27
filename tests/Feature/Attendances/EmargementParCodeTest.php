@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\ValidatesAgainstOpenApi;
 use Tests\TestCase;
 
 /**
@@ -35,6 +36,7 @@ final class EmargementParCodeTest extends TestCase
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
     use RefreshDatabase;
+    use ValidatesAgainstOpenApi;
 
     private Institution $ecole;
 
@@ -97,6 +99,29 @@ final class EmargementParCodeTest extends TestCase
         $this->signer($this->eleves[0], $code)->assertOk()->assertJsonPath('data.deja_signe', true);
 
         self::assertSame(1, ESBTPAttendance::query()->withoutGlobalScopes()->where('user_id', $this->eleves[0]->id)->count());
+    }
+
+    public function test_une_signature_concurrente_ne_rend_pas_d_erreur(): void
+    {
+        $code = $this->code();
+        $eleve = $this->eleves[0];
+        $concurrente = false;
+        // La signature d'un double envoi s'insère juste avant celle-ci : l'unicité (seance_id, user_id) refuse.
+        ESBTPAttendance::creating(function () use (&$concurrente, $eleve): void {
+            if (! $concurrente) {
+                $concurrente = true;
+                DB::table('esbtp_attendance')->insert([
+                    'seance_id' => $this->seance->id, 'user_id' => $eleve->id, 'institution_id' => $this->ecole->id,
+                    'nom' => $eleve->name, 'email' => $eleve->email, 'status' => null, 'mark' => 'present', 'origin' => 'code',
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        });
+
+        $this->signer($eleve, $code)->assertOk()->assertJsonPath('data.mark', 'present');
+
+        self::assertTrue($concurrente);
+        self::assertSame(1, ESBTPAttendance::query()->withoutGlobalScopes()->where('user_id', $eleve->id)->count());
     }
 
     public function test_au_dela_du_seuil_la_signature_est_un_retard(): void
@@ -169,6 +194,22 @@ final class EmargementParCodeTest extends TestCase
         $codes = $this->asTenant($this->enseignant)->getJson('/api/lms/codes-emargement?seance_id='.$this->seance->id)->assertOk()->json('data');
 
         self::assertSame([1, 3, 33], [$codes[0]['signatures'], $codes[0]['attendus'], $codes[0]['taux']]);
+    }
+
+    public function test_les_reponses_suivent_la_spec(): void
+    {
+        $genere = $this->generer($this->enseignant)->assertCreated();
+        $this->assertMatchesOpenApiResponse($genere, '/lms/codes-emargement', 'post');
+        $code = (string) $genere->json('data.code');
+        $liste = $this->asTenant($this->enseignant)->getJson('/api/lms/codes-emargement?seance_id='.$this->seance->id)->assertOk();
+        $this->assertMatchesOpenApiResponse($liste, '/lms/codes-emargement', 'get');
+        $signe = $this->signer($this->eleves[0], $code)->assertOk();
+        $this->assertMatchesOpenApiResponse($signe, '/lms/emargement', 'post');
+        $this->assertOpenApiSchemaRefuseSans($signe, '/lms/emargement', 'post', 'data');
+        $this->assertMatchesOpenApiResponse($this->signer($this->eleves[1], 'ZZZZZZ')->assertNotFound(), '/lms/emargement', 'post');
+        $revoque = $this->asTenant($this->enseignant)->deleteJson('/api/lms/codes-emargement/'.$genere->json('data.id'))->assertOk();
+        $this->assertMatchesOpenApiResponse($revoque, '/lms/codes-emargement/{codeId}', 'delete');
+        $this->assertMatchesOpenApiResponse($this->signer($this->eleves[1], $code)->assertStatus(410), '/lms/emargement', 'post');
     }
 
     public function test_un_enseignant_qui_n_est_pas_l_auteur_ne_genere_pas(): void

@@ -813,10 +813,30 @@ components:
             code:
               type: string
               nullable: true
+            description:
+              type: string
+              nullable: true
             effectif:
               type: integer
               nullable: true
               description: "La CAPACITE de la classe (#1358) ; `null` quand elle n est pas renseignee."
+
+    ClasseUpdateInput:
+      type: object
+      description: "#1652 : un PATCH ; chaque champ est facultatif, seul un champ envoye change."
+      properties:
+        libelle:
+          type: string
+          maxLength: 191
+        code:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: "Vide ou nul : efface le code. Unique dans l ecole."
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
 
     TrainingSessionInput:
       type: object
@@ -7322,6 +7342,69 @@ paths:
                 $ref: '#/components/schemas/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+
+  /classes/{classe}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une Classe locale"
+      description: |
+        #1652. Modifie une classe LOCALE de l ecole de l appelant : libelle, code,
+        description. Seuls les champs ENVOYES changent ; un `code` vide ou nul
+        EFFACE le code. Le code est unique dans l ecole : la BASE le tranche, et
+        sa violation rend 422 `class_code_already_used` sur `code`. Une classe
+        MIROIR de KLASSCI ne se modifie pas ici. La filiere et le niveau
+        attendront #1648 ; capacite, periode et code d inscription ont leurs routes.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasseUpdateInput'
+      responses:
+        '200':
+          description: "Classe modifiee, relue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant ; etablissement dont le catalogue vient de KLASSCI,
+            ou classe MIROIR de KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Aucune classe de ce numero dans l ecole de l appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Libelle vide, ou code deja employe dans l ecole (`class_code_already_used` sur `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /inscriptions:
     post:

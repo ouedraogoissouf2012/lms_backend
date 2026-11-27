@@ -140,7 +140,7 @@ final class LocalClasseMatiereLinker
             ->first();
 
         if (! $user instanceof User || Role::tryFromString($user->role) !== Role::Enseignant) {
-            throw new BusinessException('Formateur introuvable dans cet établissement.', 404);
+            throw new BusinessException('Formateur introuvable dans cet établissement.', 404, null, 'teacher_out_of_scope');
         }
 
         return $enseignantId;

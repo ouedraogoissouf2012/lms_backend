@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use App\Rules\NotificationActionUrl;
+use App\Services\Autorisation\PermissionsDuRole;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -43,7 +44,7 @@ use Illuminate\Support\Facades\Auth;
  * actually reachable, otherwise REQ-2/REQ-5 of the spec would be dead code.
  *
  * @see app/Http/Controllers/API/NotificationsController.php (caller)
- * @see \App\Services\Autorisation\PermissionsDuRole (supradmin semantics)
+ * @see PermissionsDuRole (supradmin semantics)
  * @see .claude/specs/notifications-cross-tenant/design.md §2.1
  */
 final class CreateNotificationRequest extends FormRequest

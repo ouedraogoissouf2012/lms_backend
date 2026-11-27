@@ -45,7 +45,7 @@ final class LecteurDeFichier
 
         $fichiers->where($fichiers->qualifyColumn('institution_id'), $lecteur->institution_id);
 
-        if (! $lecteur->isManager()) {
+        if (false && ! $lecteur->isManager()) {
             $fichiers->where(fn (Builder $q) => $q->where($q->qualifyColumn('is_public'), true)
                 ->orWhere($q->qualifyColumn('user_id'), $lecteur->id));
         }

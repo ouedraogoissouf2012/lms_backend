@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Models\User;
 
 /**
@@ -25,7 +26,7 @@ final class SeanceDeLEmploiDuTemps
     public function __construct(private readonly EmploiTempsSeanceLocator $locator) {}
 
     /**
-     * @return array{matiere_id: int|null, matiere_nom: string|null, classe_id: int|null, enseignant_nom: string|null}|null
+     * @return array{matiere_id: int|null, matiere_nom: string|null, classe_id: int|null, enseignant_nom: string|null, type_seance: TypeDeSeance|null}|null
      */
     public function identite(int $seanceId, User $user, string $klassciToken): ?array
     {
@@ -41,6 +42,7 @@ final class SeanceDeLEmploiDuTemps
             'matiere_nom' => KlassciPayload::toStringOrNull($matiereDeLaSeance['nom'] ?? $matiere['nom'] ?? null),
             'classe_id' => KlassciPayload::toInt(KlassciPayload::asArray($seance['classe'] ?? null)['id'] ?? null),
             'enseignant_nom' => KlassciPayload::toStringOrNull(KlassciPayload::asArray($seance['enseignant'] ?? null)['nom'] ?? null),
+            'type_seance' => TypeDeSeance::depuisKlassci($seance['type_cours'] ?? null), // #1668
         ];
     }
 }

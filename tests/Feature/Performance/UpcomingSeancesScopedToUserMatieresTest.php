@@ -83,6 +83,8 @@ final class UpcomingSeancesScopedToUserMatieresTest extends TestCase
             'id' => $id,
             'matiere' => ['id' => $matiereId],
             'classe' => ['id' => 700, 'nom' => 'B2 COM'],
+            // Clé relevée en production le 2026-11-25 (D1411, #1668).
+            'type_cours' => 'TP',
             'programmation' => [
                 'date' => '2026-08-15',
                 'heure_debut' => '2026-08-15T09:00:00.000000Z',
@@ -120,6 +122,7 @@ final class UpcomingSeancesScopedToUserMatieresTest extends TestCase
 
         self::assertCount(1, $seances);
         self::assertSame(900_101, $seances->first()['id']);
+        self::assertSame('tp', $seances->first()['type_seance'], '#1668 : type_cours repris.');
     }
 
     public function test_student_path_asks_only_for_his_own_cours_never_the_catalogue(): void
@@ -145,6 +148,7 @@ final class UpcomingSeancesScopedToUserMatieresTest extends TestCase
 
         self::assertCount(1, $seances);
         self::assertSame(900_202, $seances->first()['id']);
+        self::assertSame('tp', $seances->first()['type_seance'], '#1668 : type_cours repris.');
     }
 
     public function test_a_user_without_matieres_yields_no_seance_and_never_walks_the_catalogue(): void

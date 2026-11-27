@@ -1755,6 +1755,21 @@ components:
             Ecole creee depuis le LMS : vrai si la Periode de la classe est
             publiee et pas terminee ; faux pour toute autre Periode ; `null`
             sans Periode, ou quand la Periode est supprimee (etat inconnu).
+        periode:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [id, libelle]
+          description: |
+            #1785. Ecole creee depuis le LMS : la Periode de la classe, `null`
+            sans Periode ou quand elle est supprimee. Ecole creee depuis
+            KLASSCI : absente (la reponse de KLASSCI est relayee telle quelle).
+          properties:
+            id:
+              type: integer
+            libelle:
+              type: string
+              nullable: true
         places_occupees:
           type: integer
           description: "Ecole creee depuis le LMS : les inscriptions actives d'eleves de l'etablissement."

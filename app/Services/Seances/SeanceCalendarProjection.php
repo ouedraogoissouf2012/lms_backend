@@ -45,6 +45,7 @@ final class SeanceCalendarProjection
             // Le titre de la LIGNE, dans les deux types d'école ; null s'il est absent
             // ou vide : rien n'est inventé, pas même le nom de la matière.
             'titre' => is_string($seance->titre) && $seance->titre !== '' ? $seance->titre : null,
+            'type_seance' => $seance->type_seance?->value, // #1668 : la ligne, ou null
             'date_seance' => $start?->format('Y-m-d'),
             'date_debut' => $startIso,
             'date_fin' => $endIso,
@@ -60,12 +61,7 @@ final class SeanceCalendarProjection
                 'heure_fin_estimee' => $estimee,
                 'salle' => null,
             ],
-            'matiere' => [
-                'id' => $identite->matiereId,
-                'libelle' => $identite->matiereNom,
-                'nom' => $identite->matiereNom,
-                'code' => null,
-            ],
+            'matiere' => $this->matiereBlock($identite),
             'classe' => $this->classeBlock($identite),
             'enseignant' => [
                 'id' => $identite->enseignantId,
@@ -94,6 +90,17 @@ final class SeanceCalendarProjection
             'visio_started_at' => $seance->visio_started_at?->toISOString(),
             'visio_ended_at' => $seance->visio_ended_at?->toISOString(),
             'visio_participants_count' => $participantsCount,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function matiereBlock(SeanceIdentite $identite): array
+    {
+        return [
+            'id' => $identite->matiereId,
+            'libelle' => $identite->matiereNom,
+            'nom' => $identite->matiereNom,
+            'code' => null,
         ];
     }
 

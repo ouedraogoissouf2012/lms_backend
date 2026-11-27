@@ -86,9 +86,14 @@ final class LoginExposesRosterCapabilityTest extends TestCase
         $school = Institution::factory()->create(['mode' => $mode]);
         app(TenantManager::class)->set($school);
 
+        // Un compte LOCAL, sans identité KLASSCI : la fabrique en pose une par défaut, et la
+        // connexion allait alors vers l'adresse KLASSCI (aléatoire) de l'école, par le réseau.
+        // Un 403 de ce site au hasard vaut, depuis #1739, refus du compte.
         return User::factory()->teacher()->create([
             'institution_id' => $school->id,
             'password' => bcrypt('Motdepasse1!'),
+            'klassci_id' => null,
+            'klassci_token' => null,
         ]);
     }
 }

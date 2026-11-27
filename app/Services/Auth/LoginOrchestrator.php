@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Exceptions\KlassciCompteRefuse;
 use App\Exceptions\KlassciEtablissementIntrouvableException;
 use App\Exceptions\KlassciUnavailableException;
 use App\Http\Presenters\AuthResponsePresenter;
@@ -73,11 +74,16 @@ final class LoginOrchestrator
         }
 
         $panne = null;
+        $refus = null;
         foreach ($matchingTenants as $tenant) {
             try {
                 $payload = $this->klassciAuthClient->attemptLogin($tenant['api_base_url'], $username, $password);
             } catch (KlassciUnavailableException $e) {
                 $panne = $e;
+
+                continue;
+            } catch (KlassciCompteRefuse $e) {
+                $refus = $e;
 
                 continue;
             }
@@ -86,6 +92,15 @@ final class LoginOrchestrator
             }
 
             return $this->buildKlassciSuccessResponse($payload, $tenant);
+        }
+
+        // #1739 — une école qui a refusé le COMPTE a jugé le mot de passe juste : son motif
+        // l'emporte sur une panne et sur un refus d'identifiants ailleurs.
+        if ($refus !== null) {
+            // Un échec de connexion, motivé : l'action reste celle que filtre le journal d'audit.
+            $this->auditLogger->logAuthEvent('login_failed', null, ['username' => $username, 'reason' => KlassciCompteRefuse::REASON]);
+
+            return $this->presenter->compteRefuse($refus->messageAffichable);
         }
 
         // #687 — une école trouvée qui n'a pas pu juger le mot de passe : seul un refus
@@ -122,8 +137,9 @@ final class LoginOrchestrator
 
         try {
             $payload = $this->klassciAuthClient->attemptLogin($tenantUrl, $username, $password);
-        } catch (KlassciUnavailableException) {
-            // #687 — le compte est déjà authentifié en local : une panne garde le repli.
+        } catch (KlassciUnavailableException|KlassciCompteRefuse) {
+            // #687, #1739 — le compte est déjà authentifié en local : une panne, ou un refus
+            // du compte par KLASSCI, garde le repli local.
             $payload = null;
         }
         if ($payload === null) {

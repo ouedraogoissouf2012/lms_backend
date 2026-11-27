@@ -98,8 +98,6 @@ final class LocalSaisieDeLAppel implements SaisieDeLAppel
                 'institution_id' => $seance->institution_id,
                 'nom' => $eleve->name,
                 'email' => $eleve->email,
-                // Aucune connexion visio : ni « connecté », ni aucun autre statut (#1649).
-                'status' => null,
             ]);
         $avant = $ligne->exists && $ligne->mark !== null ? $this->etat($ligne) : null;
 

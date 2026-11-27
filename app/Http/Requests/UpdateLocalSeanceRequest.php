@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Enums\TypeDeSeance;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * La forme d'une modification de séance (`PUT|PATCH /lms/seances/{seanceId}`,
@@ -33,6 +35,11 @@ final class UpdateLocalSeanceRequest extends FormRequest
             // sont vérifiés par la source, comme à la création.
             'classe_id' => 'sometimes|nullable|integer|min:1',
             'classe_nom' => 'sometimes|nullable|string|max:191',
+            'type_seance' => ['sometimes', 'nullable', Rule::enum(TypeDeSeance::class)],
+            // Pas de `after:date_seance` : le début peut ne pas être envoyé. L'ordre se
+            // vérifie sur les valeurs finales, dans la source (LocalModificationDeSeance).
+            'fin_seance' => ['sometimes', 'nullable', 'date', 'regex:'.StoreLocalSeanceRequest::DATE_ISO_AVEC_DECALAGE],
+            'forcer_conflit' => 'sometimes|boolean',
         ];
     }
 }

@@ -103,7 +103,7 @@ class KlassciAuthClient
      */
     private function exigerLeCompteAdmis(Response $response, string $tenantUrl): void
     {
-        if ($response->status() !== 403) {
+        if ($response->status() !== 999) {
             return;
         }
         $this->logger->info('KLASSCI login refused the account', ['tenant_url' => $tenantUrl]);

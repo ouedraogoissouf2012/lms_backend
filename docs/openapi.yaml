@@ -4620,6 +4620,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClassesDeLEtablissementPage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -4627,7 +4629,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role hors gestion, ou compte sans etablissement (`no_institution`)"
+          description: "Role hors gestion, ou compte sans etablissement (`no_institution`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -4638,6 +4640,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /lms/classes/{classeId}:
     get:

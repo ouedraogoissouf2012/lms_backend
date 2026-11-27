@@ -583,6 +583,20 @@ components:
           nullable: true
           description: "Niveaux seulement"
 
+    # #1654 - un element de l arbre LMD (domaine, mention ou parcours).
+    ElementLmd:
+      type: object
+      properties:
+        id:
+          type: integer
+        libelle:
+          type: string
+        code:
+          type: string
+          nullable: true
+        actif:
+          type: boolean
+
     ClassesLocalesPage:
       type: object
       properties:
@@ -5026,6 +5040,493 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: "`per_page` ou `page` hors bornes, ou non entier (spec #548)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lmd/arbre:
+    get:
+      tags:
+        - Session de formation
+      summary: "Lire l arbre LMD de l ecole (domaines, mentions, parcours)"
+      description: |
+        #1654. D un bloc, trie par libelle a chaque niveau. `?actifs=1` ecarte un element inactif
+        et sa descendance.
+      security:
+        - sanctum: []
+      parameters:
+        - name: actifs
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: "L arbre"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/ElementLmd'
+                        - type: object
+                          properties:
+                            mentions:
+                              type: array
+                              items:
+                                allOf:
+                                  - $ref: '#/components/schemas/ElementLmd'
+                                  - type: object
+                                    properties:
+                                      parcours:
+                                        type: array
+                                        items:
+                                          $ref: '#/components/schemas/ElementLmd'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou ecole KLASSCI (`catalogue_managed_by_klassci` : KLASSCI n expose aucune structure LMD au LMS). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lmd/domaines:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer un domaine (arbre LMD, #1654)"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Facultatif ; unique par niveau et par ecole, a la casse et aux espaces pres"
+                actif:
+                  type: boolean
+                  description: "`false` desactive l element (il ne se supprime pas)"
+      responses:
+        '201':
+          description: "Cree"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementLmd'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou ecole KLASSCI (`catalogue_managed_by_klassci` : KLASSCI n expose aucune structure LMD au LMS). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, parent absent ou d une autre ecole (sous son champ), ou `lmd_code_already_used` (code deja employe a ce niveau, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lmd/domaines/{id}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier ou desactiver un domaine (seuls les champs envoyes changent)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Facultatif ; unique par niveau et par ecole, a la casse et aux espaces pres"
+                actif:
+                  type: boolean
+                  description: "`false` desactive l element (il ne se supprime pas)"
+      responses:
+        '200':
+          description: "Modifie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementLmd'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou ecole KLASSCI (`catalogue_managed_by_klassci` : KLASSCI n expose aucune structure LMD au LMS). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Element introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, parent absent ou d une autre ecole (sous son champ), ou `lmd_code_already_used` (code deja employe a ce niveau, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lmd/mentions:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer une mention (arbre LMD, #1654)"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle, domaine_id]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Facultatif ; unique par niveau et par ecole, a la casse et aux espaces pres"
+                actif:
+                  type: boolean
+                  description: "`false` desactive l element (il ne se supprime pas)"
+                domaine_id:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          description: "Cree"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementLmd'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou ecole KLASSCI (`catalogue_managed_by_klassci` : KLASSCI n expose aucune structure LMD au LMS). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, parent absent ou d une autre ecole (sous son champ), ou `lmd_code_already_used` (code deja employe a ce niveau, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lmd/mentions/{id}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier ou desactiver une mention (seuls les champs envoyes changent)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Facultatif ; unique par niveau et par ecole, a la casse et aux espaces pres"
+                actif:
+                  type: boolean
+                  description: "`false` desactive l element (il ne se supprime pas)"
+                domaine_id:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: "Modifie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementLmd'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou ecole KLASSCI (`catalogue_managed_by_klassci` : KLASSCI n expose aucune structure LMD au LMS). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Element introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, parent absent ou d une autre ecole (sous son champ), ou `lmd_code_already_used` (code deja employe a ce niveau, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lmd/parcours:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer un parcours (arbre LMD, #1654)"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle, mention_id]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Facultatif ; unique par niveau et par ecole, a la casse et aux espaces pres"
+                actif:
+                  type: boolean
+                  description: "`false` desactive l element (il ne se supprime pas)"
+                mention_id:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          description: "Cree"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementLmd'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou ecole KLASSCI (`catalogue_managed_by_klassci` : KLASSCI n expose aucune structure LMD au LMS). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, parent absent ou d une autre ecole (sous son champ), ou `lmd_code_already_used` (code deja employe a ce niveau, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lmd/parcours/{id}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier ou desactiver un parcours (seuls les champs envoyes changent)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Facultatif ; unique par niveau et par ecole, a la casse et aux espaces pres"
+                actif:
+                  type: boolean
+                  description: "`false` desactive l element (il ne se supprime pas)"
+                mention_id:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: "Modifie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementLmd'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou ecole KLASSCI (`catalogue_managed_by_klassci` : KLASSCI n expose aucune structure LMD au LMS). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Element introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, parent absent ou d une autre ecole (sous son champ), ou `lmd_code_already_used` (code deja employe a ce niveau, sous `code`)"
           content:
             application/json:
               schema:

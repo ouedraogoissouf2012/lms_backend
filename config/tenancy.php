@@ -33,6 +33,10 @@ return [
         // #1648 — filières et niveaux d'une école qui tient son catalogue ; tables neuves, NOT NULL.
         'filieres',
         'niveaux_etudes',
+        // #1654 — l'arbre LMD d'une école qui tient son catalogue ; tables neuves, NOT NULL.
+        'lmd_domaines',
+        'lmd_mentions',
+        'lmd_parcours',
         'classes',
         'matieres',
         'lessons',

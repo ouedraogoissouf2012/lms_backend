@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\API\LMS\LMSArbreLmdController;
 use App\Http\Controllers\API\LMS\LMSClasseCapaciteController;
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
@@ -96,6 +97,15 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
             Route::post("/{$chemin}", [LMSStructureController::class, 'store'])->defaults('element', $element);
             Route::patch("/{$chemin}/{id}", [LMSStructureController::class, 'update'])->defaults('element', $element)->whereNumber('id');
             Route::delete("/{$chemin}/{id}", [LMSStructureController::class, 'destroy'])->defaults('element', $element)->whereNumber('id');
+        }
+
+        // L arbre LMD d une ecole qui tient son catalogue (#1654) : domaines, mentions, parcours. Le niveau est fixe
+        // par la route ; un element se desactive (`actif`), il ne se supprime pas. Ecole KLASSCI : 403 (KLASSCI
+        // n expose aucune structure LMD au LMS).
+        Route::get('/lmd/arbre', [LMSArbreLmdController::class, 'index']);
+        foreach (['domaines' => 'domaine', 'mentions' => 'mention', 'parcours' => 'parcours'] as $chemin => $niveau) {
+            Route::post("/lmd/{$chemin}", [LMSArbreLmdController::class, 'store'])->defaults('niveau', $niveau);
+            Route::patch("/lmd/{$chemin}/{id}", [LMSArbreLmdController::class, 'update'])->defaults('niveau', $niveau)->whereNumber('id');
         }
 
         // Composer le programme d une classe (#848) : rattacher une matiere, et

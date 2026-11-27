@@ -59,8 +59,8 @@ final class AnnonceAUneClasse
             return true;
         }
 
-        return $role === Role::Enseignant
-            && in_array($classe->getKey(), $this->inscriptions->classeIdsForTeacher($acteur), true);
+        // SONDE #1650 : la borne « ses classes » retiree.
+        return $role === Role::Enseignant;
     }
 
     /**

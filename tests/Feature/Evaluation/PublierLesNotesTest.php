@@ -103,6 +103,26 @@ final class PublierLesNotesTest extends TestCase
             ->assertJsonPath('data.feedback', 'Bon travail.');
     }
 
+    /**
+     * front#693 : « ma copie » dit à l'élève si les notes sont publiées et selon quel mode le corrigé
+     * s'ouvre. Une note `null` ne suffit pas : une dissertation pas encore corrigée en a une aussi.
+     */
+    #[DataProvider('volets')]
+    public function test_ma_copie_dit_si_les_notes_sont_publiees_et_le_mode_du_corrige(InstitutionMode $mode): void
+    {
+        [$enseignant, $eleve, $evaluation] = $this->evaluationCorrigee($mode, ['correction_release' => 'after_close']);
+        $this->klassciProgramme(null);
+
+        $avant = $this->maCopie($eleve, $evaluation);
+        $avant->assertJsonPath('data.evaluation.show_results', false)
+            ->assertJsonPath('data.evaluation.correction_release', 'after_close');
+        $this->assertMatchesOpenApiResponse($avant, '/evaluations/{id}/my-submission', 'get');
+
+        $this->asTenant($enseignant)->patchJson($this->url($evaluation), ['show_results' => true])->assertOk();
+
+        $this->maCopie($eleve, $evaluation)->assertJsonPath('data.evaluation.show_results', true);
+    }
+
     public function test_l_enseignant_retire_une_publication(): void
     {
         [$enseignant, $eleve, $evaluation] = $this->evaluationCorrigee(InstitutionMode::Standalone, ['show_results' => true]);

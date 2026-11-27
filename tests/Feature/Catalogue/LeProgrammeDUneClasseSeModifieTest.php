@@ -87,7 +87,7 @@ final class LeProgrammeDUneClasseSeModifieTest extends TestCase
         [$gestion, , $classe, $matiere] = $this->programme();
 
         $this->asTenant($gestion)->deleteJson($this->url($classe, $matiere))->assertOk();
-        self::assertFalse($classe->matieres()->whereKey($matiere->id)->exists());
+        self::assertFalse($this->auProgramme($classe, $matiere));
         self::assertNotNull($matiere->fresh(), 'Retirer du programme ne supprime pas la matière.');
     }
 
@@ -102,7 +102,7 @@ final class LeProgrammeDUneClasseSeModifieTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('reason', 'subject_in_use_in_class')
             ->assertJsonPath('message', fn (string $message): bool => str_contains($message, "1 {$nom}"));
-        self::assertTrue($classe->matieres()->whereKey($matiere->id)->exists());
+        self::assertTrue($this->auProgramme($classe, $matiere));
     }
 
     /** @return array<string, array{0: class-string<Model>, 1: string}> */
@@ -149,7 +149,7 @@ final class LeProgrammeDUneClasseSeModifieTest extends TestCase
 
         $this->asTenant($gestion)->patchJson($this->url($classe, $matiere), ['coefficient' => 2])->assertNotFound();
         $this->asTenant($gestion)->deleteJson($this->url($classe, $matiere))->assertNotFound();
-        self::assertTrue($classe->matieres()->whereKey($matiere->id)->exists());
+        self::assertTrue($this->auProgramme($classe, $matiere));
     }
 
     public function test_une_ecole_klassci_est_refusee(): void
@@ -160,7 +160,7 @@ final class LeProgrammeDUneClasseSeModifieTest extends TestCase
             ->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
         $this->asTenant($gestion)->deleteJson($this->url($classe, $matiere))
             ->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
-        self::assertTrue($classe->matieres()->whereKey($matiere->id)->exists());
+        self::assertTrue($this->auProgramme($classe, $matiere));
     }
 
     /** @return array{0: User, 1: Institution, 2: Classe, 3: Matiere} */
@@ -196,6 +196,15 @@ final class LeProgrammeDUneClasseSeModifieTest extends TestCase
     private function url(Classe $classe, Matiere $matiere): string
     {
         return "/api/classes/{$classe->id}/matieres/{$matiere->id}";
+    }
+
+    /**
+     * Lu sans scope : après une requête, le TenantManager reste sur l'école de l'appelant, et le scope
+     * tenant cacherait la matière d'une AUTRE école (piège du harnais, pas du code).
+     */
+    private function auProgramme(Classe $classe, Matiere $matiere): bool
+    {
+        return DB::table('classe_matiere')->where('classe_id', $classe->id)->where('matiere_id', $matiere->id)->exists();
     }
 
     /** @return array{0: int|null, 1: int|null} */

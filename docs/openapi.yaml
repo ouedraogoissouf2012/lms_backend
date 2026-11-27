@@ -8001,17 +8001,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /classes/{classe}/matieres/{matiere}:
-    parameters:
-      - name: classe
-        in: path
-        required: true
-        schema:
-          type: integer
-      - name: matiere
-        in: path
-        required: true
-        schema:
-          type: integer
     patch:
       tags:
         - Session de formation
@@ -8023,6 +8012,17 @@ paths:
         classe, la matiere et le formateur sont cherches dans SON ecole.
       security:
         - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
@@ -8085,6 +8085,17 @@ paths:
         douceur : l historique reste lisible avec sa classe et sa matiere.
       security:
         - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: matiere
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: "Matiere retiree de la classe"

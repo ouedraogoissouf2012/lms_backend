@@ -36,7 +36,7 @@ final class AucuneListeDeRolesEnDurTest extends TestCase
         "app/Services/Evaluation/Teacher/EvaluationTeacherGradeService.php  'student'",
         "app/Services/Lesson/LessonListService.php  'enseignant'",
         "app/Services/Matiere/MatiereInfoFetcher.php  'enseignant'",
-        "app/Services/Seances/Conflits/ConflitsDHoraire.php  'enseignant'",
+        "app/Services/Seances/Conflits/ConflitsDHoraire.php  'teacher'",
         "app/Services/Report/ReportGenerationService.php  'student'",
         "app/Services/Seances/KlassciSeanceLookupService.php  'enseignant'",
         "app/Services/Seances/Mutations/ParticipantValidationService.php  'student'",

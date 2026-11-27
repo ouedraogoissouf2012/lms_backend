@@ -48,6 +48,11 @@ final class ConflitsDHoraire
 
     public const REASON_FORCAGE = 'conflict_override_forbidden';
 
+    /** Les motifs d'un conflit : des identifiants stables, en anglais (ADR-906-01). */
+    public const MOTIF_ENSEIGNANT = 'teacher';
+
+    public const MOTIF_CLASSE = 'class';
+
     public function __construct(private readonly VisioActorAuthorization $proprietes) {}
 
     /**
@@ -117,7 +122,7 @@ final class ConflitsDHoraire
     /**
      * Les séances qui chevauchent le créneau, par date puis par id, avec leurs motifs.
      *
-     * @return list<array{id: int, titre: ?string, debut: string, fin: string, motifs: list<string>}>
+     * @return list<array{id: int, titre: ?string, date_seance: string, fin_effective: string, motifs: list<string>}>
      */
     public function trouver(CreneauDeSeance $creneau): array
     {
@@ -128,12 +133,12 @@ final class ConflitsDHoraire
             $memeEnseignant = $this->chevauchantes($creneau)
                 ->where(fn (Builder $siennes) => $this->proprietes->limitToTeacherSeances($siennes, $enseignant));
             foreach ($memeEnseignant->get() as $seance) {
-                $parSeance[$seance->id] = [$seance, ['enseignant']];
+                $parSeance[$seance->id] = [$seance, [self::MOTIF_ENSEIGNANT]];
             }
         }
         if ($creneau->classeId !== null) {
             foreach ($this->chevauchantes($creneau)->where(fn (Builder $q) => $this->deLaClasse($q, $creneau))->get() as $seance) {
-                $parSeance[$seance->id] = [$seance, [...($parSeance[$seance->id][1] ?? []), 'classe']];
+                $parSeance[$seance->id] = [$seance, [...($parSeance[$seance->id][1] ?? []), self::MOTIF_CLASSE]];
             }
         }
 
@@ -168,7 +173,7 @@ final class ConflitsDHoraire
 
     /**
      * @param  array<int, array{0: Seance, 1: list<string>}>  $parSeance
-     * @return list<array{id: int, titre: ?string, debut: string, fin: string, motifs: list<string>}>
+     * @return list<array{id: int, titre: ?string, date_seance: string, fin_effective: string, motifs: list<string>}>
      */
     private function enConflits(array $parSeance): array
     {
@@ -182,8 +187,8 @@ final class ConflitsDHoraire
             return [
                 'id' => (int) $seance->id,
                 'titre' => is_string($seance->titre) ? $seance->titre : null,
-                'debut' => $debut->toIso8601String(),
-                'fin' => self::finEffective($debut, $fin)->toIso8601String(),
+                'date_seance' => $debut->toIso8601String(),
+                'fin_effective' => self::finEffective($debut, $fin)->toIso8601String(),
                 'motifs' => $motifs,
             ];
         }, $parSeance));

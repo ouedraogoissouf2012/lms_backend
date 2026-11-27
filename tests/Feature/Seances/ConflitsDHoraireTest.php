@@ -64,9 +64,9 @@ final class ConflitsDHoraireTest extends TestCase
         $this->assertSame([[
             'id' => $occupee->id,
             'titre' => 'Algèbre',
-            'debut' => '2026-12-02T08:00:00+00:00',
-            'fin' => '2026-12-02T10:00:00+00:00',
-            'motifs' => ['enseignant'],
+            'date_seance' => '2026-12-02T08:00:00+00:00',
+            'fin_effective' => '2026-12-02T10:00:00+00:00',
+            'motifs' => ['teacher'],
         ]], $reponse->json('conflicts'));
         $this->assertSame(1, Seance::query()->count());
     }
@@ -77,7 +77,7 @@ final class ConflitsDHoraireTest extends TestCase
 
         $this->creer($this->enseignant, '09:30', '10:30', $this->classe)
             ->assertStatus(409)
-            ->assertJsonPath('conflicts.0.motifs', ['classe']);
+            ->assertJsonPath('conflicts.0.motifs', ['class']);
     }
 
     public function test_meme_enseignant_et_meme_classe_les_deux_motifs(): void
@@ -86,7 +86,7 @@ final class ConflitsDHoraireTest extends TestCase
 
         $this->creer($this->enseignant, '09:00', '09:30', $this->classe)
             ->assertStatus(409)
-            ->assertJsonPath('conflicts.0.motifs', ['enseignant', 'classe']);
+            ->assertJsonPath('conflicts.0.motifs', ['teacher', 'class']);
     }
 
     public function test_creneaux_contigus_acceptes(): void
@@ -205,7 +205,7 @@ final class ConflitsDHoraireTest extends TestCase
 
         $this->creer($this->enseignant, '09:00', '10:00', $this->autreClasse())
             ->assertStatus(409)
-            ->assertJsonPath('conflicts.0.motifs', ['enseignant']);
+            ->assertJsonPath('conflicts.0.motifs', ['teacher']);
     }
 
     public function test_ecole_basculee_une_seance_miroir_de_la_meme_classe_est_un_conflit(): void
@@ -217,7 +217,7 @@ final class ConflitsDHoraireTest extends TestCase
 
         $this->creer($this->enseignant, '09:00', '10:00', $miroir)
             ->assertStatus(409)
-            ->assertJsonPath('conflicts.0.motifs', ['classe']);
+            ->assertJsonPath('conflicts.0.motifs', ['class']);
     }
 
     /**

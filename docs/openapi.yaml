@@ -2000,26 +2000,28 @@ components:
           items:
             type: object
             additionalProperties: false
-            required: [id, titre, debut, fin, motifs]
+            required: [id, titre, date_seance, fin_effective, motifs]
             properties:
               id:
                 type: integer
               titre:
                 type: string
                 nullable: true
-              debut:
+              date_seance:
                 type: string
                 format: date-time
-              fin:
+                description: "Le debut de la seance en conflit."
+              fin_effective:
                 type: string
                 format: date-time
                 description: "La fin EFFECTIVE : `fin_seance`, a defaut le debut + 2 h."
               motifs:
                 type: array
                 minItems: 1
+                description: "`teacher` : meme enseignant ; `class` : meme classe. Les deux peuvent valoir a la fois. Identifiants stables (ADR-906-01)."
                 items:
                   type: string
-                  enum: [enseignant, classe]
+                  enum: [teacher, class]
 
     SeanceCalendrier:
       type: object

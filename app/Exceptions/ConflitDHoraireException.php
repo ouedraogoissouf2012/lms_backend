@@ -20,7 +20,7 @@ final class ConflitDHoraireException extends RuntimeException
     public const MESSAGE = 'Ce créneau chevauche une autre séance du même enseignant ou de la même classe.';
 
     /**
-     * @param  list<array{id: int, titre: ?string, debut: string, fin: string, motifs: list<string>}>  $conflits
+     * @param  list<array{id: int, titre: ?string, date_seance: string, fin_effective: string, motifs: list<string>}>  $conflits
      */
     public function __construct(public readonly array $conflits)
     {

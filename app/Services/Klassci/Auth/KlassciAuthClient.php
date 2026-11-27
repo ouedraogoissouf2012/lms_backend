@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciCompteRefuseException;
 use App\Exceptions\KlassciUnavailableException;
 use App\Services\Klassci\KlassciBatchFetcher;
 use Illuminate\Http\Client\ConnectionException;
@@ -46,6 +47,13 @@ use Psr\Log\LoggerInterface;
  * Le caller essaie chaque tenant trouvé ; il décide, une fois la boucle finie,
  * si un refus conclusif (401) ou une panne (503) l'emporte.
  *
+ * ## Un 403 refuse le COMPTE, pas les identifiants (#1739)
+ *
+ * KLASSCI répond 403 quand il connaît le compte mais lui refuse l'accès (« pas
+ * encore réinscrit », compte inactif) : {@see KlassciCompteRefuseException}, qui
+ * porte son message nettoyé. Le dire « identifiants incorrects » faisait croire à
+ * l'élève que son mot de passe était faux.
+ *
  * @see app/Http/Controllers/API/AuthController.php (avant refactor) lignes 160-234
  * @see .claude/specs/auth-controller-refactor/design.md §2.3
  */
@@ -71,6 +79,9 @@ class KlassciAuthClient
      */
     private const STATUTS_SANS_JUGEMENT = [408, 429];
 
+    /** Le compte est connu de KLASSCI, qui lui refuse l'accès (#1739). */
+    private const STATUT_COMPTE_REFUSE = 403;
+
     /**
      * Tente un login KLASSCI sur le tenant `$tenantUrl`.
      *
@@ -78,6 +89,7 @@ class KlassciAuthClient
      * @return array<string, mixed>|null Payload JSON sur succès, null sur refus conclusif
      *
      * @throws KlassciUnavailableException réponse indéterminée (#687)
+     * @throws KlassciCompteRefuseException le compte est refusé par KLASSCI (#1739)
      */
     public function attemptLogin(string $tenantUrl, string $username, string $password): ?array
     {
@@ -114,6 +126,7 @@ class KlassciAuthClient
      * @return array<string, mixed>|null
      *
      * @throws KlassciUnavailableException
+     * @throws KlassciCompteRefuseException
      */
     private function parseLoginResponse(Response $response, string $tenantUrl): ?array
     {
@@ -128,6 +141,10 @@ class KlassciAuthClient
 
             if (! $jugee) {
                 throw KlassciUnavailableException::upstreamFailure($status);
+            }
+
+            if ($status === self::STATUT_COMPTE_REFUSE) {
+                throw KlassciCompteRefuseException::depuisReponse($response);
             }
 
             return null;

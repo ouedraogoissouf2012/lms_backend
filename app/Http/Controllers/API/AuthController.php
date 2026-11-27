@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Exceptions\KlassciAccountConflictException;
+use App\Exceptions\KlassciCompteRefuseException;
 use App\Exceptions\KlassciEtablissementIntrouvableException;
 use App\Exceptions\KlassciRoleInconnuException;
 use App\Exceptions\KlassciUnavailableException;
@@ -76,6 +77,9 @@ class AuthController extends AuthenticatedController
         } catch (KlassciEtablissementIntrouvableException $e) {
             // #1181 : aucun compte d'école sans école ; journalisé par l'orchestrateur.
             return $this->presenter->etablissementKlassciIntrouvable();
+        } catch (KlassciCompteRefuseException $e) {
+            // #1739 : KLASSCI refuse ce compte (ex. pas encore réinscrit) ; son motif est dit.
+            return $this->presenter->compteRefuseParKlassci($e);
         } catch (KlassciRoleInconnuException $e) {
             // #949 : rôle KLASSCI hors de la table, compte nouveau. Rien n'est
             // écrit ; le synchroniseur a journalisé le rôle reçu.

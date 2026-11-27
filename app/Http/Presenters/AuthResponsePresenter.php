@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Presenters;
 
 use App\Enums\Role;
+use App\Exceptions\KlassciCompteRefuseException;
 use App\Exceptions\KlassciRoleInconnuException;
 use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Institution;
@@ -187,6 +188,19 @@ class AuthResponsePresenter
      * connaît pas : aucun compte n'est créé. 403 motivé (ADR-906-01) : la
      * correction est administrative, dans KLASSCI.
      */
+    /**
+     * #1739 — KLASSCI refuse la connexion de ce compte (ex. « pas encore réinscrit ») :
+     * son message, nettoyé, et un motif nommé. Ni 401 (identifiants), ni 503 (panne).
+     */
+    public function compteRefuseParKlassci(KlassciCompteRefuseException $refus): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $refus->messageNettoye,
+            'reason' => KlassciCompteRefuseException::REASON,
+        ], 403);
+    }
+
     public function roleKlassciInconnu(): JsonResponse
     {
         return response()->json([

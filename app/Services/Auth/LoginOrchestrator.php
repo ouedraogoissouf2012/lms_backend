@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Exceptions\KlassciCompteRefuseException;
 use App\Exceptions\KlassciEtablissementIntrouvableException;
 use App\Exceptions\KlassciUnavailableException;
 use App\Http\Presenters\AuthResponsePresenter;
@@ -73,11 +74,16 @@ final class LoginOrchestrator
         }
 
         $panne = null;
+        $refus = null;
         foreach ($matchingTenants as $tenant) {
             try {
                 $payload = $this->klassciAuthClient->attemptLogin($tenant['api_base_url'], $username, $password);
             } catch (KlassciUnavailableException $e) {
                 $panne = $e;
+
+                continue;
+            } catch (KlassciCompteRefuseException $e) {
+                $refus ??= ['exception' => $e, 'ecole' => $tenant['code']];
 
                 continue;
             }
@@ -86,6 +92,17 @@ final class LoginOrchestrator
             }
 
             return $this->buildKlassciSuccessResponse($payload, $tenant);
+        }
+
+        // #1739 — un refus du COMPTE est un fait sur ce compte : il l'emporte sur une
+        // panne ailleurs, et la personne lit le motif de son école.
+        if ($refus !== null) {
+            $this->auditLogger->logAuthEvent('login_refused_by_klassci', null, [
+                'username' => $username,
+                'ecole' => $refus['ecole'],
+            ]);
+
+            throw $refus['exception'];
         }
 
         // #687 — une école trouvée qui n'a pas pu juger le mot de passe : seul un refus
@@ -124,6 +141,10 @@ final class LoginOrchestrator
             $payload = $this->klassciAuthClient->attemptLogin($tenantUrl, $username, $password);
         } catch (KlassciUnavailableException) {
             // #687 — le compte est déjà authentifié en local : une panne garde le repli.
+            $payload = null;
+        } catch (KlassciCompteRefuseException) {
+            // #1739 — comportement inchangé : un refus de KLASSCI garde aussi le repli
+            // local d'un compte déjà authentifié. Le refuser est une question ouverte.
             $payload = null;
         }
         if ($payload === null) {

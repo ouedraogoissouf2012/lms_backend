@@ -97,7 +97,7 @@ final class RefusDeCompteKlassciTest extends TestCase
         $this->connexion()
             ->assertForbidden()
             ->assertJsonPath('reason', 'klassci_account_refused')
-            ->assertJsonPath('message', "Votre école refuse la connexion de ce compte. Contactez son secrétariat.");
+            ->assertJsonPath('message', 'Votre école refuse la connexion de ce compte. Contactez son secrétariat.');
     }
 
     public function test_des_identifiants_refuses_restent_un_401(): void

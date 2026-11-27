@@ -53,6 +53,23 @@ final class CoefficientsDesMatieres
     }
 
     /**
+     * L'id LOCAL de la matière de chaque évaluation, dans les deux volets ; 0 si aucune. C'est
+     * l'espace du programme de la classe (`classe_matiere`), où le bilan regroupe ses notes.
+     *
+     * @param  iterable<Evaluation>  $evaluations
+     * @return array<int, int>
+     */
+    public function matieresLocales(iterable $evaluations): array
+    {
+        $liees = [];
+        foreach ($evaluations as $evaluation) {
+            $liees[$evaluation->id] = $evaluation;
+        }
+
+        return $liees === [] ? [] : $this->miroirs(Matiere::class, $liees, 'matiere_id', 'klassci_matiere_id');
+    }
+
+    /**
      * L'id LOCAL de la matière (ou de la classe) de chaque évaluation : la colonne locale, sinon
      * le miroir de l'identité KLASSCI dans l'établissement de l'évaluation ; 0 si aucun.
      *

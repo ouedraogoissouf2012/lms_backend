@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Evaluation\Classe\ElevesDeLaClasse;
+use App\Services\Evaluation\Classe\KlassciElevesDeLaClasse;
+use App\Services\Evaluation\Classe\LocalElevesDeLaClasse;
 use App\Services\Evaluation\Programming\EvaluationProgramming;
 use App\Services\Evaluation\Programming\KlassciEvaluationProgramming;
 use App\Services\Evaluation\Programming\LocalEvaluationProgramming;
@@ -60,6 +63,13 @@ final class EvaluationServiceProvider extends ServiceProvider
             MatieresDesNotes::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(KlassciMatieresDesNotes::class, LocalMatieresDesNotes::class),
+        );
+
+        // #1676 : les élèves d'une classe, pour son bilan : le roster KLASSCI, ou les inscriptions.
+        $this->app->bind(
+            ElevesDeLaClasse::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciElevesDeLaClasse::class, LocalElevesDeLaClasse::class),
         );
     }
 }

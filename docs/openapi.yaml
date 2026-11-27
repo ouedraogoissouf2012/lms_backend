@@ -4081,6 +4081,144 @@ components:
     # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
     # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
     # le code machine est `reason` (ADR-906-01, ADR-919-01).
+    BilanDeClasse:
+      type: object
+      description: "#1676 : moyennes, rangs et reussite d une classe. L eleve ne recoit que `eleves` (sa ligne), sans `statistiques` ni `couverture`."
+      required: [classe, periode, source, seuil_reussite, evaluations, matieres, eleves]
+      properties:
+        classe:
+          type: object
+          properties:
+            id:
+              type: integer
+            libelle:
+              type: string
+        periode:
+          type: object
+          properties:
+            du:
+              type: string
+              format: date
+              nullable: true
+            au:
+              type: string
+              format: date
+              nullable: true
+        source:
+          type: string
+          enum: [lms]
+          description: "Les seules notes du LMS : dans une ecole KLASSCI, KLASSCI peut en tenir d autres."
+        seuil_reussite:
+          type: number
+        evaluations:
+          type: array
+          description: "Les colonnes de la grille : les evaluations publiees, aux resultats visibles, de la periode."
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              titre:
+                type: string
+              matiere_id:
+                type: integer
+                nullable: true
+                description: "Id LOCAL de la matiere ; `null` sans matiere."
+              date_evaluation:
+                type: string
+                format: date-time
+                nullable: true
+              coefficient:
+                type: number
+        matieres:
+          type: array
+          items:
+            type: object
+            properties:
+              matiere_id:
+                type: integer
+              libelle:
+                type: string
+                nullable: true
+              coefficient:
+                type: number
+                description: "Coefficient de la matiere dans la classe : il pondere la moyenne generale."
+        eleves:
+          type: array
+          items:
+            type: object
+            properties:
+              compte_id:
+                type: integer
+                nullable: true
+                description: "Le compte local ; `null` pour un eleve du roster KLASSCI sans compte LMS."
+              nom:
+                type: string
+              moyenne_generale:
+                type: number
+                nullable: true
+              rang:
+                type: integer
+                nullable: true
+                description: "Absent pour l eleve si l ecole ne l autorise pas ; `null` pour un eleve non classe."
+              matieres:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    matiere_id:
+                      type: integer
+                      nullable: true
+                    moyenne:
+                      type: number
+                      nullable: true
+              notes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    evaluation_id:
+                      type: integer
+                    note:
+                      type: number
+              notes_manquantes:
+                type: array
+                description: "Les evaluations de la periode sans note finale de l eleve."
+                items:
+                  type: integer
+        statistiques:
+          type: object
+          properties:
+            effectif:
+              type: integer
+            classes:
+              type: integer
+              description: "Les eleves qui ont une moyenne generale."
+            moyenne_classe:
+              type: number
+              nullable: true
+            taux_reussite:
+              type: number
+              nullable: true
+              description: "Pourcentage des eleves classes dont la moyenne atteint le seuil."
+        couverture:
+          type: object
+          properties:
+            matieres_sans_evaluation:
+              type: array
+              items:
+                type: object
+                properties:
+                  matiere_id:
+                    type: integer
+                  libelle:
+                    type: string
+                    nullable: true
+            evaluations_sans_note:
+              type: array
+              items:
+                type: integer
+
     ErrorResponse:
       type: object
       properties:
@@ -7019,6 +7157,118 @@ paths:
           description: |
             KLASSCI indisponible (panne, circuit ouvert, transport, URL absente),
             reponse illisible, ou enveloppe sans roster.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: "Secondes a attendre avant de reessayer."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /lms/classes/{classe}/resultats:
+    get:
+      tags:
+        - Classes
+      operationId: getBilanDeClasse
+      summary: "Moyennes, rangs et reussite d une classe (#1676)"
+      description: |
+        `classe` est l identifiant LOCAL de la classe (`classes.id`), dans les deux types
+        d ecole. Une classe d une autre ecole, ou inexistante : 404 `class_out_of_scope`.
+
+        **Les memes regles que « Mes notes »** (`/my-grades`) : seules les copies FINALES
+        comptent (corrigees, ou remises sans question a correction manuelle ; ni
+        entrainement, ni evaluation non publiee), la plus recente par eleve et par
+        evaluation. Seules les evaluations aux resultats VISIBLES (`show_results`) comptent :
+        une note non publiee n entre pas dans le rang (quand la publication des notes
+        deviendra un geste explicite, #1699, le rang suivra). La moyenne d une matiere est
+        ponderee par le coefficient de chaque evaluation ; la moyenne generale par le
+        coefficient de la MATIERE dans la classe (`classe_matiere.coefficient`, a defaut
+        celui de la matiere, a defaut 1). Rien a moyenner : `null`, jamais un 0 fabrique ;
+        une note manquante n entre dans aucune moyenne.
+
+        **Rang** de competition, avec ex aequo (1, 2, 2, 4). Un eleve sans moyenne n est pas
+        classe (`rang: null`) et n entre ni dans `moyenne_classe` ni dans `taux_reussite`.
+        **Taux de reussite** : la part des eleves classes dont la moyenne atteint
+        `seuil_reussite` (reglage de l ecole `settings.seuil_reussite`, 10 sur 20 par defaut).
+
+        **Source** : `source: "lms"`. Les deux types d ecole calculent sur les notes du LMS ;
+        dans une ecole KLASSCI, KLASSCI peut tenir d autres notes, que ce bilan ne voit pas.
+        Les eleves : les inscriptions actives (ecole creee depuis le LMS), ou le roster
+        KLASSCI lu avec le jeton du lecteur (ecole KLASSCI ; sans jeton, 401
+        `klassci_token_missing` ; panne, 503).
+
+        **Acces** : le coordinateur et l admin de l ecole voient la classe entiere ;
+        l enseignant aussi, s il y est designe formateur d une matiere (sinon 403
+        `class_not_taught`). L eleve ne recoit que SA ligne, sans `statistiques` ni
+        `couverture` ; son `rang` n y figure que si l ecole l autorise
+        (`settings.rang_visible_eleve`). Hors de la classe : 403 `not_in_class`.
+
+        Concu pour le carnet de notes (#1698) : `evaluations` (les colonnes) et
+        `eleves[].notes` forment la grille eleves x evaluations.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la classe (`classes.id`)."
+          schema:
+            type: integer
+        - name: du
+          in: query
+          required: false
+          description: "Debut de la periode, sur la date d evaluation (incluse). Sans borne : l annee entiere."
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: false
+          description: "Fin de la periode (incluse), egale ou posterieure a `du`."
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: "Le bilan de la classe (ou la seule ligne de l eleve)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/BilanDeClasse'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: "Classe non enseignee, eleve hors de la classe, ou role sans acces."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable dans l etablissement (`class_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Periode invalide (`du`, `au`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "Roster KLASSCI indisponible (ecole KLASSCI)."
           headers:
             Retry-After:
               schema:

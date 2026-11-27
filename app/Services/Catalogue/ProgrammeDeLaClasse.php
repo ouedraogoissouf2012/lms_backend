@@ -106,7 +106,6 @@ final class ProgrammeDeLaClasse
         $traces = [];
         foreach (self::TRACES as $table => $nom) {
             $nombre = DB::table($table)
-                ->where('institution_id', $institution)
                 ->where('classe_id', $classeId)
                 ->where('matiere_id', $matiereId)
                 ->count();

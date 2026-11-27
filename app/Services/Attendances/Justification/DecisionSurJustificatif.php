@@ -13,7 +13,6 @@ use App\Models\JustificatifAbsence;
 use App\Models\Notification;
 use App\Models\Seance;
 use App\Models\User;
-use App\Services\Attendances\PresenceRetenue;
 use App\Services\Audit\AuditLogger;
 use App\Services\Notification\NotificationDispatcher;
 use Illuminate\Database\ConnectionInterface;
@@ -86,7 +85,7 @@ final class DecisionSurJustificatif
             ->where('institution_id', $j->institution_id)
             ->where('seance_id', $seance->id)->where('user_id', $j->eleve_id)
             ->lockForUpdate()->first();
-        if ($ligne instanceof ESBTPAttendance && (PresenceRetenue::estPresente($ligne) || $ligne->mark === AttendanceMark::Excused)) {
+        if ($ligne instanceof ESBTPAttendance && $ligne->mark === AttendanceMark::Excused) {
             return;
         }
         $avant = $ligne?->mark === null ? null : ['mark' => $ligne->mark->value, 'origin' => $ligne->origin?->value];

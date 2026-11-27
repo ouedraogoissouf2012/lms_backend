@@ -49,7 +49,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('personnel')
         ->name('lms.classes.etudiants');
 
-    // #1676 : moyennes, rangs et réussite d'une classe, par son id LOCAL (`classes.id`). L'accès
+    // #1676 : moyennes, rangs et réussite d'une classe, par l'id de l'ESPACE SOURCE, comme ses
+    // voisines (`ClasseDeLEspaceSource`). L'accès
     // (personnel, enseignant de la classe, élève pour sa SEULE ligne) est décidé par
     // `AccesAuBilanDeClasse`, pas par un middleware de rôle : l'élève y a sa porte.
     Route::get('/classes/{classe}/resultats', [LMSClasseBilanController::class, 'show'])

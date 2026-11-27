@@ -15,7 +15,8 @@ use RuntimeException;
 
 /**
  * #1676 : `GET /api/lms/classes/{classe}/resultats` — moyennes, rangs et réussite d'une classe,
- * par son id LOCAL (`classes.id`), sur une période `?du=&au=`.
+ * par l'id de l'ESPACE SOURCE de l'école, comme `/classes/{classeId}/etudiants`, sur une période
+ * `?du=&au=`.
  *
  * Un refus métier (classe hors école, non enseignée, élève hors classe) est rendu avec son statut
  * et son motif ; un refus ou une panne du roster KLASSCI, par {@see RendersKlassciBackedErrors}

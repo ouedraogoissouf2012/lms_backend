@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Classe\ClasseDeLEspaceSource;
+use App\Services\Classe\KlassciClasseDeLEspaceSource;
+use App\Services\Classe\LocalClasseDeLEspaceSource;
 use App\Services\Evaluation\Classe\ElevesDeLaClasse;
 use App\Services\Evaluation\Classe\KlassciElevesDeLaClasse;
 use App\Services\Evaluation\Classe\LocalElevesDeLaClasse;
@@ -70,6 +73,13 @@ final class EvaluationServiceProvider extends ServiceProvider
             ElevesDeLaClasse::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(KlassciElevesDeLaClasse::class, LocalElevesDeLaClasse::class),
+        );
+
+        // #1676 : la classe désignée par l'identifiant de l'espace source de l'école.
+        $this->app->bind(
+            ClasseDeLEspaceSource::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciClasseDeLEspaceSource::class, LocalClasseDeLEspaceSource::class),
         );
     }
 }

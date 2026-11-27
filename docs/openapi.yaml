@@ -7174,8 +7174,11 @@ paths:
       operationId: getBilanDeClasse
       summary: "Moyennes, rangs et reussite d une classe (#1676)"
       description: |
-        `classe` est l identifiant LOCAL de la classe (`classes.id`), dans les deux types
-        d ecole. Une classe d une autre ecole, ou inexistante : 404 `class_out_of_scope`.
+        `classe` est l identifiant de l ESPACE SOURCE de l ecole, comme pour
+        `/lms/classes/{classeId}/etudiants` : l identifiant local dans une ecole creee depuis
+        le LMS, l identite KLASSCI dans une ecole KLASSCI (resolue sur le miroir local de la
+        classe ; tant que ce miroir n existe pas, 404). Une classe d une autre ecole, ou
+        inexistante : 404 `class_out_of_scope`.
 
         **Les memes regles que « Mes notes »** (`/my-grades`) : seules les copies FINALES
         comptent (corrigees, ou remises sans question a correction manuelle ; ni
@@ -7213,7 +7216,7 @@ paths:
         - name: classe
           in: path
           required: true
-          description: "Identifiant LOCAL de la classe (`classes.id`)."
+          description: "Identifiant de l espace source : local dans une ecole creee depuis le LMS, KLASSCI dans une ecole KLASSCI."
           schema:
             type: integer
         - name: du

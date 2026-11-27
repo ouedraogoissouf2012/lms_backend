@@ -171,6 +171,18 @@ final class ConflitsDHoraireTest extends TestCase
             ->assertJsonPath('reason', 'seance_schedule_conflict');
     }
 
+    /** La fin reçue seule se compare au début FINAL, celui de la ligne. */
+    public function test_une_fin_avant_le_debut_de_la_ligne_422_motive(): void
+    {
+        $seance = $this->seanceLocale($this->enseignant, $this->creneau('08:00', '10:00'));
+
+        $this->asTenant($this->enseignant)
+            ->patchJson('/api/lms/seances/'.$seance->id, ['fin_seance' => '2026-12-02T07:30:00+00:00'])
+            ->assertStatus(422)
+            ->assertJsonPath('reason', 'seance_end_before_start');
+        $this->assertSame('2026-12-02 10:00:00', $seance->refresh()->fin_seance?->format('Y-m-d H:i:s'));
+    }
+
     public function test_une_seance_ne_se_gene_pas_elle_meme(): void
     {
         $seance = $this->seanceLocale($this->enseignant, $this->creneau('08:00', '10:00'));

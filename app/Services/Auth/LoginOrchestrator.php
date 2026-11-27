@@ -97,10 +97,7 @@ final class LoginOrchestrator
         // #1739 — une école qui a refusé le COMPTE a jugé le mot de passe juste : son motif
         // l'emporte sur une panne et sur un refus d'identifiants ailleurs.
         if ($refus !== null) {
-            // Un échec de connexion, motivé : l'action reste celle que filtre le journal d'audit.
-            $this->auditLogger->logAuthEvent('login_failed', null, ['username' => $username, 'reason' => KlassciCompteRefuse::REASON]);
-
-            return $this->presenter->compteRefuse($refus->messageAffichable);
+            return $this->compteRefuse($refus, null, $username);
         }
 
         // #687 — une école trouvée qui n'a pas pu juger le mot de passe : seul un refus
@@ -137,10 +134,14 @@ final class LoginOrchestrator
 
         try {
             $payload = $this->klassciAuthClient->attemptLogin($tenantUrl, $username, $password);
-        } catch (KlassciUnavailableException|KlassciCompteRefuse) {
-            // #687, #1739 — le compte est déjà authentifié en local : une panne, ou un refus
-            // du compte par KLASSCI, garde le repli local.
+        } catch (KlassciUnavailableException) {
+            // #687 — le compte est déjà authentifié en local : une PANNE (réponse indéterminée)
+            // garde le repli local.
             $payload = null;
+        } catch (KlassciCompteRefuse $refus) {
+            // #1739 — un REFUS explicite du compte est une réponse conclusive : KLASSCI fait
+            // autorité pour son école, le compte local lié ne passe pas outre.
+            return $this->compteRefuse($refus, $user);
         }
         if ($payload === null) {
             $this->logger->warning('Renouvellement token KLASSCI impossible, fallback local', [
@@ -155,6 +156,18 @@ final class LoginOrchestrator
             'code' => (string) $institution->slug,
             'api_base_url' => $tenantUrl,
         ]);
+    }
+
+    /**
+     * #1739 — le refus du compte par KLASSCI : 403 motivé, avec son message nettoyé. Journalisé
+     * comme un échec de connexion, motivé : l'action reste celle que filtre le journal d'audit.
+     */
+    private function compteRefuse(KlassciCompteRefuse $refus, ?User $compte, ?string $username = null): JsonResponse
+    {
+        $contexte = ['reason' => KlassciCompteRefuse::REASON] + ($username !== null ? ['username' => $username] : []);
+        $this->auditLogger->logAuthEvent('login_failed', $compte, $contexte);
+
+        return $this->presenter->compteRefuse($refus->messageAffichable);
     }
 
     /**

@@ -203,11 +203,15 @@ final class PanneKlassciALaConnexionTest extends TestCase
         $this->connexion()->assertStatus(403)->assertJsonPath('reason', 'klassci_account_refused');
     }
 
-    /** Un compte local lié, déjà authentifié en local, garde son repli quand KLASSCI refuse le compte. */
-    public function test_un_compte_local_lie_garde_son_repli_sur_un_refus_de_compte(): void
+    /**
+     * Décision de la superviseure (27/11) : un REFUS explicite de KLASSCI est une réponse conclusive, et
+     * KLASSCI fait autorité pour son école. Le compte local lié n'y passe pas outre : le repli local reste
+     * réservé à la PANNE (`test_un_compte_local_lie_garde_son_repli_pendant_une_panne`).
+     */
+    public function test_un_compte_local_lie_refuse_par_klassci_ne_passe_pas_outre(): void
     {
         $ecole = Institution::query()->where('slug', 'ecole-a')->firstOrFail();
-        User::factory()->for($ecole)->create([
+        $compte = User::factory()->for($ecole)->create([
             'email' => self::IDENTIFIANT.'@ecole-a.ci',
             'password' => 'le-bon-mot-de-passe',
             'klassci_id' => 687003,
@@ -216,8 +220,10 @@ final class PanneKlassciALaConnexionTest extends TestCase
         $this->ecoleA(check: $this->trouve(true), login: $this->refusDeCompte(self::NON_REINSCRIT));
 
         $this->postJson('/api/auth/login', ['username' => self::IDENTIFIANT.'@ecole-a.ci', 'password' => 'le-bon-mot-de-passe'])
-            ->assertOk()
-            ->assertJsonPath('success', true);
+            ->assertStatus(403)
+            ->assertJsonPath('reason', 'klassci_account_refused')
+            ->assertJsonPath('message', self::NON_REINSCRIT);
+        self::assertSame(0, $compte->tokens()->count(), 'Aucun jeton n est émis au compte refusé.');
     }
 
     private function refusDeCompte(string $message): mixed

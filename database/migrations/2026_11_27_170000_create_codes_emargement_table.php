@@ -15,8 +15,9 @@ use Illuminate\Support\Facades\Schema;
  *   pas quel code l'a signée ; le compteur donne des statistiques exactes par code sans toucher `esbtp_attendance`.
  * - Le code est PAR SÉANCE : le code de journée est retiré (décision de la superviseure).
  *
- * Clés étrangères en cascade sur l'école et la séance (un code ne survit pas à sa séance) ; l'auteur supprimé laisse
- * le code, sans auteur. Index de lecture : `(institution_id, code_hash)` pour la signature, `seance_id` pour la liste.
+ * L'école en RESTRICT, comme toute table déclarée dans `tenancy.institution_scoped_tables` (la purge d'une école
+ * refuse tant qu'il reste des lignes) ; la séance en cascade (un code ne survit pas à sa séance) ; l'auteur supprimé
+ * laisse le code, sans auteur. Index de lecture : `(institution_id, code_hash)` pour la signature, `seance_id` pour la liste.
  */
 return new class extends Migration
 {
@@ -24,7 +25,7 @@ return new class extends Migration
     {
         Schema::create('codes_emargement', static function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('institution_id')->constrained('institutions')->cascadeOnDelete();
+            $table->foreignId('institution_id')->constrained('institutions')->restrictOnDelete();
             $table->foreignId('seance_id')->constrained('seances')->cascadeOnDelete();
             $table->foreignId('auteur_id')->nullable()->constrained('users')->nullOnDelete();
             $table->char('code_hash', 64);

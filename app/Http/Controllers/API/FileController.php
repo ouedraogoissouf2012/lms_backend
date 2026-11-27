@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AuthenticatedController;
-use App\Http\Requests\Concerns\ChecksFileAuthorization;
 use App\Http\Requests\DeleteFileRequest;
 use App\Http\Requests\ListFilesRequest;
 use App\Http\Requests\UpdateFileRequest;
@@ -26,16 +25,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *   - {@see FileUploadService}   — upload (storage + persistance)
  *   - {@see FileMutationService} — update, destroy, download
  *
- * L'autorisation reste ici via le trait {@see ChecksFileAuthorization} pour
- * `show` / `download` (les autres endpoints passent par les FormRequests
- * `UpdateFileRequest` / `DeleteFileRequest::authorize()`).
+ * Qui lit quoi : `show` et `download` lisent par {@see FileQueryService::find()},
+ * bornée à ce que l'appelant lit (#1768) ; un fichier qu'il ne lit pas répond le
+ * même 404 qu'un id absent. La modération passe par les FormRequests
+ * `UpdateFileRequest` / `DeleteFileRequest::authorize()`.
  *
  * @see PRODUCTION_STANDARDS.md §5 + §1.1 + §1.6 D
  */
 final class FileController extends AuthenticatedController
 {
-    use ChecksFileAuthorization;
-
     public function __construct(
         private readonly FileQueryService $queryService,
         private readonly FileUploadService $uploadService,
@@ -83,15 +81,10 @@ final class FileController extends AuthenticatedController
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $user = $this->authenticatedUser($request);
-        $file = $this->queryService->find($id, $user);
+        $file = $this->queryService->find($id, $this->authenticatedUser($request));
 
         if ($file === null) {
             return $this->errorResponse('Fichier non trouvé', 404);
-        }
-
-        if (! $this->canReadFile($file, $user)) {
-            return $this->errorResponse('Accès refusé', 403);
         }
 
         return $this->successResponse($file);
@@ -102,14 +95,10 @@ final class FileController extends AuthenticatedController
      */
     public function download(Request $request, int $id): StreamedResponse|JsonResponse
     {
-        $file = File::find($id);
+        $file = $this->queryService->lisible($id, $this->authenticatedUser($request));
 
         if ($file === null) {
             return $this->errorResponse('Fichier non trouvé', 404);
-        }
-
-        if (! $this->canReadFile($file, $this->authenticatedUser($request))) {
-            return $this->errorResponse('Accès refusé', 403);
         }
 
         $stream = $this->mutationService->download($file);

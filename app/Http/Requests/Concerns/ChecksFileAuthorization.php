@@ -1,99 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Concerns;
 
 use App\Models\File;
 use App\Models\User;
+use App\Services\File\LecteurDeFichier;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * File action authorization with strict multi-tenant isolation.
+ * L'autorisation de MODÉRER un fichier (modifier, supprimer), partagée par
+ * `UpdateFileRequest` et `DeleteFileRequest` (#1768).
  *
- * ## Why this trait exists (vs reusing ChecksForumAuthorization from PR #95)
+ * La règle vit dans {@see LecteurDeFichier}, la même que pour lire : le
+ * propriétaire, ou la gestion de son école (`isManager`).
  *
- * Files have an `is_public` flag that grants read access intra-tenant. The
- * Forum trait has no equivalent — adding a flag would force a leaky parameter
- * on Forum FormRequests where it has no meaning. Two file-specific methods
- * (`canReadFile` with public bypass, `canModerateFile` without) keep the
- * semantics local to Files.
- *
- * ## Defense in depth
- *
- * Same strategy as `ChecksForumAuthorization`:
- *   1. null check → deny
- *   2. supradmin role → allow (platform manager bypass, cf. EnsureRole.php L107)
- *   3. institution_id mismatch → deny (tenant isolation)
- *   4. read-specific: is_public OR owner OR admin → allow
- *      moderate-specific: owner OR admin → allow (no is_public bypass)
- *   5. else → deny
- *
- * Without this trait, `User::isAdmin()` would conflate intra-tenant admins
- * with `supradmin` (cross-tenant), letting an admin of institution A read
- * or moderate files of institution B (HIGH IDOR — issue #102).
- *
- * @see PRODUCTION_STANDARDS.md §1.2 Sécurité Absolue + §1.6 D
- * @see app/Http/Requests/Concerns/ChecksForumAuthorization.php (sibling trait)
- * @see app/Models/Traits/BelongsToInstitution.php (upstream global scope)
- * @see .claude/specs/file-idor-cross-tenant/design.md §2
+ * Un fichier que l'appelant ne LIT pas répond comme un fichier absent : la même
+ * `ModelNotFoundException` que la liaison de route `{file}` lève pour un id
+ * inconnu, donc le même 404, au même corps. Un fichier qu'il lit sans pouvoir le
+ * modérer (un fichier public d'autrui) reçoit 403 : son existence ne lui est pas
+ * cachée.
  */
 trait ChecksFileAuthorization
 {
-    use AuthorizesTenantScopedResource;
-
-    /**
-     * Authorize READ access to a file (show, download).
-     *
-     * Check order (short-circuit):
-     *   1. null check → deny
-     *   2. supradmin → allow (cross-tenant)
-     *   3. institution_id mismatch → deny
-     *   4. file.is_public → allow (intra-tenant only, already past step 3)
-     *   5. file.user_id === user.id → allow (owner)
-     *   6. user.role ∈ admin/administrateur/superAdmin → allow (admin intra)
-     *   7. else → deny
-     */
-    protected function canReadFile(?File $file, ?User $user): bool
+    protected function autoriserLaModeration(LecteurDeFichier $lecteur, mixed $fichier, mixed $appelant): bool
     {
-        if ($file === null || $user === null) {
+        if (! $fichier instanceof File || ! $appelant instanceof User) {
             return false;
         }
 
-        $guard = $this->passesTenantGuard($user, $file->institution_id);
-        if ($guard !== null) {
-            return $guard;
+        if (! $lecteur->peutLire($appelant, $fichier)) {
+            throw (new ModelNotFoundException)->setModel(File::class, [$fichier->id]);
         }
 
-        if ($file->is_public === true) {
-            return true;
-        }
-
-        if ($file->user_id === $user->id) {
-            return true;
-        }
-
-        return $user->isAdmin();
-    }
-
-    /**
-     * Authorize MODERATE access to a file (update metadata, delete).
-     *
-     * Same as canReadFile() but **without** is_public bypass: a public file
-     * is not modifiable/deletable by a non-owner non-admin caller.
-     */
-    protected function canModerateFile(?File $file, ?User $user): bool
-    {
-        if ($file === null || $user === null) {
-            return false;
-        }
-
-        $guard = $this->passesTenantGuard($user, $file->institution_id);
-        if ($guard !== null) {
-            return $guard;
-        }
-
-        if ($file->user_id === $user->id) {
-            return true;
-        }
-
-        return $user->isAdmin();
+        return $lecteur->peutModerer($appelant, $fichier);
     }
 }

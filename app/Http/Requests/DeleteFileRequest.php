@@ -3,10 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksFileAuthorization;
-use App\Models\File;
-use App\Models\User;
+use App\Services\File\LecteurDeFichier;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Validates file deletion requests (DELETE /api/files/{id}).
@@ -18,9 +16,9 @@ use Illuminate\Support\Facades\Auth;
  *
  * ## Authorization Model (issue #102 fix)
  *
- * Strict tenant isolation via `ChecksFileAuthorization::canModerateFile()`.
- * Same logic as `UpdateFileRequest`: supradmin bypass / tenant match /
- * owner / admin intra-tenant.
+ * La règle de {@see LecteurDeFichier} (#1768), via `ChecksFileAuthorization`,
+ * la même que `UpdateFileRequest` : le propriétaire, ou la gestion de son école ;
+ * un fichier que l'appelant ne lit pas répond 404, comme un id absent.
  *
  * Previous version used `$user->isAdmin()` which ambiguously allowed any admin
  * (including intra-tenant ones) to delete files cross-tenant (HIGH IDOR).
@@ -36,15 +34,9 @@ final class DeleteFileRequest extends FormRequest
     /**
      * Verify file ownership + tenant isolation before allowing deletion.
      */
-    public function authorize(): bool
+    public function authorize(LecteurDeFichier $lecteur): bool
     {
-        $user = Auth::user();
-        $file = $this->route('file');
-
-        return $this->canModerateFile(
-            $file instanceof File ? $file : null,
-            $user instanceof User ? $user : null,
-        );
+        return $this->autoriserLaModeration($lecteur, $this->route('file'), $this->user());
     }
 
     /**

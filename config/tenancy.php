@@ -37,6 +37,9 @@ return [
         'evaluations',
         'evaluation_questions',
         'evaluation_submissions',
+        // #1702 (D1) : la banque de questions.
+        'categories_de_questions',
+        'questions_de_banque',
         'seances',
         'esbtp_attendance',
         'lesson_progress',

@@ -26,7 +26,7 @@ use Tests\TestCase;
  * Complète le flow E2E #211 n°5 (isolation) avec un fichier dédié exigé par
  * l'issue #212, centré sur les frontières d'autorisation.
  *
- * @see app/Http/Middleware/EnsureRole.php
+ * @see \App\Http\Middleware\EnsurePermission
  * @see app/Models/Traits/BelongsToInstitution.php
  */
 final class AuthorizationTest extends TestCase

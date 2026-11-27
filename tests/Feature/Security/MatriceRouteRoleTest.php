@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Enums\Role;
-use App\Http\Middleware\EnsureGestion;
 use App\Http\Middleware\EnsurePermission;
-use App\Http\Middleware\EnsurePersonnel;
 use App\Http\Middleware\EnsurePlatformSupradmin;
-use App\Http\Middleware\EnsureRole;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\MiddlewareNameResolver;
@@ -40,11 +37,9 @@ final class MatriceRouteRoleTest extends TestCase
 
     /** Les gardes d'autorisation par rôle, exécutées pour chaque route. */
     private const GARDES = [
-        EnsureRole::class,
-        EnsureGestion::class,
-        EnsurePersonnel::class,
         EnsurePlatformSupradmin::class,
-        // #1665 lot 1 : la garde qui remplace les trois premieres, AJOUTEE (le fichier fige ne bouge pas).
+        // #1665 lot 1 : EnsurePermission remplace EnsureRole (`role:`), EnsureGestion et EnsurePersonnel, retirées.
+        // Le fichier figé est la matrice qu'ELLES donnaient (commit 6d2a0af1) : il n'a pas bougé.
         EnsurePermission::class,
     ];
 

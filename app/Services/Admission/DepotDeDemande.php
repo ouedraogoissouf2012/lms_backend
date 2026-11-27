@@ -11,6 +11,7 @@ use App\Services\Catalogue\PorteDuCatalogueLocal;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Support\Carbon;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Le dépôt d'une demande d'inscription par la porte publique (#1659). Il ne CONFIRME RIEN à l'appelant : école
@@ -33,7 +34,8 @@ final class DepotDeDemande
         if (! $ecole instanceof Institution || ! $this->porte->ouvertePour($ecole)) {
             $this->journal->info('Demande d\'inscription écartée : école fermée aux demandes', ['ecole' => $slug]);
 
-            return;
+            // SONDE #1659 : la porte confirme qu'une école n'accepte pas de demande.
+            throw new NotFoundHttpException('École introuvable.');
         }
 
         $plafond = $this->config->get('admissions.plafond_journalier', 100);

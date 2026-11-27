@@ -151,10 +151,7 @@ final class ConflitsDHoraire
             ->when($creneau->seanceExclue !== null, fn (Builder $q) => $q->whereKeyNot($creneau->seanceExclue))
             ->where('date_seance', '<', $creneau->fin)
             ->where(fn (Builder $finApresLeDebut) => $finApresLeDebut
-                ->where('fin_seance', '>', $creneau->debut)
-                ->orWhere(fn (Builder $sansFin) => $sansFin
-                    ->whereNull('fin_seance')
-                    ->where('date_seance', '>', $debutSansFinAuPlusTot)));
+                ->where('fin_seance', '>', $creneau->debut));
     }
 
     /** @param Builder<Seance> $seances */

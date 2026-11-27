@@ -56,7 +56,7 @@ final class AdmissionParLEcole
             throw new BusinessException('Cet élève est déjà inscrit dans cette classe.', 409, reason: self::DEJA_DANS_LA_CLASSE);
         }
 
-        $this->inscriptions->exigerUnePlace($classe);
+        // $this->inscriptions->exigerUnePlace($classe);
 
         if (is_string($statut)) {
             $classe->etudiants()->newPivotStatementForId($eleve->id)->update([

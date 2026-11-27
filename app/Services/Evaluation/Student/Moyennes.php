@@ -31,17 +31,4 @@ final class Moyennes
 
         return $coefficients > 0 ? round($points / $coefficients, 2) : null;
     }
-
-    /**
-     * La moyenne simple des moyennes MESURÉES, arrondie à deux décimales ; `null` si
-     * aucune ne l'est.
-     *
-     * @param  list<float|null>  $moyennes
-     */
-    public static function simple(array $moyennes): ?float
-    {
-        $mesurees = array_values(array_filter($moyennes, static fn (?float $moyenne): bool => $moyenne !== null));
-
-        return $mesurees === [] ? null : round(array_sum($mesurees) / count($mesurees), 2);
-    }
 }

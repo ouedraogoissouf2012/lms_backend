@@ -96,7 +96,6 @@ final class AttendanceReportContextBuilder
         $klassciId = $classe->klassci_id;
 
         return $seances
-            ->where('institution_id', $institutionId)
             ->where(function (Builder $deLaClasse) use ($classe, $klassciId): void {
                 $deLaClasse->where('classe_id', $classe->getKey());
                 if (is_numeric($klassciId)) {
@@ -115,7 +114,6 @@ final class AttendanceReportContextBuilder
         }
 
         return Classe::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $institutionId)
             ->whereKey($classeId)
             ->firstOrFail(['id', 'klassci_id']);
     }

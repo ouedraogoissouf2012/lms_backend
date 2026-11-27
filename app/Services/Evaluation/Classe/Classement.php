@@ -28,7 +28,7 @@ final class Classement
         foreach ($moyennes as $cle => $moyenne) {
             $rangs[$cle] = $moyenne === null
                 ? null
-                : 1 + count(array_filter($classees, static fn (float $autre): bool => $autre > $moyenne));
+                : count(array_filter($classees, static fn (float $autre): bool => $autre >= $moyenne));
         }
 
         return $rangs;

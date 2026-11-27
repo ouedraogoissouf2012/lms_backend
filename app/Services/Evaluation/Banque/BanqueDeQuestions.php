@@ -47,7 +47,7 @@ final class BanqueDeQuestions
             ->whereKey($id)
             ->first();
 
-        if (! $categorie instanceof CategorieDeQuestions || (! $lecteur->isManager() && $categorie->enseignant_id !== $lecteur->id)) {
+        if (! $categorie instanceof CategorieDeQuestions) {
             throw new NotFoundHttpException('Catégorie introuvable.');
         }
 

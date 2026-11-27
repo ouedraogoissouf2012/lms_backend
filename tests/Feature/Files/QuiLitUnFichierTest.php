@@ -147,8 +147,10 @@ final class QuiLitUnFichierTest extends TestCase
         $fichier = $this->fichier($ecole, $this->membre($ecole, 'etudiant'), true);
         $lecteur = app(LecteurDeFichier::class);
 
+        // En mémoire : le modèle refuse d'enregistrer un rôle d'école sans école (#1181) ; la
+        // règle doit pourtant tenir seule, quel que soit le compte qu'on lui présente.
         foreach (['supradmin', 'superAdmin', 'coordinateur'] as $role) {
-            $sansEcole = User::factory()->create(['institution_id' => null, 'role' => $role]);
+            $sansEcole = (new User)->forceFill(['id' => 999999, 'institution_id' => null, 'role' => $role]);
             self::assertFalse($lecteur->peutLire($sansEcole, $fichier), $role);
             self::assertFalse($lecteur->peutModerer($sansEcole, $fichier), $role);
             self::assertSame(0, $lecteur->lisibles(File::query(), $sansEcole)->count(), $role);

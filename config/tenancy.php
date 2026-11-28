@@ -44,6 +44,8 @@ return [
         'questions_de_banque',
         'seances',
         'esbtp_attendance',
+        // #1680 : les codes d'émargement d'une séance.
+        'codes_emargement',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

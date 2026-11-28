@@ -2159,6 +2159,89 @@ components:
                     enum: [connected, disconnected, kicked, null]
                     description: "La connexion visio de l'eleve, a cote de sa marque ; nulle sans visio."
 
+    CodeEmargementGenere:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [id, code, expire_le]
+          properties:
+            id:
+              type: integer
+            code:
+              type: string
+              description: "Le code en clair, rendu cette seule fois."
+              pattern: '^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$'
+            expire_le:
+              type: string
+              format: date-time
+
+    CodesEmargementDeLaSeance:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, expire_le, revoque_le, valable, signatures, attendus, taux]
+            properties:
+              id:
+                type: integer
+              expire_le:
+                type: string
+                format: date-time
+              revoque_le:
+                type: string
+                format: date-time
+                nullable: true
+              valable:
+                type: boolean
+              signatures:
+                type: integer
+                minimum: 0
+              attendus:
+                type: integer
+                minimum: 0
+              taux:
+                type: integer
+                minimum: 0
+
+    SignatureParCode:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [seance_id, mark, deja_signe]
+          properties:
+            seance_id:
+              type: integer
+            mark:
+              type: string
+              enum: [present, absent, late, excused]
+            deja_signe:
+              type: boolean
+
     TypeDeSeance:
       type: string
       nullable: true
@@ -4435,6 +4518,9 @@ components:
             - attendance_managed_by_klassci
             - seance_not_started
             - student_not_in_seance
+            - attendance_code_unknown
+            - attendance_code_expired
+            - already_marked_by_teacher
             - klassci_account_refused
             - account_quota_exceeded
             - account_daily_cap_reached
@@ -5573,6 +5659,289 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: "Avant le debut de la seance (`seance_not_started`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide (`errors`), ou eleve hors des eleves actifs de la classe (`student_not_in_seance`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationFailed'
+                  - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/codes-emargement:
+    post:
+      tags:
+        - Visio
+      operationId: genererCodeEmargement
+      summary: "Generer le code d'emargement d'une seance"
+      description: |
+        #1680. L'auteur de la seance ou la gestion genere un code de 6
+        caracteres dictables, valable de 60 a 1440 minutes, avec un seuil de
+        retard facultatif (minutes apres le debut). Le code est rendu en clair
+        UNE seule fois ; il est garde en empreinte (HMAC). Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [seance_id, duree_minutes]
+              properties:
+                seance_id:
+                  type: integer
+                  minimum: 1
+                duree_minutes:
+                  type: integer
+                  minimum: 60
+                  maximum: 1440
+                retard_apres_minutes:
+                  type: integer
+                  minimum: 0
+                  maximum: 240
+                  nullable: true
+      responses:
+        '201':
+          description: "Le code, en clair une seule fois"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeEmargementGenere'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'emargement se fait dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "Aucun code libre n'a pu etre tire ; reessayer."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Visio
+      operationId: listerCodesEmargement
+      parameters:
+        - name: seance_id
+          in: query
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Les codes d'emargement d'une seance et leurs statistiques"
+      description: |
+        #1680. Du plus recent au plus ancien, jamais le code en clair :
+        validite, revocation, signatures nouvelles du code, eleves actifs
+        attendus et taux arrondi (en %). Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les codes"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodesEmargementDeLaSeance'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'emargement se fait dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "`seance_id` absent ou invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/codes-emargement/{codeId}:
+    delete:
+      tags:
+        - Visio
+      operationId: revoquerCodeEmargement
+      parameters:
+        - name: codeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Revoquer un code d'emargement"
+      description: |
+        #1680. Le code ne signe plus (410 a l'eleve). Les marques deja posees
+        restent. Revoquer deux fois ne change rien. Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Code revoque"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Code introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'emargement se fait dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/emargement:
+    post:
+      tags:
+        - Visio
+      operationId: signerParCode
+      summary: "L'eleve signe une seance par son code d'emargement"
+      description: |
+        #1680. Le code (casse et espaces indifferents) est cherche dans l'ecole
+        de l'eleve. Seul un eleve ACTIF de la classe de la seance signe. Marque
+        `present`, ou `late` au-dela du seuil apres le debut ; origine `code`.
+        Rejouee, la signature ne double rien (`deja_signe`). Le code n'ecrase
+        jamais la marque de l'enseignant (409 `already_marked_by_teacher`).
+        Chaque code inconnu ou perime compte un echec : 10 par eleve sur 10
+        minutes, puis 429 `attendance_code_attempts_exceeded` avec
+        `Retry-After`. Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 12
+      responses:
+        '200':
+          description: "La signature"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignatureParCode'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Code inconnu dans l'etablissement (`attendance_code_unknown`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '409':
+          description: "Deja marque par l'enseignant (`already_marked_by_teacher`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '410':
+          description: "Code expire ou revoque (`attendance_code_expired`)."
           content:
             application/json:
               schema:

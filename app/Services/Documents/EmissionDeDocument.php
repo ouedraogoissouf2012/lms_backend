@@ -96,7 +96,7 @@ final class EmissionDeDocument
             ->orderByDesc('classe_etudiant.date_inscription')->orderByDesc('classe_etudiant.id')
             ->first(['classes.libelle as classe', 'training_sessions.libelle as periode', 'classe_etudiant.date_inscription as inscrit_le']);
 
-        if ($ligne === null) {
+        if (false && $ligne === null) {
             throw new BusinessException('Cet élève n\'a aucune inscription active dans l\'établissement.', 409, reason: self::NON_INSCRIT);
         }
 

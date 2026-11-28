@@ -12,7 +12,7 @@ use Illuminate\Database\ConnectionInterface;
 
 /**
  * Les disponibilités d'un enseignant (#1666), dans les DEUX volets, toujours rattachées à son id LOCAL (exigence de la
- * superviseure) : la semaine type, remplacée d'un bloc (deux créneaux d'un même jour ne se chevauchent pas, 422
+ * superviseure). L'enseignant les remplit pour lui-même ; la gestion les relit et les corrige (28/11, front#673) : la semaine type, remplacée d'un bloc (deux créneaux d'un même jour ne se chevauchent pas, 422
  * `disponibilites_en_conflit`), et des exceptions datées, ajoutées et retirées une à une. Toute lecture est bornée
  * EXPLICITEMENT à l'école de l'enseignant.
  */

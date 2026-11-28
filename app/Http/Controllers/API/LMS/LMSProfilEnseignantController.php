@@ -17,8 +17,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * #1666 — le profil et les disponibilités d'un enseignant, désigné par son id LOCAL dans les deux volets. La gestion
- * écrit (middleware `gestion`) ; l'enseignant lit les siens ({@see EnseignantDeLEcole}).
+ * #1666 — le profil et les disponibilités d'un enseignant, désigné par son id LOCAL dans les deux volets
+ * ({@see EnseignantDeLEcole} : la gestion, ou l'enseignant lui-même ; tout autre, 404). Le profil s'écrit par la gestion
+ * seule (middleware `gestion`) ; les disponibilités, par l'enseignant pour lui-même et par la gestion (28/11, front#673).
  *
  * Le profil dépend du mode de l'école : sa source est reçue par la MÉTHODE (ADR-EI-01), jamais par le constructeur
  * mémoïsé. Les disponibilités sont locales dans les deux volets : leur service ne dépend d'aucune source.

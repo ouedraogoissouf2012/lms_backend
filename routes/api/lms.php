@@ -17,7 +17,6 @@ use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
-use App\Http\Controllers\API\LMS\LMSSuiviDesPresencesController;
 use App\Http\Controllers\API\LMS\LMSVisioConsentController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
@@ -146,15 +145,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::post('/emargement', [LMSEmargementController::class, 'sign'])
         ->name('lms.emargement')
         ->middleware('role:etudiant');
-
-    // #1683 : le suivi des présences de l'école (gestion) ; la source (SuiviDesPresences) est choisie au point de
-    // liaison. La synthèse est déclarée AVANT toute route `/presences/{…}` : aucune ne la masque.
-    Route::get('/presences/synthese', [LMSSuiviDesPresencesController::class, 'synthese'])
-        ->name('lms.presences.synthese')
-        ->middleware('gestion');
-    Route::get('/presences', [LMSSuiviDesPresencesController::class, 'index'])
-        ->name('lms.presences')
-        ->middleware('gestion');
 
     // Suppression d'une séance (soft delete)
     Route::delete('/seances/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteSeance'])

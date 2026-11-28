@@ -94,7 +94,7 @@ final class ClassesLocalesListTest extends TestCase
         // `array_key_exists` et non `??` : `??` prend une valeur nulle pour une clé absente.
         self::assertTrue(array_key_exists('effectif', $ligne), 'La clé effectif est absente.');
         self::assertNull($ligne['effectif'], 'Une capacité non renseignée sort en null.');
-        self::assertSame(['id', 'libelle', 'code', 'description', 'training_session_id', 'effectif', 'code_inscription', 'archivee_le'], array_keys($ligne));
+        self::assertSame(['id', 'libelle', 'code', 'description', 'training_session_id', 'effectif', 'code_inscription', 'archivee_le', 'filiere', 'niveau'], array_keys($ligne));
     }
 
     // ───────────────────────── LA garde de ce fichier

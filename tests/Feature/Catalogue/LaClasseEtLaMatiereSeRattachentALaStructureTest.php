@@ -20,6 +20,10 @@ use Tests\TestCase;
  * portent des ids KLASSCI : deux espaces d'id ne se mélangent jamais. Un élément d'une autre école : 422 sous son
  * champ. Les lectures les rendent dans la forme du volet KLASSCI : la matière en `combinaisons` (ce que filtre
  * l'écran Matières), la classe en `filiere` / `niveau`. Un élément employé ne se supprime plus : 409. Vrai jeton.
+ *
+ * La ligne de `GET /classes` (l'écran des codes d'inscription, et le formulaire « Modifier la classe ») porte AUSSI
+ * `filiere` et `niveau`, clés toujours présentes (`null` sans rattachement), lus en UN chargement par table : sans
+ * eux, l'écran ne pourrait pas montrer le rattachement, et un enregistrement le détacherait en silence.
  */
 final class LaClasseEtLaMatiereSeRattachentALaStructureTest extends TestCase
 {
@@ -89,6 +93,64 @@ final class LaClasseEtLaMatiereSeRattachentALaStructureTest extends TestCase
         self::assertSame(['id' => $filiere, 'nom' => 'Commerce', 'code' => 'COM'], $ligne['filiere'] ?? null);
         self::assertTrue(is_array($ligne) && array_key_exists('niveau', $ligne), 'La clé niveau manque.');
         self::assertNull($ligne['niveau']);
+    }
+
+    public function test_la_ligne_de_get_classes_porte_filiere_et_niveau_en_un_seul_chargement(): void
+    {
+        [$ecole, $gestion] = $this->ecole();
+        $niveau = $this->niveau($ecole, 'L1');
+        foreach (['A', 'B', 'C'] as $lettre) {
+            $filiere = $this->filiere($ecole, "Filière {$lettre}", "F{$lettre}");
+            $this->asTenant($gestion)->postJson('/api/classes', ['libelle' => "Classe {$lettre}", 'filiere_id' => $filiere, 'niveau_id' => $niveau])->assertCreated();
+        }
+        $this->asTenant($gestion)->postJson('/api/classes', ['libelle' => 'Classe sans rattachement'])->assertCreated();
+
+        $lectures = $this->lecturesDeLaStructure(fn () => $this->asTenant($gestion)->getJson('/api/classes')->assertOk()->json('data'));
+
+        $lignes = collect($lectures['reponse'])->keyBy('libelle');
+        self::assertSame(['id' => $this->idDe('filieres', 'Filière B'), 'nom' => 'Filière B', 'code' => 'FB'], $lignes['Classe B']['filiere'] ?? 'absente');
+        self::assertSame(['id' => $niveau, 'nom' => 'L1', 'code' => null], $lignes['Classe B']['niveau'] ?? 'absent');
+        $seule = $lignes['Classe sans rattachement'] ?? [];
+        self::assertTrue(array_key_exists('filiere', $seule) && array_key_exists('niveau', $seule), 'Les clés sont toujours présentes.');
+        self::assertSame([null, null], [$seule['filiere'], $seule['niveau']]);
+        self::assertSame(['filieres' => 1, 'niveaux_etudes' => 1], $lectures['requetes'], 'Un chargement par table, jamais une requête par classe.');
+    }
+
+    public function test_l_archive_rend_la_meme_ligne_avec_son_rattachement(): void
+    {
+        [$ecole, $gestion] = $this->ecole();
+        $filiere = $this->filiere($ecole, 'Commerce', 'COM');
+        $id = $this->asTenant($gestion)->postJson('/api/classes', ['libelle' => 'L1 Commerce', 'filiere_id' => $filiere])->assertCreated()->json('data.id');
+
+        $this->asTenant($gestion)->postJson("/api/classes/{$id}/archiver")->assertOk()
+            ->assertJsonPath('data.filiere', ['id' => $filiere, 'nom' => 'Commerce', 'code' => 'COM'])
+            ->assertJsonPath('data.niveau', null);
+    }
+
+    /**
+     * Les SELECT sur `filieres` et `niveaux_etudes` pendant `$geste`, comptés par table (guillemets retirés : SQLite et
+     * MySQL ne citent pas pareil).
+     *
+     * @return array{reponse: mixed, requetes: array{filieres: int, niveaux_etudes: int}}
+     */
+    private function lecturesDeLaStructure(callable $geste): array
+    {
+        $requetes = ['filieres' => 0, 'niveaux_etudes' => 0];
+        DB::listen(static function ($requete) use (&$requetes): void {
+            $sql = strtolower(str_replace(['"', '`'], '', $requete->sql));
+            foreach (array_keys($requetes) as $table) {
+                if (str_starts_with($sql, 'select') && str_contains($sql, " from {$table} ")) {
+                    $requetes[$table]++;
+                }
+            }
+        });
+
+        return ['reponse' => $geste(), 'requetes' => $requetes];
+    }
+
+    private function idDe(string $table, string $libelle): int
+    {
+        return (int) DB::table($table)->where('libelle', $libelle)->value('id');
     }
 
     /** @return array{0: int|null, 1: int|null} */

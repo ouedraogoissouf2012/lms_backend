@@ -25,7 +25,9 @@ final class UneSeuleLectureDuRoleTest extends TestCase
 
     /** Les deux lectures du rôle qui portaient leur propre normalisation. */
     private const SANS_AUCUNE_CASSE = [
-        'app/Http/Middleware/EnsureRole.php',
+        // #1665 : EnsureRole retirée ; la garde de route est EnsurePermission, qui lit le rôle par DroitsDuCompte.
+        'app/Http/Middleware/EnsurePermission.php',
+        'app/Services/Autorisation/DroitsDuCompte.php',
         'app/Services/Klassci/Auth/KlassciRoleSanitizer.php',
     ];
 

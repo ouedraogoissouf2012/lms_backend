@@ -13,7 +13,7 @@ use App\Models\User;
  * - école autonome : le dossier local et ses tuteurs, ou `null` tant qu'il n'existe pas ;
  * - école KLASSCI : ce que le LMS reçoit de KLASSCI, et rien de plus (nom, prénom). Les autres champs valent `null` :
  *   non fournis, jamais inventés.
- * La photo (`photo_url`) arrive avec la PR 2 ; elle vaut `null` jusque-là.
+ * La photo (`photo_url`, PR 2) : le chemin de sa route authentifiée, ou `null` sans photo.
  */
 final class PresentationDuDossier
 {
@@ -38,7 +38,8 @@ final class PresentationDuDossier
             'ville' => $dossier->ville,
             'commune' => $dossier->commune,
             'statut' => $dossier->statut->value,
-            'photo_url' => null,
+            // La photo se sert par une route authentifiée, selon les règles du dossier ; jamais par une URL publique.
+            'photo_url' => is_string($dossier->photo_chemin) ? "/api/eleves/{$eleve->id}/photo" : null,
             'tuteurs' => $dossier->tuteurs->map(fn (Tuteur $tuteur): array => $this->tuteur($tuteur))->values()->all(),
         ];
     }

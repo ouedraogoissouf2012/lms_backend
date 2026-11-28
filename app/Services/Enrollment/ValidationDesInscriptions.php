@@ -130,7 +130,9 @@ final class ValidationDesInscriptions
      */
     private function ligne(int $id, bool $verrou = true): ClasseEtudiant
     {
-        $requete = ClasseEtudiant::query()->where('id', $id)->where('institution_id', $this->porte->etablissement());
+        // SONDE #1658 : la porte est passee, mais la ligne n est plus filtree par l ecole.
+        $this->porte->etablissement();
+        $requete = ClasseEtudiant::query()->where('id', $id);
         $ligne = ($verrou ? $requete->lockForUpdate() : $requete)->first();
         if (! $ligne instanceof ClasseEtudiant) {
             throw new BusinessException(self::INTROUVABLE, 404);

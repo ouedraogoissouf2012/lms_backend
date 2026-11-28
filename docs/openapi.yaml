@@ -5272,6 +5272,94 @@ components:
               items:
                 type: integer
 
+    EvenementDuCalendrier:
+      type: object
+      additionalProperties: false
+      required: [id, type, titre, debut, fin, portee, classe_ids]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [rentree, orientation, examens, vacances, reprise, soutenances, ceremonie, fermeture, autre]
+          description: "`vacances` et `fermeture` marquent des jours fermes."
+        titre:
+          type: string
+        debut:
+          type: string
+          format: date
+        fin:
+          type: string
+          format: date
+        portee:
+          type: string
+          enum: [ecole, classes]
+        classe_ids:
+          type: array
+          description: "Vide : toute l'ecole."
+          items:
+            type: integer
+
+    ListeDuCalendrier:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvenementDuCalendrier'
+
+    UnEvenementDuCalendrier:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/EvenementDuCalendrier'
+
+    EvenementCalendrierSupprime:
+      type: object
+      additionalProperties: false
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    SaisieDEvenementCalendrier:
+      type: object
+      additionalProperties: false
+      required: [type, titre, debut, fin]
+      properties:
+        type:
+          type: string
+          enum: [rentree, orientation, examens, vacances, reprise, soutenances, ceremonie, fermeture, autre]
+        titre:
+          type: string
+          maxLength: 150
+        debut:
+          type: string
+          format: date
+        fin:
+          type: string
+          format: date
+          description: "Au plus tot `debut`."
+        classe_ids:
+          type: array
+          maxItems: 200
+          description: "Absent ou vide : toute l'ecole."
+          items:
+            type: integer
+            minimum: 1
+
     ErrorResponse:
       type: object
       properties:
@@ -5581,6 +5669,266 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: "Trop de demandes depuis cette adresse IP"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/calendrier:
+    get:
+      tags:
+        - Calendrier
+      operationId: lireLeCalendrier
+      summary: "Les evenements du calendrier sur une plage"
+      description: |
+        #1671. Les DEUX volets : KLASSCI n'expose aucun calendrier, le calendrier est une donnee du LMS ;
+        aucune porte du catalogue local ne le garde.
+        Tout membre de l'ecole lit, dans sa PORTEE : la gestion lit tout ; un enseignant lit l'ecole
+        entiere et les classes ou il enseigne ; tout autre membre l'ecole entiere et ses classes ACTIVES.
+        Un evenement est rendu s'il touche la plage [du, au], du plus tot au plus tard.
+      security:
+        - sanctum: []
+      parameters:
+        - name: du
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: true
+          description: "Au plus tot `du`, au plus 400 jours apres."
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: "Les evenements lisibles."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListeDuCalendrier'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`du` ou `au` absents ou illisibles, `au` avant `du`, ou plage de plus de 400 jours."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Calendrier
+      operationId: publierUnEvenement
+      summary: "Publier un evenement du calendrier"
+      description: |
+        #1671. Les DEUX volets : KLASSCI n'expose aucun calendrier, le calendrier est une donnee du LMS ;
+        aucune porte du catalogue local ne le garde.
+        La gestion seule. Sans `classe_ids` (ou vide), l'evenement touche toute l'ecole.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaisieDEvenementCalendrier'
+      responses:
+        '201':
+          description: "L'evenement publie."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnEvenementDuCalendrier'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ : type hors enumeration, titre, fin avant debut) ; `classe_hors_ecole` : une classe choisie n'appartient pas a l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/calendrier/{evenementId}:
+    put:
+      tags:
+        - Calendrier
+      operationId: modifierUnEvenement
+      summary: "Modifier un evenement du calendrier"
+      description: |
+        #1671. Les DEUX volets : KLASSCI n'expose aucun calendrier, le calendrier est une donnee du LMS ;
+        aucune porte du catalogue local ne le garde.
+        La gestion seule. La portee est remplacee par `classe_ids`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: evenementId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaisieDEvenementCalendrier'
+      responses:
+        '200':
+          description: "L'evenement modifie."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnEvenementDuCalendrier'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evenement introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ : type hors enumeration, titre, fin avant debut) ; `classe_hors_ecole` : une classe choisie n'appartient pas a l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Calendrier
+      operationId: supprimerUnEvenement
+      summary: "Supprimer un evenement du calendrier"
+      description: |
+        #1671. Les DEUX volets : KLASSCI n'expose aucun calendrier, le calendrier est une donnee du LMS ;
+        aucune porte du catalogue local ne le garde.
+        La gestion seule.
+      security:
+        - sanctum: []
+      parameters:
+        - name: evenementId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Supprime."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvenementCalendrierSupprime'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evenement introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Identifiant illisible."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
           content:
             application/json:
               schema:
@@ -17883,3 +18231,5 @@ tags:
     description: "User notifications"
   - name: "Files"
     description: "File upload and download"
+  - name: "Calendrier"
+    description: "Le calendrier de l annee d une ecole (#1671)"

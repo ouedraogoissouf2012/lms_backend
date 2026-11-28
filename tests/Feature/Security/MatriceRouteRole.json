@@ -92,6 +92,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/lms/calendrier/{evenementId}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/lms/codes-emargement/{codeId}": [
         "enseignant",
         "teacher",
@@ -244,6 +252,14 @@
     "DELETE api/v1/lessons/{id}": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/lms/calendrier/{evenementId}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -545,6 +561,7 @@
     "GET api/lessons/{lessonId}/chapter-progress": "*",
     "GET api/lessons/{lessonId}/chapters": "*",
     "GET api/lms/attendance/history": "*",
+    "GET api/lms/calendrier": "*",
     "GET api/lms/classes/etablissement": [
         "coordinateur",
         "coordinator",
@@ -1033,6 +1050,7 @@
     "GET api/v1/lessons/{lessonId}/chapter-progress": "*",
     "GET api/v1/lessons/{lessonId}/chapters": "*",
     "GET api/v1/lms/attendance/history": "*",
+    "GET api/v1/lms/calendrier": "*",
     "GET api/v1/lms/classes/etablissement": [
         "coordinateur",
         "coordinator",
@@ -1742,6 +1760,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/lms/calendrier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/lms/codes-emargement": [
         "enseignant",
         "teacher",
@@ -2364,6 +2390,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/v1/lms/calendrier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/v1/lms/codes-emargement": [
         "enseignant",
         "teacher",
@@ -2721,6 +2755,14 @@
     "PUT api/forum/posts/{post}": "*",
     "PUT api/forum/topics/{topic}": "*",
     "PUT api/knowledge-checks/{id}": "*",
+    "PUT api/lms/calendrier/{evenementId}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",
@@ -2844,6 +2886,14 @@
     "PUT api/v1/forum/posts/{post}": "*",
     "PUT api/v1/forum/topics/{topic}": "*",
     "PUT api/v1/knowledge-checks/{id}": "*",
+    "PUT api/v1/lms/calendrier/{evenementId}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/v1/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",

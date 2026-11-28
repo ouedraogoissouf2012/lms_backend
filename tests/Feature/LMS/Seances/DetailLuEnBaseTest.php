@@ -80,6 +80,17 @@ final class DetailLuEnBaseTest extends TestCase
             ->assertJsonPath('data.seance.id', self::SEANCE);
     }
 
+    /** #1668 : le détail lu en base porte le type de la ligne, ou null. */
+    public function test_le_detail_lu_en_base_porte_le_type_de_la_seance(): void
+    {
+        $this->seance(['type_seance' => 'cm']);
+        $eleve = $this->eleve();
+        $this->inscrire($eleve, $this->classe, 'actif');
+
+        $this->asTenant($eleve)->getJson($this->url(self::SEANCE))->assertOk()
+            ->assertJsonPath('data.seance.type_seance', 'cm');
+    }
+
     public function test_un_eleve_connu_par_le_miroir_de_sa_classe_lit_le_detail(): void
     {
         $this->seance();

@@ -126,6 +126,14 @@ Schedule::command('chapters:purge --apply')
     ->withoutOverlapping()
     ->onOneServer();
 
+// #1659 — Durée de conservation des demandes d'inscription (loi 2013-450) : une
+// OBLIGATION, donc planifiée, comme les chapitres et les enregistrements.
+Schedule::command('admissions:purge --apply')
+    ->dailyAt('04:10')
+    ->name('purge-demandes-inscription')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // #1705 — Comptes supprimés, à la durée du tableau des durées
 // (`config/conservation.php`). Un compte qui porte une preuve de consentement
 // est épargné, sa raison journalisée (#1827). La purge d'une ÉCOLE reste

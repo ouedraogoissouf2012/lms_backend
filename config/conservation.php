@@ -31,6 +31,10 @@ return [
     'comptes_supprimes_jours' => (int) env('CONSERVATION_COMPTES_SUPPRIMES_JOURS', 30),
     'ecoles_supprimees_jours' => (int) env('CONSERVATION_ECOLES_SUPPRIMEES_JOURS', 30),
 
+    // #1659 : les demandes d'inscription, décidées (rejetées ou inscrites) puis jamais traitées.
+    'demandes_decidees_jours' => (int) env('CONSERVATION_DEMANDES_DECIDEES_JOURS', 90),
+    'demandes_non_traitees_jours' => (int) env('CONSERVATION_DEMANDES_NON_TRAITEES_JOURS', 365),
+
     'usages' => [
         'comptes_supprimes' => [
             'libelle' => 'Comptes supprimés',
@@ -88,6 +92,18 @@ return [
             'libelle' => 'Messages du forum, notifications et fichiers déposés',
             'depuis' => 'la purge du compte',
             'suit_le_compte' => true,
+        ],
+        'demandes_decidees' => [
+            'libelle' => 'Demandes d\'inscription décidées (rejetées ou inscrites)',
+            'depuis' => 'la décision',
+            'politique' => 'demandes-decidees',
+            'cle' => 'conservation.demandes_decidees_jours',
+        ],
+        'demandes_non_traitees' => [
+            'libelle' => 'Demandes d\'inscription jamais traitées',
+            'depuis' => 'le dépôt de la demande',
+            'politique' => 'demandes-non-traitees',
+            'cle' => 'conservation.demandes_non_traitees_jours',
         ],
     ],
 

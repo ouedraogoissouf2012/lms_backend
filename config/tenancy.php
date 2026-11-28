@@ -49,6 +49,8 @@ return [
         'dossiers_eleves',
         'tuteurs',
         'matricules_sequences',
+        // #1659 : les demandes d'inscription (institution_id NOT NULL).
+        'demandes_inscription',
         'creneaux',
         // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
         'sous_periodes',

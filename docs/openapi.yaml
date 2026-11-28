@@ -4615,6 +4615,77 @@ components:
                   items:
                     $ref: '#/components/schemas/TuteurDuDossier'
 
+    DemandeDInscription:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - etat
+        - nom
+        - prenoms
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [nouvelle, reinscription]
+        etat:
+          type: string
+          enum: [recue, en_examen, acceptee, inscrite, rejetee]
+        nom:
+          type: string
+        prenoms:
+          type: string
+        date_naissance:
+          type: string
+          format: date
+          nullable: true
+        genre:
+          type: string
+          enum: [F, M, null]
+          nullable: true
+        declarant_nom:
+          type: string
+        declarant_relation:
+          type: string
+        declarant_telephone:
+          type: string
+          nullable: true
+        declarant_courriel:
+          type: string
+          nullable: true
+        classe_souhaitee:
+          type: string
+          nullable: true
+        diplome_entree:
+          type: string
+          nullable: true
+        motif_rejet:
+          type: string
+          nullable: true
+        traite_le:
+          type: string
+          format: date-time
+          nullable: true
+        depose_le:
+          type: string
+          format: date-time
+          nullable: true
+
+    DemandeDInscriptionReponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/DemandeDInscription'
+
     ValidationFailed:
       type: object
       properties:
@@ -9331,6 +9402,394 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '422':
           description: "Champ invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /demandes-inscription:
+    post:
+      tags:
+        - Admissions
+      operationId: deposerUneDemandeDInscription
+      summary: "Deposer une demande d inscription (porte publique, sans jeton)"
+      description: |
+        #1659. Une famille depose une demande aupres d une ecole autonome, designee par son `ecole`
+        (identifiant court). La reponse est TOUJOURS le meme 202 : ecole inconnue, inactive, KLASSCI,
+        plafond du jour atteint ou demande enregistree. Elle ne confirme ni l ecole, ni une adresse. Seule
+        une ecole autonome et active enregistre la demande. Le consentement est obligatoire. Limite nommee
+        `demandes-inscription` par adresse IP.
+
+        Les 400 et 403 ci-dessous ne viennent pas de cette porte : ils sont ceux de `ResolveInstitution`,
+        commun a toute l API, si la requete porte un en-tete `X-Institution` ou un jeton (le formulaire n en
+        envoie aucun).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - ecole
+                - type
+                - nom
+                - prenoms
+                - declarant_nom
+                - declarant_relation
+                - consentement
+              properties:
+                ecole:
+                  type: string
+                  maxLength: 100
+                type:
+                  type: string
+                  enum: [nouvelle, reinscription]
+                nom:
+                  type: string
+                  maxLength: 100
+                prenoms:
+                  type: string
+                  maxLength: 150
+                date_naissance:
+                  type: string
+                  format: date
+                  nullable: true
+                genre:
+                  type: string
+                  enum: [F, M, null]
+                  nullable: true
+                declarant_nom:
+                  type: string
+                  maxLength: 150
+                declarant_relation:
+                  type: string
+                  enum: [pere, mere, tuteur, eleve, autre]
+                declarant_telephone:
+                  type: string
+                  maxLength: 30
+                  nullable: true
+                  description: "Telephone ou courriel : l un des deux au moins."
+                declarant_courriel:
+                  type: string
+                  format: email
+                  nullable: true
+                classe_souhaitee:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                diplome_entree:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                consentement:
+                  type: boolean
+                  description: "Doit etre vrai : l accord pour que l etablissement traite ces informations."
+      responses:
+        '202':
+          description: "Toujours la meme reponse"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '422':
+          description: "Champ absent ou invalide, consentement absent. Ne dit rien de l ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Admissions
+      operationId: listerLesDemandesDInscription
+      summary: "Les demandes d inscription de l ecole (gestion)"
+      description: |
+        #1659. Gestion d une ecole autonome. Forme commune des listes (#1647). `meta.counts` : le nombre de
+        demandes par etat, MESURE (chaque etat present, 0 compris). `a_traiter` : recues et en examen.
+      security:
+        - sanctum: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 100
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [nouvelle, reinscription]
+        - name: etat
+          in: query
+          schema:
+            type: string
+            enum: [recue, en_examen, acceptee, inscrite, rejetee]
+        - name: a_traiter
+          in: query
+          schema:
+            type: boolean
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          description: "Une page de demandes"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - meta
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - data
+                      - current_page
+                      - per_page
+                      - total
+                      - last_page
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DemandeDInscription'
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+                  meta:
+                    type: object
+                    required:
+                      - counts
+                    properties:
+                      counts:
+                        type: object
+                        additionalProperties: false
+                        required:
+                          - recue
+                          - en_examen
+                          - acceptee
+                          - inscrite
+                          - rejetee
+                        properties:
+                          recue:
+                            type: integer
+                          en_examen:
+                            type: integer
+                          acceptee:
+                            type: integer
+                          inscrite:
+                            type: integer
+                          rejetee:
+                            type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Parametre hors regles."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /demandes-inscription/{demande}:
+    get:
+      tags:
+        - Admissions
+      operationId: lireUneDemandeDInscription
+      summary: "Une demande d inscription (gestion)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: demande
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La demande"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandeDInscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Demande introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /demandes-inscription/{demande}/examiner:
+    post:
+      tags:
+        - Admissions
+      operationId: examinerUneDemandeDInscription
+      summary: "Passer une demande en examen"
+      description: "#1659. `recue` vers `en_examen`. Hors circuit : 409 `etat_de_la_demande`."
+      security:
+        - sanctum: []
+      parameters:
+        - name: demande
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Demande en examen"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandeDInscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Demande introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "La demande n est pas `recue` (`reason: etat_de_la_demande`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /demandes-inscription/{demande}/rejeter:
+    post:
+      tags:
+        - Admissions
+      operationId: rejeterUneDemandeDInscription
+      summary: "Rejeter une demande, avec motif"
+      description: "#1659. Depuis `recue` ou `en_examen`. Motif obligatoire. Hors circuit : 409 `etat_de_la_demande`."
+      security:
+        - sanctum: []
+      parameters:
+        - name: demande
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - motif
+              properties:
+                motif:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: "Demande rejetee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandeDInscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Demande introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "La demande est deja decidee (`reason: etat_de_la_demande`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Motif absent ou trop long."
           content:
             application/json:
               schema:

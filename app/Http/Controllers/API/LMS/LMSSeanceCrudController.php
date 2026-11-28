@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\BusinessException;
+use App\Exceptions\ConflitDHoraireException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StoreLocalSeanceRequest;
 use App\Http\Requests\UpdateLocalSeanceRequest;
+use App\Services\Seances\Conflits\ConflitsDHoraire;
 use App\Services\Seances\CreationDeSeance;
 use App\Services\Seances\ModificationDeSeance;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +39,8 @@ final class LMSSeanceCrudController extends AuthenticatedController
                 $this->authenticatedUser($request),
                 $request->validated(),
             );
+        } catch (ConflitDHoraireException $e) {
+            return $this->conflitDHoraire($e);
         } catch (BusinessException $e) {
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
@@ -48,10 +52,23 @@ final class LMSSeanceCrudController extends AuthenticatedController
     {
         try {
             $seance = $modification->modifier($seanceId, $this->authenticatedUser($request), $request->validated());
+        } catch (ConflitDHoraireException $e) {
+            return $this->conflitDHoraire($e);
         } catch (BusinessException $e) {
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse($seance, 'Séance modifiée');
+    }
+
+    /**
+     * #1668 : le 409 nomme les séances en conflit, sous `conflicts`, à côté de l'enveloppe
+     * d'erreur commune. Seul ce refus porte une liste : l'enveloppe partagée n'est pas élargie.
+     */
+    private function conflitDHoraire(ConflitDHoraireException $e): JsonResponse
+    {
+        $reponse = $this->errorResponse(ConflitDHoraireException::MESSAGE, 409, reason: ConflitsDHoraire::REASON);
+
+        return $reponse->setData((array) $reponse->getData(true) + ['conflicts' => $e->conflits]);
     }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\Dashboard\DashboardAdminController;
 use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
+use App\Http\Controllers\API\LMS\LMSAppelController;
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
@@ -115,6 +116,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         // Sécurité : liste les emails des participants -> réservé au staff (comme
         // la voisine /seances/history). Sans ce garde, un étudiant listait les
         // emails de toute séance (checkAccess ne bloque que l'enseignant non-owner).
+        ->middleware('personnel');
+
+    // #1649 : l'appel d'une séance (lire la classe et ses marques, saisir ou corriger). La source de l'école
+    // (SaisieDeLAppel) est choisie au point de liaison ; le droit sur la séance, par la source.
+    Route::get('/seances/{seanceId}/appel', [LMSAppelController::class, 'show'])
+        ->whereNumber('seanceId')
+        ->name('lms.seances.appel')
+        ->middleware('personnel');
+    Route::put('/seances/{seanceId}/appel', [LMSAppelController::class, 'update'])
+        ->whereNumber('seanceId')
+        ->name('lms.seances.appel.update')
         ->middleware('personnel');
 
     // Suppression d'une séance (soft delete)

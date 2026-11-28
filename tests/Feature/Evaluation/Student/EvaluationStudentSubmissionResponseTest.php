@@ -56,6 +56,8 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
     {
         $evaluation = Evaluation::factory()->planifiee()->create([
             'institution_id' => $this->institution->id,
+            // Fixée : la fabrique la tire au sort, et l'ouverture du corrigé la lit (#1699).
+            'show_results' => false,
         ]);
         EvaluationQuestion::factory()->create([
             'evaluation_id' => $evaluation->id,
@@ -132,7 +134,7 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.correction_available', false)
-            ->assertJsonPath('data.correction_delay_days', 7)
+            ->assertJsonPath('data.correction_delay_days', null)
             ->assertJsonStructure([
                 'success',
                 'data' => [

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CorrectionRelease;
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\FinDeLEvaluation;
 use App\Models\Traits\BelongsToInstitution;
@@ -39,6 +40,8 @@ class Evaluation extends Model
         'max_attempts',
         'shuffle_questions',
         'show_results',
+        'correction_release',
+        'correction_release_at',
         'is_published',
         'notes_published',
         'is_locked',
@@ -61,6 +64,15 @@ class Evaluation extends Model
         'klassci_link_guard',
     ];
 
+    /**
+     * #1699 : le défaut de la colonne, porté aussi par un modèle neuf qui n'a pas été relu.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'correction_release' => 'with_results',
+    ];
+
     protected $casts = [
         // D72 : les identifiants locaux, comparés par `===` dans la propriété
         // (ChecksEvaluationOwnership) ; entiers quel que soit le pilote.
@@ -75,6 +87,8 @@ class Evaluation extends Model
         'allow_retake' => 'boolean',
         'shuffle_questions' => 'boolean',
         'show_results' => 'boolean',
+        'correction_release' => CorrectionRelease::class,
+        'correction_release_at' => 'datetime',
         'is_published' => 'boolean',
         'notes_published' => 'boolean',
         'is_locked' => 'boolean',

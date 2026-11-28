@@ -90,7 +90,10 @@ final class EmploisDuTemps
             ->map(fn (EmploiDuTemps $e): array => $this->presenter($e))->all());
     }
 
-    /** @return array{sans_emploi_du_temps: list<array{classe_id: int, libelle: ?string}>, expires: list<array{id: int, classe_id: int, titre: string, au: string}>} */
+    /**
+     * Une classe ARCHIVÉE (#1763) ne reçoit plus d'élèves : elle n'est dans aucune des deux alertes.
+     *
+     * @return array{sans_emploi_du_temps: list<array{classe_id: int, libelle: ?string}>, expires: list<array{id: int, classe_id: int, titre: string, au: string}>} */
     public function alertes(User $acteur): array
     {
         $ecole = $this->ecoleDe($acteur);
@@ -98,9 +101,11 @@ final class EmploisDuTemps
         $couvertes = EmploiDuTemps::query()->withoutGlobalScope('institution')->where('institution_id', $ecole)
             ->where('en_vigueur', true)->whereDate('du', '<=', $aujourdhui)->whereDate('au', '>=', $aujourdhui)->select('classe_id');
         $sans = Classe::query()->withoutGlobalScope('institution')->where('institution_id', $ecole)
-            ->whereNotIn('id', $couvertes)->orderBy('libelle')->orderBy('id')->get(['id', 'libelle']);
+            ->whereNull('archivee_le')->whereNotIn('id', $couvertes)->orderBy('libelle')->orderBy('id')->get(['id', 'libelle']);
         $expires = EmploiDuTemps::query()->withoutGlobalScope('institution')->where('institution_id', $ecole)
-            ->where('en_vigueur', true)->whereDate('au', '<', $aujourdhui)->orderBy('au')->orderBy('id')->get();
+            ->where('en_vigueur', true)->whereDate('au', '<', $aujourdhui)
+            ->whereHas('classe', static fn ($c) => $c->withoutGlobalScope('institution')->whereNull('archivee_le'))
+            ->orderBy('au')->orderBy('id')->get();
 
         return [
             'sans_emploi_du_temps' => array_values($sans->map(static fn (Classe $c): array => ['classe_id' => (int) $c->id, 'libelle' => $c->libelle])->all()),

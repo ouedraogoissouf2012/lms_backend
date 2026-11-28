@@ -2852,6 +2852,27 @@ components:
     # Les refus de POST /lms/seances, SERRES : propres a la route, pour que le
     # test de contrat garde aussi les erreurs (MessageOnly et ValidationFailed,
     # partages, restent laches).
+    ProgrammeHorsEtablissement:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - class_out_of_scope
+            - subject_out_of_scope
+            - teacher_out_of_scope
+
     SeanceLocaleHorsEtablissement:
       type: object
       additionalProperties: false
@@ -8408,11 +8429,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: |
-            Classe, matiere ou formateur introuvable DANS CET ETABLISSEMENT.
+            Classe, matiere ou formateur introuvable DANS CET ETABLISSEMENT (#1707), chacun avec son motif :
+            `class_out_of_scope`, `subject_out_of_scope`, `teacher_out_of_scope`. Un compte de l'ecole qui
+            n'enseigne pas rend le MEME corps qu'un formateur d'une autre ecole : l'existence d'un compte ne se
+            devine pas.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ProgrammeHorsEtablissement'
         '409':
           description: |
             Aucun etablissement resolu. Controle AVANT le droit du

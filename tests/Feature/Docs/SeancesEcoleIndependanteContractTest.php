@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Docs;
 
 use App\Enums\InstitutionMode;
+use App\Enums\TypeDeSeance;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Seances\LocalSeanceCreator;
@@ -90,7 +91,7 @@ final class SeancesEcoleIndependanteContractTest extends TestCase
     {
         $this->app->instance(LocalSeancesListReader::class, new class implements SeancesListReader
         {
-            public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId): array
+            public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId, ?TypeDeSeance $type = null): array
             {
                 throw new QueryException('sqlite', 'select 1', [], new PDOException('database is locked'));
             }

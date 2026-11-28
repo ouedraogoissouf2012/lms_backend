@@ -5607,6 +5607,75 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /lms/classes/export:
+    get:
+      tags:
+        - Classes
+      summary: "Exporter la liste des classes de l ecole (CSV, PDF)"
+      description: |
+        #1656. Lue par le lecteur de `GET /proxy/classes` (KLASSCI ou local). Colonnes : libelle, code,
+        filiere, niveau, inscrits, places ; triee par libelle. Synchrone, bornee a 2 000 lignes.
+      security:
+        - sanctum: []
+      parameters:
+        - name: format
+          in: query
+          required: true
+          description: "`csv` (UTF-8 avec BOM, separateur `;`, formules neutralisees) ou `pdf`. Absent ou autre : 422."
+          schema:
+            type: string
+            enum: [csv, pdf]
+      responses:
+        '200':
+          description: "Le fichier, en piece jointe (`Content-Disposition: attachment`)"
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie, ou (ecole KLASSCI) compte sans jeton KLASSCI : le refus de la lecture des classes, en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant (garde `personnel`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Hors de la portee du lecteur (classe d une autre ecole, enseignant hors de sa classe), en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`format` absent ou inconnu ; ou `export_too_large` (plus de 2 000 lignes)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: |
+            Ecole creee depuis KLASSCI : KLASSCI indisponible (panne, circuit ouvert), ou reponse illisible.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
   /lms/classes/{classeId}:
     get:
       tags:
@@ -9572,6 +9641,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/classes/{classeId}/etudiants/export:
+    get:
+      tags:
+        - Classes
+      summary: "Exporter la liste des eleves d une classe (CSV, PDF)"
+      description: |
+        #1656. Lue par EXACTEMENT le lecteur de `GET /lms/classes/{classeId}/etudiants` : meme garde,
+        meme portee, memes deux volets, meme document. Colonnes : nom, email, matricule, statut ; triee
+        par nom. Generation synchrone, bornee a 2 000 lignes.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: format
+          in: query
+          required: true
+          description: "`csv` (UTF-8 avec BOM, separateur `;`, formules neutralisees) ou `pdf`. Absent ou autre : 422."
+          schema:
+            type: string
+            enum: [csv, pdf]
+      responses:
+        '200':
+          description: "Le fichier, en piece jointe (`Content-Disposition: attachment`)"
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie, ou (ecole KLASSCI) compte sans jeton KLASSCI : le refus de la lecture des eleves, en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant (garde `personnel`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Hors de la portee du lecteur (classe d une autre ecole, enseignant hors de sa classe), en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`format` absent ou inconnu ; ou `export_too_large` (plus de 2 000 lignes)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: |
+            Ecole creee depuis KLASSCI : KLASSCI indisponible (panne, circuit ouvert), ou reponse illisible.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /lms/classes/{classeId}/etudiants:
     get:

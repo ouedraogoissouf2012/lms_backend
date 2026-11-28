@@ -576,6 +576,14 @@
     "GET api/lessons/{id}/progress": "*",
     "GET api/lessons/{lessonId}/chapter-progress": "*",
     "GET api/lessons/{lessonId}/chapters": "*",
+    "GET api/lmd/arbre": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/lms/attendance/history": "*",
     "GET api/lms/classes/etablissement": [
         "coordinateur",
@@ -1064,6 +1072,14 @@
     "GET api/v1/lessons/{id}/progress": "*",
     "GET api/v1/lessons/{lessonId}/chapter-progress": "*",
     "GET api/v1/lessons/{lessonId}/chapters": "*",
+    "GET api/v1/lmd/arbre": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/lms/attendance/history": "*",
     "GET api/v1/lms/classes/etablissement": [
         "coordinateur",
@@ -1376,6 +1392,30 @@
         "superAdmin",
         "supradmin"
     ],
+    "PATCH api/lmd/domaines/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/lmd/mentions/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/lmd/parcours/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PATCH api/matieres/{matiere}": [
         "coordinateur",
         "coordinator",
@@ -1443,6 +1483,30 @@
         "supradmin"
     ],
     "PATCH api/v1/filieres/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/lmd/domaines/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/lmd/mentions/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/lmd/parcours/{id}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1797,6 +1861,30 @@
     "POST api/lessons/{lessonId}/chapters/reorder": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lmd/domaines": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lmd/mentions": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lmd/parcours": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -2435,6 +2523,30 @@
     "POST api/v1/lessons/{lessonId}/chapters/reorder": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lmd/domaines": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lmd/mentions": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lmd/parcours": [
         "coordinateur",
         "coordinator",
         "admin",

@@ -8,7 +8,6 @@ use App\Enums\EtatDeLaDemande;
 use App\Exceptions\BusinessException;
 use App\Models\DemandeInscription;
 use App\Models\User;
-use App\Services\Catalogue\PorteDuCatalogueLocal;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -16,7 +15,7 @@ use Illuminate\Support\Carbon;
 /**
  * Le traitement des demandes d'inscription par la gestion d'une école autonome (#1659, PR 1).
  *
- * - Écrire et lire : `PorteDuCatalogueLocal` (403 `catalogue_managed_by_klassci` en école KLASSCI), et l'école de
+ * - Écrire et lire : `PorteDesAdmissions` (403 `enrolment_managed_by_klassci` quand KLASSCI tient les inscriptions), et l'école de
  *   l'acteur, explicitement : une demande d'une autre école est introuvable (404).
  * - Circuit : `recue` → `en_examen` (examiner) ; `recue` ou `en_examen` → `rejetee` (rejeter, motif obligatoire). Hors
  *   circuit : 409 `etat_de_la_demande`. « Accepter et inscrire » est la PR 2.
@@ -26,7 +25,7 @@ final class TraitementDesDemandes
 {
     public const HORS_CIRCUIT = 'etat_de_la_demande';
 
-    public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
+    public function __construct(private readonly PorteDesAdmissions $porte) {}
 
     /**
      * @param  array<string, mixed>  $filtres

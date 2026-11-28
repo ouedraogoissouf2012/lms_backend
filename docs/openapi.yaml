@@ -6958,7 +6958,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Hors de la gestion d une ecole ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6996,7 +6996,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion d une ecole ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7035,7 +7035,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion d une ecole ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7093,7 +7093,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion d une ecole ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion d une ecole ; ou ecole dont KLASSCI tient les inscriptions (`reason: enrolment_managed_by_klassci` ; une admission suit le droit d inscription). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:

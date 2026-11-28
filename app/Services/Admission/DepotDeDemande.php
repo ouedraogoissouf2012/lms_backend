@@ -7,7 +7,6 @@ namespace App\Services\Admission;
 use App\Enums\EtatDeLaDemande;
 use App\Models\DemandeInscription;
 use App\Models\Institution;
-use App\Services\Catalogue\PorteDuCatalogueLocal;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Support\Carbon;
 use Psr\Log\LoggerInterface;
@@ -21,7 +20,7 @@ use Psr\Log\LoggerInterface;
 final class DepotDeDemande
 {
     public function __construct(
-        private readonly PorteDuCatalogueLocal $porte,
+        private readonly PorteDesAdmissions $porte,
         private readonly Config $config,
         private readonly LoggerInterface $journal,
     ) {}

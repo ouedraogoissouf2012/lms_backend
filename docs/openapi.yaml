@@ -3803,10 +3803,24 @@ components:
           type: boolean
         show_results:
           type: boolean
+          description: "Notes publiees a l eleve (#1699) : note, score et commentaire. Se regle aussi apres les remises, par `PATCH /evaluations/{id}/release`."
+        correction_release:
+          type: string
+          enum: [never, with_results, after_close, at_date]
+          description: |
+            Quand le corrige s ouvre a l eleve (#1699) : `never`, `with_results` (defaut, a la
+            publication des notes), `after_close` (a la fermeture), `at_date` (a
+            `correction_release_at`). Jamais avant la fermeture de l evaluation pour tous.
+        correction_release_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "La date d ouverture du corrige, seulement pour `at_date`."
         is_published:
           type: boolean
         notes_published:
           type: boolean
+          description: "Notes envoyees a KLASSCI (`sync-klassci`). Ne gouverne pas ce que voit l eleve : c est `show_results`."
         is_locked:
           type: boolean
         locked_at:
@@ -12136,14 +12150,21 @@ paths:
       tags:
         - Evaluations
       operationId: getMySubmission
-      summary: "Derniere copie de l eleve, et son corrige apres delai"
+      summary: "Derniere copie de l eleve, et son corrige une fois ouvert"
       description: |
         Rend la tentative de plus haut numero, quel que soit son statut.
 
         Le corrige (`correct_answers`, `explanation` sur chaque question)
-        n apparait qu a partir de `correction_available_at` : 7 jours apres
-        la remise. Avant, les questions sont rendues sans lui. Quand
-        `show_results` est faux, `score` et `note_sur_20` valent `null`.
+        n apparait que si `correction_available` est vrai (#1699). La regle suit
+        `correction_release`, choisi par l enseignant. Dans tous les modes, le
+        corrige ne s ouvre jamais avant la fermeture de l evaluation pour tous.
+        La fermeture est le `end_at` programme par KLASSCI, sinon la fin de
+        l evaluation. Une fenetre illisible, ou une evaluation sans fin connue,
+        laisse le corrige ferme. Avant son ouverture, les questions sont rendues
+        sans lui.
+
+        Quand `show_results` est faux (notes non publiees), `score`,
+        `note_sur_20` et `feedback` valent `null`.
       security:
         - sanctum: []
       parameters:
@@ -12199,6 +12220,7 @@ paths:
                       feedback:
                         type: string
                         nullable: true
+                        description: "Commentaire de l enseignant ; `null` tant que les notes ne sont pas publiees (#1699)."
                       questions:
                         type: array
                         items:
@@ -12215,9 +12237,12 @@ paths:
                         type: string
                         format: date-time
                         nullable: true
+                        description: "L instant d ouverture du corrige, passe ou a venir, s il est connu. Nul sinon : jamais, notes non publiees, ou fermeture inconnue."
                       correction_delay_days:
                         type: integer
-                        example: 7
+                        nullable: true
+                        deprecated: true
+                        description: "Toujours `null` depuis #1699 : il n y a plus de delai fixe. Lire `correction_available_at`."
                       evaluation:
                         type: object
                         properties:
@@ -12229,6 +12254,13 @@ paths:
                             $ref: '#/components/schemas/Decimal2'
                           coefficient:
                             $ref: '#/components/schemas/Decimal2'
+                          show_results:
+                            type: boolean
+                            description: "Notes publiees (#1699). Faux : « notes pas encore publiees », a distinguer d une copie pas encore corrigee."
+                          correction_release:
+                            type: string
+                            enum: [never, with_results, after_close, at_date]
+                            description: "Le mode d ouverture du corrige, choisi par l enseignant (#1699)."
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '401':
@@ -12829,6 +12861,105 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorWithDetail'
+
+  /evaluations/{id}/release:
+    patch:
+      tags:
+        - Evaluations
+      operationId: releaseEvaluation
+      summary: "Publier les notes et regler l ouverture du corrige"
+      description: |
+        #1699 : publier les notes est un geste distinct de leur saisie. `show_results`
+        vrai rend a l eleve sa note, son score et le commentaire de l enseignant. Faux
+        les lui retire. `correction_release` choisit quand le corrige s ouvre (voir
+        `EvaluationRecord`). Dans tous les modes, jamais avant la fermeture de
+        l evaluation pour tous.
+
+        Permise sur une evaluation VERROUILLEE (copies remises) : elle ne touche ni
+        aux questions ni aux copies. `PUT /evaluations/{id}` rend 409 des la premiere
+        copie, et c etait la seule voie vers `show_results`.
+
+        Au moins un reglage. `correction_release_at` n existe qu avec `at_date`, qui
+        l exige ; un autre mode efface la date.
+
+        Roles : enseignant (proprietaire de l evaluation) ou administrateur. Les
+        coordinateurs ne publient pas.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                show_results:
+                  type: boolean
+                correction_release:
+                  type: string
+                  enum: [never, with_results, after_close, at_date]
+                correction_release_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: "Requise pour `at_date`, interdite sinon."
+      responses:
+        '200':
+          description: "Reglage enregistre"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/EvaluationRecord'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role insuffisant, coordinateur, eleve, enseignant non proprietaire. Aussi,
+            sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: |
+            Evaluation introuvable : absente, supprimee, ou d une AUTRE ecole. Le meme
+            corps dans les trois cas (isolation : un 403 confirmerait qu elle existe).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Aucun reglage, mode inconnu, ou date absente, illisible ou orpheline."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /evaluations/{id}/sync-klassci:
     post:

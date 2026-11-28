@@ -600,6 +600,57 @@ components:
           nullable: true
           description: "#1648 : un niveau d etudes LOCAL de l ecole (`/niveaux-etudes`) ; nul le detache. D une autre ecole : 422."
 
+    # #905 — une ligne de la collection des classes locales ; #1652 la rend aussi apres un
+    # archivage ou un desarchivage, pour que l ecran la remplace sur place.
+    ClasseLocaleLigne:
+      type: object
+      properties:
+        id:
+          type: integer
+        libelle:
+          type: string
+        code:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+          description: "Pour preremplir sa modification sans relire la fiche (front#659)."
+        training_session_id:
+          type: integer
+          nullable: true
+        effectif:
+          type: integer
+          nullable: true
+          description: "La CAPACITE de la classe (#1358) ; `null` quand elle n est pas renseignee, jamais 0."
+        code_inscription:
+          type: object
+          properties:
+            etat:
+              type: string
+              enum: [actif, retire, absent]
+            valeur:
+              type: string
+              nullable: true
+              description: "Presente seulement si etat = actif"
+              example: BUR7K2
+        archivee_le:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Date d archive (#1652) ; `null` pour une classe active."
+
+    # #1652 — la reponse d un archivage ou d un desarchivage.
+    ClasseLocaleArchivage:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ClasseLocaleLigne'
+
     # #905 — une page de classes locales, chacune avec l etat de son code.
     # #1648 - une filiere ou un niveau d etudes local, dans la forme du volet KLASSCI.
     ElementDeStructure:
@@ -640,33 +691,7 @@ components:
         data:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: integer
-              libelle:
-                type: string
-              code:
-                type: string
-                nullable: true
-              training_session_id:
-                type: integer
-                nullable: true
-              effectif:
-                type: integer
-                nullable: true
-                description: "La CAPACITE de la classe (#1358) ; `null` quand elle n est pas renseignee, jamais 0."
-              code_inscription:
-                type: object
-                properties:
-                  etat:
-                    type: string
-                    enum: [actif, retire, absent]
-                  valeur:
-                    type: string
-                    nullable: true
-                    description: "Presente seulement si etat = actif"
-                    example: BUR7K2
+            $ref: '#/components/schemas/ClasseLocaleLigne'
         meta:
           type: object
           properties:
@@ -7821,9 +7846,29 @@ paths:
 
         Meme droit que l emission : un etablissement branche a KLASSCI recoit
         403. Meme garde de role : un apprenant ne lit pas les codes des classes.
+
+        Filtres (#1652), facultatifs et cumulables : `statut` (active / archivee)
+        et `places` (disponibles / pleine). Sans filtre : toutes les classes.
       security:
         - sanctum: []
       parameters:
+        - name: statut
+          in: query
+          required: false
+          description: "`active` : sans date d archive ; `archivee` : archivee. Autre valeur : 422."
+          schema:
+            type: string
+            enum: [active, archivee]
+        - name: places
+          in: query
+          required: false
+          description: |
+            `pleine` : capacite renseignee et atteinte par les adhesions ACTIVES (la regle
+            qui refuse une inscription, `class_full`). `disponibles` : tout le reste, une
+            capacite non renseignee comprise. Autre valeur : 422.
+          schema:
+            type: string
+            enum: [disponibles, pleine]
         - name: per_page
           in: query
           required: false
@@ -7874,7 +7919,7 @@ paths:
                 message: "Aucun établissement résolu."
                 reason: no_institution
         '422':
-          description: "`per_page` ou `page` hors bornes, ou non entier (spec #548)"
+          description: "`per_page` ou `page` hors bornes, ou non entier (spec #548) ; `statut` ou `places` inconnu (#1652)"
           content:
             application/json:
               schema:
@@ -8397,6 +8442,104 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /classes/{classe}/archiver:
+    post:
+      operationId: archiveLocalClass
+      tags:
+        - Session de formation
+      summary: "Archiver une classe locale"
+      description: |
+        Un geste NOMME (#1652). La classe recoit sa date d archive et son code
+        d inscription est retire (la valeur demeure). Plus aucune inscription n y
+        entre, par aucune porte : codes (meme 404 qu un code inconnu), service
+        d inscription (409 `class_archived`), import. Ses eleves, ses notes et ses
+        presences restent lisibles. Archiver deux fois garde la premiere date.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Classe archivee (ou deja archivee : date inchangee)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseLocaleArchivage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, catalogue venant de KLASSCI, ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /classes/{classe}/desarchiver:
+    post:
+      operationId: unarchiveLocalClass
+      tags:
+        - Session de formation
+      summary: "Desarchiver une classe locale"
+      description: |
+        Efface la date d archive (#1652). Le code reste RETIRE : rouvrir les
+        inscriptions est un geste distinct (`POST /classes/{classe}/code-inscription`),
+        l ancien code ayant pu circuler pendant l archive.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Classe desarchivee ; son code reste retire"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseLocaleArchivage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, catalogue venant de KLASSCI, ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /classes/{classe}/code-inscription:
     post:
       tags:
@@ -8462,6 +8605,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "La classe est archivee (`class_archived`, #1652) : aucun code n est emis."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '503':
           description: |
             Aucun code disponible apres cinq tirages. Sur 31^6 combinaisons par

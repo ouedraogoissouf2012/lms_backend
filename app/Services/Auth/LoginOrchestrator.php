@@ -38,6 +38,7 @@ final class LoginOrchestrator
         private readonly PorteDuCatalogueLocal $catalogue,
         private readonly KlassciConfigResolver $cibles,
         private readonly IdDansLAnnuaire $idDansLAnnuaire,
+        private readonly DerniereConnexion $derniereConnexion,
     ) {}
 
     public function attemptLocal(string $username, string $password): ?JsonResponse
@@ -53,6 +54,7 @@ final class LoginOrchestrator
         }
 
         $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+        $this->derniereConnexion->marquer($user);
         $this->auditLogger->logAuthEvent('login', $user, ['method' => 'local']);
         $institution = $user->institution;
 
@@ -192,6 +194,7 @@ final class LoginOrchestrator
 
         $localUser = $this->userSync->sync($klassciUser, $klassciToken, $tenant['api_base_url'], $institution);
         $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+        $this->derniereConnexion->marquer($localUser);
 
         $this->auditLogger->logAuthEvent('login', $localUser, [
             'method' => 'klassci',

@@ -50,6 +50,8 @@ return [
         'esbtp_attendance',
         // #1680 : les codes d'émargement d'une séance.
         'codes_emargement',
+        // #1681 : les justificatifs d'absence (le pivot des séances n'a pas d'école propre).
+        'justificatifs_absence',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

@@ -14,8 +14,8 @@ use App\Services\Chapter\ChapterReadGate;
  *
  * ## Pourquoi ne pas réutiliser {@see ChecksFileAuthorization}
  *
- * L'issue le suggérait, mais le code l'interdit : ses deux méthodes sont typées
- * sur `App\Models\File` (`canReadFile(?File, ?User)`), un modèle sans rapport
+ * L'issue le suggérait, mais le code l'interdit : sa règle est typée sur
+ * `App\Models\File` (`LecteurDeFichier`, #1768), un modèle sans rapport
  * avec `Chapter` — pas de `is_public`, pas de `user_id`. On écrit donc la règle
  * propre au domaine chapitre, dans le **même esprit** que le trait frère
  * (défense en profondeur, court-circuit ordonné, `supradmin` en minuscules

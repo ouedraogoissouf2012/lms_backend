@@ -3,10 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksFileAuthorization;
-use App\Models\File;
-use App\Models\User;
+use App\Services\File\LecteurDeFichier;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Validates file metadata update requests (PUT /api/files/{id}).
@@ -23,12 +21,9 @@ use Illuminate\Support\Facades\Auth;
  *
  * ## Authorization Model (issue #102 fix)
  *
- * Strict tenant isolation via `ChecksFileAuthorization::canModerateFile()`:
- *   1. supradmin → allow (platform manager bypass)
- *   2. file.institution_id !== user.institution_id → deny
- *   3. file.user_id === user.id → allow (owner)
- *   4. user.role ∈ [admin, administrateur, superAdmin] → allow (admin intra-tenant)
- *   5. else → deny
+ * La règle de {@see LecteurDeFichier} (#1768), via `ChecksFileAuthorization` :
+ * le propriétaire, ou la gestion de son école ; un fichier que l'appelant ne lit
+ * pas répond 404, comme un id absent.
  *
  * Previous version used `$user->isAdmin()` which ambiguously allowed any admin
  * (including intra-tenant ones) to update files cross-tenant (HIGH IDOR).
@@ -44,15 +39,9 @@ final class UpdateFileRequest extends FormRequest
     /**
      * Verify file ownership + tenant isolation before allowing update.
      */
-    public function authorize(): bool
+    public function authorize(LecteurDeFichier $lecteur): bool
     {
-        $user = Auth::user();
-        $file = $this->route('file');
-
-        return $this->canModerateFile(
-            $file instanceof File ? $file : null,
-            $user instanceof User ? $user : null,
-        );
+        return $this->autoriserLaModeration($lecteur, $this->route('file'), $this->user());
     }
 
     /**

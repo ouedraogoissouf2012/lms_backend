@@ -118,7 +118,8 @@ final class FileResponseTest extends TestCase
             ->assertExactJson(['success' => false, 'message' => 'Fichier non trouvé']);
     }
 
-    public function test_show_forbidden_file_returns_403_error_envelope(): void
+    /** #1768 : un fichier illisible répond comme un fichier absent, même enveloppe. */
+    public function test_show_unreadable_file_returns_the_missing_file_envelope(): void
     {
         $file = $this->ownedFile(isPublic: false);
         $otherStudent = User::factory()->create([
@@ -129,8 +130,8 @@ final class FileResponseTest extends TestCase
 
         $response = $this->getJson("/api/files/{$file->id}");
 
-        $response->assertStatus(403)
-            ->assertExactJson(['success' => false, 'message' => 'Accès refusé']);
+        $response->assertStatus(404)
+            ->assertExactJson(['success' => false, 'message' => 'Fichier non trouvé']);
     }
 
     // ───────────────────────── download ─────────────────────────
@@ -145,7 +146,8 @@ final class FileResponseTest extends TestCase
             ->assertExactJson(['success' => false, 'message' => 'Fichier non trouvé']);
     }
 
-    public function test_download_forbidden_file_returns_403_error_envelope(): void
+    /** #1768 : un fichier illisible répond comme un fichier absent, même enveloppe. */
+    public function test_download_unreadable_file_returns_the_missing_file_envelope(): void
     {
         $file = $this->ownedFile(isPublic: false);
         $otherStudent = User::factory()->create([
@@ -156,8 +158,8 @@ final class FileResponseTest extends TestCase
 
         $response = $this->getJson("/api/files/{$file->id}/download");
 
-        $response->assertStatus(403)
-            ->assertExactJson(['success' => false, 'message' => 'Accès refusé']);
+        $response->assertStatus(404)
+            ->assertExactJson(['success' => false, 'message' => 'Fichier non trouvé']);
     }
 
     public function test_download_missing_physical_file_returns_404_error_envelope(): void

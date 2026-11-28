@@ -7,159 +7,86 @@ namespace Tests\Unit\Http\Requests\Concerns;
 use App\Http\Requests\Concerns\ChecksFileAuthorization;
 use App\Models\File;
 use App\Models\User;
+use App\Services\File\LecteurDeFichier;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\CoversTrait;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Contract tests for {@see ChecksFileAuthorization}.
+ * #1768 — la règle de {@see LecteurDeFichier}, case par case, et la modération de
+ * {@see ChecksFileAuthorization} qui s'y adosse. En mémoire : aucune base.
  *
- * Two methods (canReadFile, canModerateFile) with the same defense-in-depth
- * decision tree. canReadFile has an additional is_public bypass intra-tenant.
- *
- * Reference: .claude/specs/file-idor-cross-tenant/design.md §4.1
+ * École 1 : celle du lecteur. Fichier d'id 7 ; le compte 1 en est le propriétaire.
  */
 #[CoversTrait(ChecksFileAuthorization::class)]
+#[CoversClass(LecteurDeFichier::class)]
 final class ChecksFileAuthorizationTest extends TestCase
 {
-    private function subject(): object
+    /**
+     * [rôle, école du lecteur, est propriétaire, fichier public, école du fichier, lit, modère]
+     *
+     * @return array<string, array{0: string, 1: ?int, 2: bool, 3: bool, 4: int, 5: bool, 6: bool}>
+     */
+    public static function cases(): array
+    {
+        return [
+            'élève, le sien' => ['etudiant', 1, true, false, 1, true, true],
+            'élève, public d autrui' => ['etudiant', 1, false, true, 1, true, false],
+            'élève, privé d autrui' => ['etudiant', 1, false, false, 1, false, false],
+            'enseignant, public d autrui' => ['enseignant', 1, false, true, 1, true, false],
+            'enseignant, privé d autrui' => ['enseignant', 1, false, false, 1, false, false],
+            'coordinateur, privé d autrui' => ['coordinateur', 1, false, false, 1, true, true],
+            'admin d école, privé d autrui' => ['superAdmin', 1, false, false, 1, true, true],
+            'admin, privé d autrui' => ['admin', 1, false, false, 1, true, true],
+            'admin, autre école' => ['admin', 1, false, true, 2, false, false],
+            'coordinateur, autre école' => ['coordinateur', 1, false, true, 2, false, false],
+            'compte sans école' => ['supradmin', null, false, true, 1, false, false],
+            'rôle de gestion sans école' => ['superAdmin', null, false, true, 1, false, false],
+        ];
+    }
+
+    #[DataProvider('cases')]
+    public function test_la_regle_case_par_case(string $role, ?int $ecole, bool $sien, bool $public, int $ecoleDuFichier, bool $lit, bool $modere): void
+    {
+        $lecteur = (new User)->forceFill(['id' => $sien ? 1 : 2, 'institution_id' => $ecole, 'role' => $role]);
+        $fichier = (new File)->forceFill(['id' => 7, 'user_id' => 1, 'institution_id' => $ecoleDuFichier, 'is_public' => $public]);
+        $regle = new LecteurDeFichier;
+
+        self::assertSame($lit, $regle->peutLire($lecteur, $fichier), 'lire');
+        self::assertSame($modere, $regle->peutModerer($lecteur, $fichier), 'modérer');
+    }
+
+    public function test_moderer_un_fichier_illisible_repond_comme_un_fichier_absent(): void
+    {
+        $enseignant = (new User)->forceFill(['id' => 2, 'institution_id' => 1, 'role' => 'enseignant']);
+        $prive = (new File)->forceFill(['id' => 7, 'user_id' => 1, 'institution_id' => 1, 'is_public' => false]);
+
+        $this->expectException(ModelNotFoundException::class);
+        $this->sujet()->autoriserLaModeration(new LecteurDeFichier, $prive, $enseignant);
+    }
+
+    public function test_moderer_un_fichier_lisible_sans_droit_est_refuse(): void
+    {
+        $eleve = (new User)->forceFill(['id' => 2, 'institution_id' => 1, 'role' => 'etudiant']);
+        $public = (new File)->forceFill(['id' => 7, 'user_id' => 1, 'institution_id' => 1, 'is_public' => true]);
+
+        self::assertFalse($this->sujet()->autoriserLaModeration(new LecteurDeFichier, $public, $eleve));
+    }
+
+    public function test_sans_fichier_ni_appelant_rien_n_est_autorise(): void
+    {
+        self::assertFalse($this->sujet()->autoriserLaModeration(new LecteurDeFichier, null, null));
+    }
+
+    private function sujet(): object
     {
         return new class
         {
             use ChecksFileAuthorization {
-                canReadFile as public;
-                canModerateFile as public;
+                autoriserLaModeration as public;
             }
         };
-    }
-
-    private function user(int $id, ?int $institutionId, string $role): User
-    {
-        return (new User)->forceFill([
-            'id' => $id,
-            'institution_id' => $institutionId,
-            'role' => $role,
-        ]);
-    }
-
-    private function file(int $userId, ?int $institutionId, bool $isPublic = false): File
-    {
-        return (new File)->forceFill([
-            'user_id' => $userId,
-            'institution_id' => $institutionId,
-            'is_public' => $isPublic,
-        ]);
-    }
-
-    // ---------------- canReadFile ----------------
-
-    public function test_can_read_file_deny_when_all_null(): void
-    {
-        self::assertFalse($this->subject()->canReadFile(null, null));
-    }
-
-    public function test_can_read_file_deny_when_user_null(): void
-    {
-        self::assertFalse($this->subject()->canReadFile($this->file(1, 1), null));
-    }
-
-    public function test_can_read_file_allow_supradmin_cross_tenant(): void
-    {
-        self::assertTrue($this->subject()->canReadFile(
-            $this->file(99, 7),
-            $this->user(1, 1, 'supradmin'),
-        ));
-    }
-
-    public function test_can_read_file_allow_owner_intra_tenant(): void
-    {
-        self::assertTrue($this->subject()->canReadFile(
-            $this->file(42, 3),
-            $this->user(42, 3, 'etudiant'),
-        ));
-    }
-
-    public function test_can_read_file_allow_public_intra_tenant(): void
-    {
-        self::assertTrue($this->subject()->canReadFile(
-            $this->file(99, 3, isPublic: true),
-            $this->user(1, 3, 'etudiant'),
-        ));
-    }
-
-    public function test_can_read_file_deny_student_non_public_non_owner_intra_tenant(): void
-    {
-        self::assertFalse($this->subject()->canReadFile(
-            $this->file(99, 3, isPublic: false),
-            $this->user(1, 3, 'etudiant'),
-        ));
-    }
-
-    public function test_can_read_file_deny_admin_cross_tenant(): void
-    {
-        self::assertFalse($this->subject()->canReadFile(
-            $this->file(99, 5),
-            $this->user(1, 3, 'admin'),
-        ));
-    }
-
-    public function test_can_read_file_allow_admin_intra_tenant(): void
-    {
-        self::assertTrue($this->subject()->canReadFile(
-            $this->file(99, 3),
-            $this->user(1, 3, 'admin'),
-        ));
-    }
-
-    // ---------------- canModerateFile ----------------
-
-    public function test_can_moderate_file_deny_student_on_public_file_intra_tenant(): void
-    {
-        // is_public does NOT grant moderation rights
-        self::assertFalse($this->subject()->canModerateFile(
-            $this->file(99, 3, isPublic: true),
-            $this->user(1, 3, 'etudiant'),
-        ));
-    }
-
-    public function test_can_moderate_file_allow_owner_intra_tenant(): void
-    {
-        self::assertTrue($this->subject()->canModerateFile(
-            $this->file(42, 3),
-            $this->user(42, 3, 'etudiant'),
-        ));
-    }
-
-    public function test_can_moderate_file_allow_admin_intra_tenant(): void
-    {
-        self::assertTrue($this->subject()->canModerateFile(
-            $this->file(99, 3),
-            $this->user(1, 3, 'admin'),
-        ));
-    }
-
-    public function test_can_moderate_file_deny_admin_cross_tenant(): void
-    {
-        self::assertFalse($this->subject()->canModerateFile(
-            $this->file(99, 5),
-            $this->user(1, 3, 'admin'),
-        ));
-    }
-
-    public function test_can_moderate_file_allow_supradmin_cross_tenant(): void
-    {
-        self::assertTrue($this->subject()->canModerateFile(
-            $this->file(99, 5),
-            $this->user(1, 3, 'supradmin'),
-        ));
-    }
-
-    public function test_can_moderate_file_deny_coordinateur_intra_tenant(): void
-    {
-        // Coordinateur is intentionally NOT in moderator roles for Files
-        // (same as Files have no Forum-style coordination)
-        self::assertFalse($this->subject()->canModerateFile(
-            $this->file(99, 3),
-            $this->user(1, 3, 'coordinateur'),
-        ));
     }
 }

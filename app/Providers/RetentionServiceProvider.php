@@ -8,6 +8,7 @@ use App\Services\Chapter\ChapterRetentionService;
 use App\Services\Retention\JournalDePurge;
 use App\Services\Retention\JournalDePurgeEnBase;
 use App\Services\Retention\Policies\AuditLogsPolicy;
+use App\Services\Retention\Policies\DemandesInscriptionPolicy;
 use App\Services\Retention\Policies\SeanceRecordingsPolicy;
 use App\Services\Retention\Policies\SoftDeletedInstitutionsPolicy;
 use App\Services\Retention\Policies\SoftDeletedUsersPolicy;
@@ -67,6 +68,9 @@ final class RetentionServiceProvider extends ServiceProvider
             // dépendances (stockage des médias, artefacts) le sont aussi.
             new SeanceRecordingsPolicy($app->make(SeanceRecordingRetentionService::class)),
             new TrashedChaptersPolicy($app->make(ChapterRetentionService::class)),
+            // #1659 : les demandes d'inscription, un délai par politique.
+            DemandesInscriptionPolicy::decidees(),
+            DemandesInscriptionPolicy::nonTraitees(),
         ]));
     }
 

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 | les routes `lms` : `auth:sanctum`, `klassci.sync`, préfixe `lms`.
 | `{enseignantId}` est l'id LOCAL du compte, dans les deux volets. Le service
 | désigne (la gestion, ou l'enseignant lui-même ; tout autre : 404). Le PROFIL
-| s'écrit par la gestion seule (`gestion`) ; les DISPONIBILITÉS, par
+| s'écrit par la gestion seule (`comptes.gerer`, #1760) ; les DISPONIBILITÉS, par
 | l'enseignant pour lui-même et par la gestion (décision du 28/11, front#673).
 |
 */
@@ -27,5 +27,5 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms/enseignants/{en
     Route::delete('/disponibilites/exceptions/{exceptionId}', [LMSProfilEnseignantController::class, 'retirerException'])
         ->whereNumber('exceptionId')->name('lms.enseignants.disponibilites.exceptions.destroy');
 
-    Route::put('/profil', [LMSProfilEnseignantController::class, 'ecrireProfil'])->middleware('gestion')->name('lms.enseignants.profil.ecrire');
+    Route::put('/profil', [LMSProfilEnseignantController::class, 'ecrireProfil'])->middleware('permission:comptes.gerer')->name('lms.enseignants.profil.ecrire');
 });

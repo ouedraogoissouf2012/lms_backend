@@ -46,13 +46,13 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Déclarée AVANT la route paramétrée, pour la même raison que `local` :
     // `{classeId}` n'a pas de contrainte numérique et capturerait le segment.
     Route::get('/classes/etablissement', [LMSClassesDeLEtablissementController::class, 'index'])
-        ->middleware('gestion')
+        ->middleware('permission:classes.gerer')
         ->name('lms.classes.etablissement');
 
     // #1656 : la liste des classes s'exporte (CSV, PDF). Déclarée AVANT la route paramétrée, pour la même
     // raison que `local` et `etablissement` : `{classeId}` capturerait le segment `export`.
     Route::get('/classes/export', [LMSExportsController::class, 'classes'])
-        ->middleware('personnel')
+        ->middleware('permission:referentiel.consulter')
         ->name('lms.classes.export');
 
     // Détails complets d'une classe
@@ -63,13 +63,13 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // n'existe que pour lister des élèves, et un élève ne reçoit jamais de
     // données sur un autre élève. Même garde que /seances/{id}/attendances.
     Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
-        ->middleware('personnel')
+        ->middleware('permission:classes.eleves')
         ->name('lms.classes.etudiants');
 
     // #1656 : la même liste, exportée (CSV, PDF) ; lue par le même lecteur, sous la même garde.
     Route::get('/classes/{classeId}/etudiants/export', [LMSExportsController::class, 'eleves'])
         ->whereNumber('classeId')
-        ->middleware('personnel')
+        ->middleware('permission:classes.eleves')
         ->name('lms.classes.etudiants.export');
 
     // #1676 : moyennes, rangs et réussite d'une classe, par l'id de l'ESPACE SOURCE, comme ses
@@ -81,7 +81,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.classes.resultats');
 
     Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
-        ->middleware('role:enseignant,coordinateur')
+        ->middleware('permission:enseignement.consulter')
         ->name('lms.teacher.classes');
 });
 
@@ -98,5 +98,5 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 //
 // Même garde de rôle que l'émission du code : un apprenant qui lirait les codes
 // des autres classes y entrerait sans y avoir été invité.
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:classes.gerer'])
     ->get('/classes', [LMSClassesLocalesController::class, 'index']);

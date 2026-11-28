@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Enums\InstitutionMode;
+use App\Enums\Permission;
 use App\Enums\Role;
-use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\EnsurePermission;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,7 +33,8 @@ final class UneSeuleLectureDuRoleTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Chaque valeur, et ce qu'en dit la garde `role:enseignant` : le service la
+     * Chaque valeur, et ce qu'en dit la garde `permission:visio.enregistrements` (l'ancienne `role:enseignant`,
+     * migration déclarée #1665) : le service la
      * reconnaît comme enseignant, ou comme `superAdmin` (qui passe toute garde
      * sauf celles du supradmin) — et rien d'autre ne passe.
      *
@@ -63,9 +65,9 @@ final class UneSeuleLectureDuRoleTest extends TestCase
         $request = Request::create('/api/garde-949', 'GET');
         $request->setUserResolver(static fn () => $compte);
 
-        $statut = (new EnsureRole)->handle($request, static fn () => response('ok'), 'enseignant')->getStatusCode();
+        $statut = $this->app->make(EnsurePermission::class)->handle($request, static fn () => response('ok'), Permission::VisioEnregistrements->value)->getStatusCode();
 
-        self::assertSame($admis ? 200 : 403, $statut, "garde role:enseignant, rôle « $role »");
+        self::assertSame($admis ? 200 : 403, $statut, "garde permission:visio.enregistrements, rôle « $role »");
         self::assertSame($admis, $compte->isTeacher() || Role::tryFromString($compte->role) === Role::SuperAdmin, "service, rôle « $role »");
     }
 

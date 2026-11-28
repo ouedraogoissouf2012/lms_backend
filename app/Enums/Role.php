@@ -38,8 +38,8 @@ use App\Models\User;
  *
  * ## Migration (#121)
  *
- * Les helpers `User::isXxx()` passent par cet enum. #521 : `EnsureRole`
- * consomme `tryFromString()` — plus de table FR/EN locale. #949 : `tryFromString()`
+ * Les helpers `User::isXxx()` passent par cet enum. #521 : la garde de route
+ * (`DroitsDuCompte`, #1665) consomme `tryFromString()` — plus de table FR/EN locale. #949 : `tryFromString()`
  * lit la table d'`aliases()`, en correspondance exacte : une seule lecture du rôle.
  *
  * @see User::asRoleEnum
@@ -78,7 +78,7 @@ enum Role: string
     /**
      * Variantes FR/EN stockées en base pour ce rôle.
      * `superAdmin` n'est PAS un alias de Supradmin ici : c'est l'admin
-     * intra-tenant, traité à part par EnsureRole (#102).
+     * intra-tenant, traité à part par PermissionsDuRole (#102, #1665).
      *
      * @return list<string>
      */

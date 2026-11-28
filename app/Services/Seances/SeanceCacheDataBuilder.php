@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Jobs\SyncKlassciSeances;
 use App\Models\Seance;
 use App\Models\User;
@@ -64,6 +65,8 @@ final class SeanceCacheDataBuilder
             // La fin RÉELLE (programmation KLASSCI), ou null : jamais estimée. Le démarrage
             // de la visio la lit pour verrouiller une séance passée (FenetreVisio).
             'fin_seance' => FenetreVisio::bornesKlassci($seance)[1],
+            // #1668 : CM, TD ou TP de KLASSCI ; sinon null, qui préserve l'existant (applyTo).
+            'type_seance' => TypeDeSeance::depuisKlassci($seance['type_cours'] ?? null),
         ];
     }
 

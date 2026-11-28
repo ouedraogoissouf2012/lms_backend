@@ -11,6 +11,7 @@ use App\Models\Evaluation;
 use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Attendances\PresenceRetenue;
 use App\Services\TenantManager;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Psr\Log\LoggerInterface;
@@ -48,9 +49,8 @@ final class AdminStatisticsService
     private function aggregate(): array
     {
         $totalAttendances = ESBTPAttendance::query()->count();
-        $presents = ESBTPAttendance::query()
-            ->whereIn('status', ['connected', 'disconnected'])
-            ->count();
+        // #1649 : LA règle de comptage, la marque de l'appel l'emportant sur le statut visio.
+        $presents = PresenceRetenue::presentes(ESBTPAttendance::query())->count();
 
         return [
             'nb_enseignants' => User::query()->whereIn('role', Role::Enseignant->aliases())->count(),

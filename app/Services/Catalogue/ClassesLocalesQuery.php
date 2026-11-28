@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Catalogue;
 
+use App\Enums\PlacesDeClasse;
+use App\Enums\StatutDeClasse;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Expression;
 
 /**
  * Les classes LOCALES d'un établissement (#905, ADR-905-01).
@@ -32,6 +36,12 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * Un établissement qui ne tient pas son catalogue n'a pas de classes locales à
  * gérer. Lire et émettre obéissent à la même règle, et à la même porte :
  * `PorteDuCatalogueLocal` (#910).
+ *
+ * ## Les filtres (#1652)
+ *
+ * Par statut (date d'archive) et par places. « Pleine » est compté par la base, sur la MÊME
+ * relation que `Classe::isComplete()` (`etudiantsActifs`) : le filtre et le refus d'une
+ * inscription ne peuvent pas diverger sur ce qu'est une place prise.
  */
 final class ClassesLocalesQuery
 {
@@ -44,18 +54,48 @@ final class ClassesLocalesQuery
      *
      * @throws BusinessException 403 sans catalogue local, 409 sans établissement
      */
-    public function lister(int $parPage): LengthAwarePaginator
+    public function lister(int $parPage, ?StatutDeClasse $statut = null, ?PlacesDeClasse $places = null): LengthAwarePaginator
     {
         $institution = $this->porte->etablissement();
+
+        $classes = Classe::query()->withoutGlobalScopes()
+            ->where('institution_id', $institution)
+            ->whereNull('klassci_id');
+
+        match ($statut) {
+            StatutDeClasse::Active => $classes->whereNull('archivee_le'),
+            StatutDeClasse::Archivee => $classes->whereNotNull('archivee_le'),
+            null => null,
+        };
+
+        match ($places) {
+            PlacesDeClasse::Pleine => $this->pleines($classes),
+            // Le complément EXACT de « pleine » (`effectif` n'est jamais nul : défaut 0).
+            PlacesDeClasse::Disponibles => $classes->whereNot(fn (Builder $q) => $this->pleines($q)),
+            null => null,
+        };
 
         // `id` en second critère : deux libellés égaux garderaient sinon un
         // ordre instable d'une page à l'autre, et une classe pourrait
         // apparaître deux fois — ou jamais — en paginant.
-        return Classe::query()->withoutGlobalScopes()
-            ->where('institution_id', $institution)
-            ->whereNull('klassci_id')
-            ->orderBy('libelle')
-            ->orderBy('id')
-            ->paginate($parPage);
+        return $classes->orderBy('libelle')->orderBy('id')->paginate($parPage);
+    }
+
+    /** @param Builder<Classe> $classes */
+    private function pleines(Builder $classes): void
+    {
+        $classes->where('effectif', '>', 0)->has('etudiantsActifs', '>=', $this->capacite($classes));
+    }
+
+    /**
+     * La capacité de la ligne, comme COLONNE et non comme valeur liée : `has()` compare le
+     * compte des adhésions actives à cette expression.
+     *
+     * @param  Builder<Classe>  $classes
+     * @return Expression<string>
+     */
+    private function capacite(Builder $classes): Expression
+    {
+        return new Expression($classes->getQuery()->getGrammar()->wrap($classes->getModel()->qualifyColumn('effectif')));
     }
 }

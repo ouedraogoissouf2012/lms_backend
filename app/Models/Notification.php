@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TypesDeReclamation;
 use App\Models\Traits\BelongsToInstitution;
 use Carbon\Carbon;
 use Database\Factories\NotificationFactory;
@@ -28,7 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Notification extends Model
 {
     /** @use HasFactory<NotificationFactory> */
-    use BelongsToInstitution, HasFactory;
+    use BelongsToInstitution, HasFactory, TypesDeReclamation;
 
     protected $fillable = [
         'user_id',
@@ -68,12 +69,16 @@ class Notification extends Model
 
     public const TYPE_EVALUATION_APPROACHING = 'evaluation_approaching';
 
-    /** #1678 : une réclamation de note déposée (à l'enseignant), à trancher (à la gestion), tranchée (à l'élève). */
-    public const TYPE_RECLAMATION_DEPOSEE = 'reclamation_deposee';
+    /** #1650 : une annonce du personnel à toute une classe (`data.annonce_id`). */
+    public const TYPE_ANNONCE = 'annonce';
 
-    public const TYPE_RECLAMATION_A_TRANCHER = 'reclamation_a_trancher';
-
-    public const TYPE_RECLAMATION_TRANCHEE = 'reclamation_tranchee';
+    /** Les types connus : la liste blanche du filtre `type` de `GET /notifications` (front#690). */
+    public const TYPES = [
+        self::TYPE_LESSON_PUBLISHED, self::TYPE_FORUM_REPLY, self::TYPE_QUIZ_AVAILABLE, self::TYPE_GRADE_RECEIVED,
+        self::TYPE_LESSON_UPDATED, self::TYPE_FORUM_SOLUTION, self::TYPE_QUIZ_DEADLINE, self::TYPE_VISIO_SCHEDULED,
+        self::TYPE_VISIO_STARTING, self::TYPE_EVALUATION_APPROACHING, self::TYPE_ANNONCE,
+        self::TYPE_RECLAMATION_DEPOSEE, self::TYPE_RECLAMATION_A_TRANCHER, self::TYPE_RECLAMATION_TRANCHEE,
+    ];
 
     /**
      * Relation: Utilisateur destinataire

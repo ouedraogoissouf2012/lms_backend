@@ -7,6 +7,7 @@ use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 // Refactor #152/#153 — god-controller `EvaluationController` (1676 lignes)
 // split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
+use App\Http\Controllers\API\Evaluation\EvaluationReleaseController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
 use App\Http\Controllers\API\Evaluation\ReclamationsDeNotesController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
@@ -56,6 +57,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function
 
     // Publication
     Route::post('evaluations/{id}/publish', [EvaluationCrudController::class, 'publish']);
+
+    // Publication des notes et ouverture du corrigé, permises après les remises (#1699)
+    Route::patch('evaluations/{id}/release', [EvaluationReleaseController::class, 'update']);
 
     // Prévisualisation enseignant (avant publication)
     Route::get('evaluations/{id}/preview', [EvaluationTeacherController::class, 'preview']);

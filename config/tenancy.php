@@ -29,6 +29,8 @@ return [
         // sur ces trois tables neuves, contrairement aux historiques.
         'programs',
         'training_sessions',
+        // #1650 : les annonces à une classe, institution_id NOT NULL.
+        'annonces',
         'creneaux',
         'classes',
         'matieres',

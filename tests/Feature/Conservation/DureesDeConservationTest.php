@@ -59,6 +59,11 @@ final class DureesDeConservationTest extends TestCase
             if (($usage['suit_le_compte'] ?? false) === true) {
                 continue;
             }
+            if (isset($usage['duree_a_fixer'])) {
+                self::assertMatchesRegularExpression('/^#\d+$/', (string) $usage['duree_a_fixer'], "« {$nom} » : une durée absente désigne son issue.");
+
+                continue;
+            }
             self::assertContains($usage['politique'] ?? null, $cles, "« {$nom} » désigne une politique inconnue.");
             self::assertGreaterThan(0, (int) config($usage['cle']), "« {$nom} » n'a pas de durée positive.");
         }
@@ -79,7 +84,9 @@ final class DureesDeConservationTest extends TestCase
 
         foreach ($this->usages() as $nom => $usage) {
             self::assertStringContainsString((string) $usage['libelle'], $note, "La note ne dit rien de « {$nom} ».");
-            if (($usage['suit_le_compte'] ?? false) !== true) {
+            if (isset($usage['duree_a_fixer'])) {
+                self::assertStringContainsString((string) $usage['duree_a_fixer'], $note, "La note doit dire que la durée de « {$nom} » reste à fixer.");
+            } elseif (($usage['suit_le_compte'] ?? false) !== true) {
                 self::assertStringContainsString((int) config($usage['cle']).' jours', $note, "La note ne donne pas la durée de « {$nom} ».");
             }
         }

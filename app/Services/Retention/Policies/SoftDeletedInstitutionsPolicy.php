@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Services\Retention\Concerns\NamesTheRow;
 use App\Services\Retention\RetentionPolicy;
 use App\Services\Tenancy\LignesDUneInstitution;
+use App\Support\Config\LecteurDEntiers;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +35,7 @@ final class SoftDeletedInstitutionsPolicy implements RetentionPolicy
     public function __construct(
         private readonly LignesDUneInstitution $lignes,
         private readonly array $tablesDeclarees,
+        private readonly LecteurDEntiers $entiers = new LecteurDEntiers,
     ) {}
 
     public function key(): string
@@ -46,9 +48,10 @@ final class SoftDeletedInstitutionsPolicy implements RetentionPolicy
         return 'établissement(s) supprimé(s)';
     }
 
+    /** La durée vit au tableau des durées (`config/conservation.php`, #1705). */
     public function defaultGraceDays(): int
     {
-        return 30;
+        return $this->entiers->positif(config('conservation.ecoles_supprimees_jours'), 30);
     }
 
     public function eligible(CarbonInterface $cutoff): Builder

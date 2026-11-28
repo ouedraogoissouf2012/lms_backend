@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationGradingService;
+use App\Services\Evaluation\QuestionsDeLaCopie;
 
 /**
  * #588 — notation manuelle d'une soumission (dissertations).
@@ -17,6 +18,7 @@ final class EvaluationTeacherGradeService
 {
     public function __construct(
         private readonly EvaluationGradingService $grading,
+        private readonly QuestionsDeLaCopie $questionsDeLaCopie,
     ) {}
 
     /**
@@ -44,7 +46,8 @@ final class EvaluationTeacherGradeService
             return $this->fail(409, 'Cette soumission ne peut pas encore être notée.', 'evaluation_submission_not_gradable');
         }
 
-        $dissertations = $evaluation->questions->filter(
+        // #1702 (D2) : les dissertations POSÉES à cet élève, pas toutes celles de l'évaluation.
+        $dissertations = $this->questionsDeLaCopie->de($submission, $evaluation)->filter(
             fn ($question): bool => $this->grading->requiresManualGrading($question)
         );
 

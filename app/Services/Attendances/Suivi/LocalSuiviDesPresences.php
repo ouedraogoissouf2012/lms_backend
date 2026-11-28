@@ -96,11 +96,11 @@ final class LocalSuiviDesPresences implements SuiviDesPresences
 
         return $this->db->table('seances as s')
             ->join('classe_etudiant as ce', static fn (JoinClause $j) => $j->on('ce.classe_id', '=', 's.classe_id')
-                ->where('ce.institution_id', $ecole)->where('ce.statut', ClasseEtudiantStatut::Actif->value))
-            ->join('users as u', static fn (JoinClause $j) => $j->on('u.id', '=', 'ce.user_id')->where('u.institution_id', $ecole))
+                ->where('ce.statut', ClasseEtudiantStatut::Actif->value))
+            ->join('users as u', static fn (JoinClause $j) => $j->on('u.id', '=', 'ce.user_id'))
             ->leftJoin('esbtp_attendance as a', static fn (JoinClause $j) => $j->on('a.seance_id', '=', 's.id')
-                ->on('a.user_id', '=', 'u.id')->where('a.institution_id', $ecole))
-            ->where('s.institution_id', $ecole)
+                ->on('a.user_id', '=', 'u.id'))
+            
             ->where('s.is_active', true)
             ->whereBetween('s.date_seance', [Carbon::parse($filtres->du)->startOfDay(), $fin])
             ->when($filtres->classeId !== null, static fn (Builder $q) => $q->where('s.classe_id', $filtres->classeId))

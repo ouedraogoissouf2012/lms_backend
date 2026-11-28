@@ -416,6 +416,7 @@ final class ClassesEtablissementTest extends TestCase
             'filiere' => null,
             'niveau' => null,
             'is_active' => $active,
+            'periode' => null,
             'places_occupees' => $occupees,
             'places_totales' => null,
             'nb_matieres' => $matieres,

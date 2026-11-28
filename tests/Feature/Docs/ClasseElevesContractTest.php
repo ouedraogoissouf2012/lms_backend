@@ -67,7 +67,7 @@ final class ClasseElevesContractTest extends TestCase
         yield 'enseignant' => ['enseignant'];
         yield 'coordinateur' => ['coordinateur'];
         yield 'admin' => ['admin'];
-        // La garde de rôle laisse passer superAdmin (EnsureRole) et accepte les alias.
+        // La garde de route laisse passer superAdmin (PermissionsDuRole) et accepte les alias.
         yield 'superAdmin' => ['superAdmin'];
         yield 'alias teacher' => ['teacher'];
     }

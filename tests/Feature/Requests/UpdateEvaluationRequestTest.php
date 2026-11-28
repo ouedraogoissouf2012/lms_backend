@@ -138,8 +138,8 @@ class UpdateEvaluationRequestTest extends TestCase
         $response->assertStatus(422);
     }
 
-    /** ❌ Not found */
-    public function test_nonexistent_returns_403(): void
+    /** ❌ Not found — #1782 : 404, comme une évaluation d'une autre école. */
+    public function test_nonexistent_returns_404(): void
     {
         Sanctum::actingAs($this->teacher);
 
@@ -147,6 +147,6 @@ class UpdateEvaluationRequestTest extends TestCase
             'titre' => 'Ghost',
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(404);
     }
 }

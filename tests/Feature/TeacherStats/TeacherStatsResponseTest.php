@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\TeacherStats;
 
-use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\EnsurePermission;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,10 +66,10 @@ final class TeacherStatsResponseTest extends TestCase
     public function test_get_stats_for_non_teacher_returns_403_error_envelope(): void
     {
         // Le garde de rôle du controller est une défense en profondeur : en
-        // production la route porte déjà `role:enseignant,coordinateur`. On
+        // production la route porte déjà `permission:enseignement.consulter`. On
         // contourne ce middleware de route pour exercer la branche 403 PROPRE
         // au controller et figer sa forme JSON.
-        $this->withoutMiddleware(EnsureRole::class);
+        $this->withoutMiddleware(EnsurePermission::class);
 
         $student = User::factory()->create([
             'institution_id' => $this->institution->id,

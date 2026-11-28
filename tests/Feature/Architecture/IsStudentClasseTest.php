@@ -39,6 +39,7 @@ final class IsStudentClasseTest extends TestCase
         'app/Services/Klassci/Auth/SynchrosDuLogin.php' => [1, 'fermé : hors élève, pas de synchronisation de classes'],
         'app/Services/Evaluation/Classe/AccesAuBilanDeClasse.php' => [1, 'fermé : hors personnel et élève reconnu, refus 403'],
         'app/Services/Seances/UserOwnMatieresResolver.php' => [1, 'sans effet : choisit l endpoint, KLASSCI répond selon le jeton'],
+        'app/Services/Eleve/DossierDeLEleve.php' => [1, 'fermé : seul un compte élève a un dossier, tout autre est introuvable (#1657)'],
     ];
 
     public function test_chaque_appel_a_is_student_est_classe(): void

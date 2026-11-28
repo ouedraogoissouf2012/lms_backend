@@ -6,11 +6,8 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksEvaluationOwnership;
 use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
-use App\Rules\CorrectAnswersAmongOptions;
-use App\Rules\CorrectAnswersCardinality;
-use App\Rules\TrueFalseOptions;
 use App\Support\Evaluation\QuestionCountLimit;
-use App\Support\Evaluation\QuestionOptionLimits;
+use App\Support\Evaluation\ReglesDUneQuestion;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -77,19 +74,8 @@ final class UpdateEvaluationRequest extends FormRequest
             // Une LISTE (D520) : indexées par des clés, les questions échappaient aux
             // règles qui lisent la question voisine par son rang (questions.N.…).
             'questions' => ['sometimes', 'list', QuestionCountLimit::maxRule()],
-            'questions.*.question' => 'required|string|max:1000',
-            'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
-            'questions.*.points' => 'nullable|numeric|min:0',
-            // Une liste de textes, ou null : ce que le front envoie, et ce que la
-            // spec décrit. Sans la règle sur les éléments, le serveur gardait des
-            // nombres, des objets, ou un tableau associatif rendu en objet JSON.
-            // Bornée (B5) : 26 options, 1 000 caractères chacune (QuestionOptionLimits).
-            // Un vrai_faux : exactement ['Vrai', 'Faux'], ce que l'écran propose (D532).
-            'questions.*.options' => ['nullable', 'list', 'max:'.QuestionOptionLimits::MAX_OPTIONS, new TrueFalseOptions],
-            'questions.*.options.*' => QuestionOptionLimits::itemRule(),
-            // Mêmes règles qu'à la création (D466).
-            'questions.*.correct_answers' => ['nullable', 'list', 'max:'.QuestionOptionLimits::MAX_OPTIONS, new CorrectAnswersCardinality, new CorrectAnswersAmongOptions],
-            'questions.*.correct_answers.*' => QuestionOptionLimits::itemRule(),
+            // Les règles d'une question, en un seul lieu (création, modification, banque #1702).
+            ...ReglesDUneQuestion::pour('questions.*.'),
             // Lue par le service : sans règle, `validated()` la retirerait.
             'questions.*.explanation' => 'nullable|string|max:2000',
         ];

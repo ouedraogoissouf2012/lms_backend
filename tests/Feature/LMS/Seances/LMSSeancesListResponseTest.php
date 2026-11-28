@@ -146,6 +146,8 @@ final class LMSSeancesListResponseTest extends TestCase
         $this->assertSame($start->toDateString(), $data[0]['programmation']['date']);
         $this->assertTrue($data[0]['visio_enabled']);
         $this->assertSame('room-local', $data[0]['visio']['room_id']);
+        // front#719 : une école KLASSCI fait l'appel dans KLASSCI ; aucune carte ne l'offre ici.
+        $this->assertFalse($data[0]['can_take_attendance']);
     }
 
     // ───────────────────────── my-teaching : succès enveloppe {success, data} ─────────────────────────

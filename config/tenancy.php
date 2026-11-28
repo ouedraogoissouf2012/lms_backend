@@ -31,6 +31,10 @@ return [
         'training_sessions',
         // #1650 : les annonces à une classe, institution_id NOT NULL.
         'annonces',
+        // #1657 : le dossier de l'élève, ses tuteurs, la séquence du matricule (institution_id NOT NULL).
+        'dossiers_eleves',
+        'tuteurs',
+        'matricules_sequences',
         'creneaux',
         'classes',
         'matieres',
@@ -41,8 +45,15 @@ return [
         'evaluation_submissions',
         // #1678 : les réclamations de notes.
         'reclamations_de_notes',
+        // #1702 (D1) : la banque de questions.
+        'categories_de_questions',
+        'questions_de_banque',
         'seances',
         'esbtp_attendance',
+        // #1680 : les codes d'émargement d'une séance.
+        'codes_emargement',
+        // #1681 : les justificatifs d'absence (le pivot des séances n'a pas d'école propre).
+        'justificatifs_absence',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

@@ -83,6 +83,36 @@ final class AppelEnLigneTest extends TestCase
         self::assertNull($ligneBrice->status, 'Une ligne d appel sans visio n est jamais « connectée ».');
     }
 
+    /** front#719 : l'écran montre la présence visio à côté de la marque ; une ligne d'appel seule n'en a pas. */
+    public function test_la_lecture_dit_la_presence_visio_de_chaque_eleve(): void
+    {
+        [$awa, $brice] = $this->eleves;
+        $this->ligneVisio($awa, 'connected');
+        $this->appel($this->enseignant, [[$brice, 'absent']])->assertOk();
+
+        $eleves = $this->asTenant($this->enseignant)->getJson($this->url())->assertOk()->json('data.eleves');
+
+        self::assertSame(['connected', null, null], array_column($eleves, 'presence_visio'));
+    }
+
+    /**
+     * front#719 : chaque carte dit si CE lecteur peut faire l'appel (`can_take_attendance`), comme
+     * `can_be_edited` : l'auteur ou la gestion, une séance commencée.
+     */
+    public function test_la_carte_dit_si_l_appel_est_possible(): void
+    {
+        $future = $this->seanceDe($this->ecole, $this->classe, $this->enseignant, '2026-12-02 10:00:00');
+
+        $cartes = collect($this->asTenant($this->enseignant)->getJson('/api/lms/seances/upcoming?days=2')->assertOk()->json('data'))
+            ->pluck('can_take_attendance', 'id');
+        self::assertTrue($cartes[$this->seance->id]);
+        self::assertFalse($cartes[$future->id], 'Avant son début, l appel n est pas ouvert.');
+
+        $gestion = collect($this->asTenant($this->membre($this->ecole, 'coordinateur'))->getJson('/api/lms/seances/upcoming?days=2')->json('data'))
+            ->pluck('can_take_attendance', 'id');
+        self::assertTrue($gestion[$this->seance->id]);
+    }
+
     public function test_la_lecture_rend_toute_la_classe_avec_ses_marques(): void
     {
         [$awa] = $this->eleves;

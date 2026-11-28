@@ -2135,7 +2135,7 @@ components:
               items:
                 type: object
                 additionalProperties: false
-                required: [user_id, nom, mark, origin, delegated_at]
+                required: [user_id, nom, mark, origin, delegated_at, presence_visio]
                 properties:
                   user_id:
                     type: integer
@@ -2153,6 +2153,94 @@ components:
                     type: string
                     format: date-time
                     nullable: true
+                  presence_visio:
+                    type: string
+                    nullable: true
+                    enum: [connected, disconnected, kicked, null]
+                    description: "La connexion visio de l'eleve, a cote de sa marque ; nulle sans visio."
+
+    CodeEmargementGenere:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [id, code, expire_le]
+          properties:
+            id:
+              type: integer
+            code:
+              type: string
+              description: "Le code en clair, rendu cette seule fois."
+              pattern: '^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$'
+            expire_le:
+              type: string
+              format: date-time
+
+    CodesEmargementDeLaSeance:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, expire_le, revoque_le, valable, signatures, attendus, taux]
+            properties:
+              id:
+                type: integer
+              expire_le:
+                type: string
+                format: date-time
+              revoque_le:
+                type: string
+                format: date-time
+                nullable: true
+              valable:
+                type: boolean
+              signatures:
+                type: integer
+                minimum: 0
+              attendus:
+                type: integer
+                minimum: 0
+              taux:
+                type: integer
+                minimum: 0
+
+    SignatureParCode:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [seance_id, mark, deja_signe]
+          properties:
+            seance_id:
+              type: integer
+            mark:
+              type: string
+              enum: [present, absent, late, excused]
+            deja_signe:
+              type: boolean
 
     TypeDeSeance:
       type: string
@@ -2209,6 +2297,159 @@ components:
                 items:
                   type: string
                   enum: [teacher, class]
+
+    JustificatifAbsence:
+      type: object
+      additionalProperties: false
+      required: [id, eleve_id, eleve_nom, motif, du, au, seances, piece, etat, motif_rejet, decide_le, cree_le]
+      properties:
+        id:
+          type: integer
+        eleve_id:
+          type: integer
+        eleve_nom:
+          type: string
+          nullable: true
+        motif:
+          type: string
+        du:
+          type: string
+          format: date
+          nullable: true
+        au:
+          type: string
+          format: date
+          nullable: true
+        seances:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, titre, date_seance]
+            properties:
+              id:
+                type: integer
+              titre:
+                type: string
+                nullable: true
+              date_seance:
+                type: string
+                format: date-time
+                nullable: true
+        piece:
+          type: boolean
+          description: "Une piece a ete deposee (lisible par GET /lms/justificatifs/{id}/piece)."
+        etat:
+          type: string
+          enum: [en_attente, validee, rejetee]
+        motif_rejet:
+          type: string
+          nullable: true
+        decide_le:
+          type: string
+          format: date-time
+          nullable: true
+        cree_le:
+          type: string
+          format: date-time
+          nullable: true
+
+    JustificatifAbsenceRendu:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/JustificatifAbsence'
+
+    JustificatifsDeLEleve:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/JustificatifAbsence'
+
+    JustificatifsDeLaGestion:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [justificatifs, compteurs, page, derniere_page, total]
+          properties:
+            justificatifs:
+              type: array
+              items:
+                $ref: '#/components/schemas/JustificatifAbsence'
+            compteurs:
+              type: object
+              additionalProperties: false
+              required: [en_attente, validee, rejetee]
+              properties:
+                en_attente:
+                  type: integer
+                validee:
+                  type: integer
+                rejetee:
+                  type: integer
+            page:
+              type: integer
+            derniere_page:
+              type: integer
+            total:
+              type: integer
+
+    AbsencesDeLEleve:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [seance_id, titre, date_seance, marque, justificatif_etat]
+            properties:
+              seance_id:
+                type: integer
+              titre:
+                type: string
+                nullable: true
+              date_seance:
+                type: string
+                format: date-time
+                nullable: true
+              marque:
+                type: string
+                nullable: true
+                enum: [absent, null]
+                description: "La presence retenue : `absent` (marque, ou exclu de la visio) ; `null` quand rien ne la dit."
+              justificatif_etat:
+                type: string
+                nullable: true
+                enum: [en_attente, validee, rejetee, null]
 
     SeanceCalendrier:
       type: object
@@ -2342,6 +2583,14 @@ components:
             compris pour une seance creee dans le LMS. Ecole creee depuis le LMS :
             `true` si le lecteur en est l'auteur ou la gere, que la seance n'est
             pas passee et que sa visio n'est pas en cours.
+        can_take_attendance:
+          type: boolean
+          description: |
+            front#719 : ce lecteur peut-il faire l'appel (`PUT
+            /lms/seances/{seanceId}/appel`) ? Calcule par la porte de l'appel.
+            Ecole creee depuis KLASSCI : toujours `false` (l'appel s'y fait dans
+            KLASSCI). Ecole creee depuis le LMS : `true` si le lecteur en est
+            l'auteur ou la gere, et que la seance a commence.
 
     # Les enseignants de l'etablissement (lot 3b).
     EnseignantsAnnuaire:
@@ -4109,6 +4358,146 @@ components:
           type: string
           format: date-time
 
+    PhotoDEleveReponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - photo_url
+          properties:
+            photo_url:
+              type: string
+              description: "La route authentifiee de la photo (jamais une URL publique)."
+
+    TuteurDuDossier:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - relation
+        - nom
+      properties:
+        id:
+          type: integer
+        relation:
+          type: string
+          enum: [pere, mere, tuteur, autre, null]
+          nullable: true
+          description: "La relation avec l eleve du lien ; nulle quand le tuteur est lu seul (modification)."
+        nom:
+          type: string
+        telephone:
+          type: string
+          nullable: true
+        courriel:
+          type: string
+          nullable: true
+        profession:
+          type: string
+          nullable: true
+        adresse:
+          type: string
+          nullable: true
+
+    TuteurReponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/TuteurDuDossier'
+
+    DossierDEleveReponse:
+      type: object
+      description: |
+        #1657. `dossier` est complet pour la gestion et l eleve lui-meme ; reduit a `matricule`, `nom`,
+        `prenoms` et `photo_url` pour un enseignant d une de ses classes ; nul tant qu une ecole autonome
+        ne l a pas cree.
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - eleve_id
+            - source
+            - dossier
+          properties:
+            eleve_id:
+              type: integer
+            source:
+              type: string
+              enum: [lms, klassci]
+            dossier:
+              type: object
+              nullable: true
+              additionalProperties: false
+              properties:
+                matricule:
+                  type: string
+                  nullable: true
+                nom:
+                  type: string
+                  nullable: true
+                prenoms:
+                  type: string
+                  nullable: true
+                genre:
+                  type: string
+                  enum: [F, M, null]
+                  nullable: true
+                date_naissance:
+                  type: string
+                  format: date
+                  nullable: true
+                lieu_naissance:
+                  type: string
+                  nullable: true
+                nationalite:
+                  type: string
+                  nullable: true
+                adresse:
+                  type: string
+                  nullable: true
+                ville:
+                  type: string
+                  nullable: true
+                commune:
+                  type: string
+                  nullable: true
+                statut:
+                  type: string
+                  enum: [actif, suspendu, diplome, parti, null]
+                  nullable: true
+                photo_url:
+                  type: string
+                  nullable: true
+                  description: "La route authentifiee de la photo (`GET /eleves/{eleve}/photo`), ou nulle sans photo."
+                tuteurs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TuteurDuDossier'
+
     ValidationFailed:
       type: object
       properties:
@@ -4422,6 +4811,12 @@ components:
             - attendance_managed_by_klassci
             - seance_not_started
             - student_not_in_seance
+            - attendance_code_unknown
+            - attendance_code_expired
+            - already_marked_by_teacher
+            - seance_not_justifiable
+            - no_absence_in_range
+            - justification_already_decided
             - klassci_account_refused
             - account_quota_exceeded
             - account_daily_cap_reached
@@ -4453,6 +4848,89 @@ components:
     # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
     # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
     # le code machine est `reason` (ADR-906-01, ADR-919-01).
+    CategorieDeQuestions:
+      type: object
+      description: "#1702 : une categorie de la banque de questions d un enseignant, pour une matiere (id local)."
+      required: [id, matiere_id, enseignant_id, libelle, nombre_de_questions]
+      properties:
+        id:
+          type: integer
+        matiere_id:
+          type: integer
+        enseignant_id:
+          type: integer
+        libelle:
+          type: string
+        nombre_de_questions:
+          type: integer
+    CategorieDeQuestionsSaisie:
+      type: object
+      required: [matiere_id, libelle]
+      properties:
+        matiere_id:
+          type: integer
+          description: "Une matiere de l ecole (id local)."
+        libelle:
+          type: string
+          maxLength: 150
+    QuestionDeBanque:
+      type: object
+      description: "#1702 : une question de la banque, avec les champs d une question d evaluation. Le tirage la COPIE dans l evaluation a sa publication."
+      required: [id, categorie_id, question, type, points, options, correct_answers, explanation]
+      properties:
+        id:
+          type: integer
+        categorie_id:
+          type: integer
+        question:
+          type: string
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        points:
+          type: number
+        options:
+          type: array
+          nullable: true
+          items:
+            type: string
+        correct_answers:
+          type: array
+          nullable: true
+          items:
+            type: string
+        explanation:
+          type: string
+          nullable: true
+    QuestionDeBanqueSaisie:
+      type: object
+      description: "Les regles d une question d evaluation (options bornees, vrai_faux = Vrai/Faux, bonnes reponses parmi les options)."
+      required: [question, type]
+      properties:
+        question:
+          type: string
+          maxLength: 1000
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        points:
+          type: number
+          minimum: 0
+          nullable: true
+        options:
+          type: array
+          nullable: true
+          items:
+            type: string
+        correct_answers:
+          type: array
+          nullable: true
+          items:
+            type: string
+        explanation:
+          type: string
+          nullable: true
+          maxLength: 2000
     ReclamationDeNote:
       type: object
       description: "#1678 : la reclamation d une note."
@@ -5562,6 +6040,732 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/ValidationFailed'
                   - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/codes-emargement:
+    post:
+      tags:
+        - Visio
+      operationId: genererCodeEmargement
+      summary: "Generer le code d'emargement d'une seance"
+      description: |
+        #1680. L'auteur de la seance ou la gestion genere un code de 6
+        caracteres dictables, valable de 60 a 1440 minutes, avec un seuil de
+        retard facultatif (minutes apres le debut). Le code est rendu en clair
+        UNE seule fois ; il est garde en empreinte (HMAC). Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [seance_id, duree_minutes]
+              properties:
+                seance_id:
+                  type: integer
+                  minimum: 1
+                duree_minutes:
+                  type: integer
+                  minimum: 60
+                  maximum: 1440
+                retard_apres_minutes:
+                  type: integer
+                  minimum: 0
+                  maximum: 240
+                  nullable: true
+      responses:
+        '201':
+          description: "Le code, en clair une seule fois"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeEmargementGenere'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'emargement se fait dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "Aucun code libre n'a pu etre tire ; reessayer."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Visio
+      operationId: listerCodesEmargement
+      parameters:
+        - name: seance_id
+          in: query
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Les codes d'emargement d'une seance et leurs statistiques"
+      description: |
+        #1680. Du plus recent au plus ancien, jamais le code en clair :
+        validite, revocation, signatures nouvelles du code, eleves actifs
+        attendus et taux arrondi (en %). Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les codes"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodesEmargementDeLaSeance'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'emargement se fait dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "`seance_id` absent ou invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/codes-emargement/{codeId}:
+    delete:
+      tags:
+        - Visio
+      operationId: revoquerCodeEmargement
+      parameters:
+        - name: codeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Revoquer un code d'emargement"
+      description: |
+        #1680. Le code ne signe plus (410 a l'eleve). Les marques deja posees
+        restent. Revoquer deux fois ne change rien. Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Code revoque"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Code introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'emargement se fait dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/emargement:
+    post:
+      tags:
+        - Visio
+      operationId: signerParCode
+      summary: "L'eleve signe une seance par son code d'emargement"
+      description: |
+        #1680. Le code (casse et espaces indifferents) est cherche dans l'ecole
+        de l'eleve. Seul un eleve ACTIF de la classe de la seance signe. Marque
+        `present`, ou `late` au-dela du seuil apres le debut ; origine `code`.
+        Rejouee, la signature ne double rien (`deja_signe`). Le code n'ecrase
+        jamais la marque de l'enseignant (409 `already_marked_by_teacher`).
+        Chaque code inconnu ou perime compte un echec : 10 par eleve sur 10
+        minutes, puis 429 `attendance_code_attempts_exceeded` avec
+        `Retry-After`. Ecole KLASSCI : 409.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 12
+      responses:
+        '200':
+          description: "La signature"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignatureParCode'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Code inconnu dans l'etablissement (`attendance_code_unknown`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '409':
+          description: "Deja marque par l'enseignant (`already_marked_by_teacher`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '410':
+          description: "Code expire ou revoque (`attendance_code_expired`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide (`errors`), ou eleve hors des eleves actifs de la classe (`student_not_in_seance`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationFailed'
+                  - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/mes-absences:
+    get:
+      tags:
+        - Visio
+      operationId: mesAbsences
+      summary: "Les absences justifiables de l'eleve"
+      description: |
+        #1681. Ses seances PASSEES, dans ses classes actives, ou sa presence retenue
+        n'est pas « present » (un retard est une presence ; une absence deja
+        excusee n'y figure plus), de la plus recente a la plus ancienne, avec l'etat
+        du justificatif qui la vise.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les absences"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsencesDeLEleve'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/mes-justificatifs:
+    get:
+      tags:
+        - Visio
+      operationId: mesJustificatifs
+      summary: "Les justificatifs deposes par l'eleve"
+      description: |
+        #1681. Du plus recent au plus ancien, avec leur etat et le motif d'un rejet.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les justificatifs"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifsDeLEleve'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs:
+    post:
+      tags:
+        - Visio
+      operationId: deposerJustificatif
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [motif]
+              properties:
+                motif:
+                  type: string
+                  maxLength: 1000
+                seance_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: integer
+                    minimum: 1
+                  description: "Les seances nommees ; sinon `du` et `au`."
+                du:
+                  type: string
+                  format: date
+                au:
+                  type: string
+                  format: date
+                piece:
+                  type: string
+                  format: binary
+                  description: "Facultative : pdf, jpg ou png, 10 Mo au plus."
+      summary: "L'eleve depose un justificatif d'absence"
+      description: |
+        #1681. Un motif, les seances nommees OU une plage de dates, une piece
+        facultative ; la piece a son propre stockage. Chaque seance nommee doit etre
+        une absence justifiable de l'eleve ; une plage vise ses absences
+        justifiables.
+      security:
+        - sanctum: []
+      responses:
+        '201':
+          description: "Le justificatif depose"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifAbsenceRendu'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des eleves ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance hors des classes actives de l'eleve."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Seance a venir (`seance_not_started`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide (`errors`), seance qui n'est pas une absence (`seance_not_justifiable`), ou plage sans absence (`no_absence_in_range`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationFailed'
+                  - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: "La piece n'a pas pu etre enregistree."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Visio
+      operationId: listerJustificatifs
+      parameters:
+        - name: etat
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [en_attente, validee, rejetee]
+        - name: eleve_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: du
+          in: query
+          required: false
+          description: "Date de depot, a partir de."
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Les justificatifs de l'ecole, pour la gestion"
+      description: |
+        #1681. Filtres par etat, eleve et dates de depot ; 25 par page, du plus
+        recent au plus ancien. Les compteurs par etat ignorent le filtre d'etat.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les justificatifs et les compteurs"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifsDeLaGestion'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole (coordinateur, admin d'ecole) ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Filtres invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs/{justificatifId}/valider:
+    post:
+      tags:
+        - Visio
+      operationId: validerJustificatif
+      parameters:
+        - name: justificatifId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      summary: "La gestion valide un justificatif"
+      description: |
+        #1681. Chaque seance visee dont la presence retenue n'est pas « present »
+        passe a `excused` (origine `delegated`, qui et quand) ; une presence n'est
+        jamais ecrasee ; l'ancienne marque est journalisee. Decision definitive ;
+        l'eleve est notifie.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le justificatif valide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifAbsenceRendu'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole (coordinateur, admin d'ecole) ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Justificatif introuvable dans l'ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Deja tranche (`justification_already_decided`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs/{justificatifId}/rejeter:
+    post:
+      tags:
+        - Visio
+      operationId: rejeterJustificatif
+      parameters:
+        - name: justificatifId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [motif]
+              properties:
+                motif:
+                  type: string
+                  maxLength: 1000
+      summary: "La gestion rejette un justificatif"
+      description: |
+        #1681. Motif obligatoire ; aucune marque n'est touchee. Decision definitive ;
+        l'eleve est notifie.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le justificatif rejete"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JustificatifAbsenceRendu'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole (coordinateur, admin d'ecole) ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Justificatif introuvable dans l'ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Deja tranche (`justification_already_decided`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Motif absent ou trop long."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/justificatifs/{justificatifId}/piece:
+    get:
+      tags:
+        - Visio
+      operationId: lirePieceJustificative
+      parameters:
+        - name: justificatifId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      summary: "La piece d'un justificatif"
+      description: |
+        #1681. Pour l'eleve deposant et la gestion de son ecole ; pour tout autre
+        lecteur, la piece n'existe pas (404).
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "La piece, en piece jointe."
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Piece introuvable pour ce lecteur."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les absences se justifient dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -7275,6 +8479,602 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /eleves/{eleve}/dossier:
+    get:
+      tags:
+        - Eleves
+      operationId: lireLeDossierDeLEleve
+      summary: "Lire le dossier d un eleve"
+      description: |
+        #1657. La gestion et l eleve lui-meme lisent tout. Un enseignant d une classe de l eleve ne lit
+        que `matricule`, `nom`, `prenoms` et `photo_url` (loi 2013-450). Tout autre compte : 403. Un eleve
+        d une autre ecole, un compte qui n est pas un eleve, ou un id absent : 404, du meme corps.
+
+        `source` : `lms` (ecole autonome ; `dossier` est nul tant qu il n existe pas) ou `klassci` (ce que
+        le LMS recoit de KLASSCI, nom et prenom ; les autres champs sont nuls, non fournis).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Le dossier, selon le lecteur"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierDEleveReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Ni la gestion, ni l eleve lui-meme, ni un enseignant d une de ses classes. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Eleves
+      operationId: ecrireLeDossierDeLEleve
+      summary: "Creer ou mettre a jour le dossier d un eleve (ecole autonome)"
+      description: |
+        #1657. Gestion d une ecole autonome. Cree le dossier (201) ou le met a jour (200) ; seuls les
+        champs recus changent. Le matricule est GENERE a la creation selon le gabarit de l ecole
+        (`{AAAA}-{NNNN}` par defaut), ou saisi : unique dans l ecole (422 sinon). `nom` et `prenoms`
+        vivent dans le dossier ; le nom du compte en est recalcule.
+
+        Doublon possible (memes nom, prenoms et date de naissance sans casse ni accents, ou meme
+        telephone) : 409 `doublon_possible` avec `candidats`, sauf `confirmer_doublon`. Ecole KLASSCI :
+        403 `catalogue_managed_by_klassci`. Aucun champ libre (loi 2013-450).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - nom
+                - prenoms
+              properties:
+                matricule:
+                  type: string
+                  maxLength: 40
+                nom:
+                  type: string
+                  maxLength: 100
+                prenoms:
+                  type: string
+                  maxLength: 150
+                genre:
+                  type: string
+                  enum: [F, M]
+                  nullable: true
+                date_naissance:
+                  type: string
+                  format: date
+                  nullable: true
+                lieu_naissance:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                nationalite:
+                  type: string
+                  description: "Code pays ISO 3166-1 alpha-2."
+                  nullable: true
+                adresse:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+                ville:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                commune:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                statut:
+                  type: string
+                  enum: [actif, suspendu, diplome, parti]
+                confirmer_doublon:
+                  type: boolean
+      responses:
+        '200':
+          description: "Dossier mis a jour"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierDEleveReponse'
+        '201':
+          description: "Dossier cree"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierDEleveReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "Un eleve semblable existe deja (`reason: doublon_possible`) : rien n est ecrit."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                  - candidats
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum: [doublon_possible]
+                  candidats:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - eleve_id
+                        - nom
+                        - prenoms
+                        - matricule
+                      properties:
+                        eleve_id:
+                          type: integer
+                        nom:
+                          type: string
+                        prenoms:
+                          type: string
+                        matricule:
+                          type: string
+        '422':
+          description: "Champ absent ou invalide ; matricule deja pris dans l ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/photo:
+    get:
+      tags:
+        - Eleves
+      operationId: lireLaPhotoDeLEleve
+      summary: "La photo d un eleve"
+      description: |
+        #1657 (PR 2). Servie par cette route seule, jamais par une URL publique, selon les regles de
+        lecture du dossier : la gestion, l eleve lui-meme, un enseignant d une de ses classes. Une image
+        JPEG re-encodee par le serveur.
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La photo"
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Ni la gestion, ni l eleve lui-meme, ni un enseignant d une de ses classes. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement, ou sans photo."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Eleves
+      operationId: deposerLaPhotoDeLEleve
+      summary: "Deposer la photo d un eleve (ecole autonome)"
+      description: |
+        #1657 (PR 2). Gestion d une ecole autonome, sur un eleve qui a un dossier. Une image JPEG, PNG ou
+        WebP (type lu sur le contenu), 5 Mo au plus. Le serveur la DECODE puis la RE-ENCODE en JPEG, 512 px
+        au plus de cote : le fichier d origine et ses metadonnees ne sont jamais gardes. Stockage prive.
+        Remplace la photo precedente (201 la premiere fois, 200 ensuite).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - photo
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: "Photo remplacee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoDEleveReponse'
+        '201':
+          description: "Premiere photo"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoDEleveReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas encore de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Pas de photo, type refuse, plus de 5 Mo, ou fichier qui ne se decode pas comme une image."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Eleves
+      operationId: retirerLaPhotoDeLEleve
+      summary: "Retirer la photo d un eleve (ecole autonome)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Photo retiree, fichier supprime"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/tuteurs:
+    post:
+      tags:
+        - Eleves
+      operationId: lierUnTuteur
+      summary: "Lier un tuteur a un eleve (ecole autonome)"
+      description: |
+        #1657. Un tuteur NEUF (`nom` et coordonnees), ou EXISTANT dans l ecole (`tuteur_id`) : il se
+        partage alors entre freres et soeurs. Il faut le dossier de l eleve d abord (409
+        `dossier_absent`). Un tuteur d une autre ecole est introuvable (404). Aucun champ libre.
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - relation
+              properties:
+                relation:
+                  type: string
+                  enum: [pere, mere, tuteur, autre]
+                tuteur_id:
+                  type: integer
+                nom:
+                  type: string
+                  maxLength: 150
+                telephone:
+                  type: string
+                  maxLength: 30
+                  nullable: true
+                courriel:
+                  type: string
+                  format: email
+                  nullable: true
+                profession:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                adresse:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+      responses:
+        '201':
+          description: "Tuteur lie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TuteurReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve ou tuteur introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas encore de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Relation inconnue, nom absent pour un tuteur neuf, courriel invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/tuteurs/{tuteur}:
+    delete:
+      tags:
+        - Eleves
+      operationId: delierUnTuteur
+      summary: "Retirer un tuteur d un eleve"
+      description: |
+        #1657. Retire le LIEN ; un tuteur qui n a plus aucun eleve est retire aussi (donnee devenue
+        inutile, loi 2013-450).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+        - name: tuteur
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Lien retire"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve, tuteur ou lien introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /tuteurs/{tuteur}:
+    put:
+      tags:
+        - Eleves
+      operationId: modifierUnTuteur
+      summary: "Modifier les coordonnees d un tuteur (ecole autonome)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: tuteur
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                nom:
+                  type: string
+                  maxLength: 150
+                telephone:
+                  type: string
+                  maxLength: 30
+                  nullable: true
+                courriel:
+                  type: string
+                  format: email
+                  nullable: true
+                profession:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                adresse:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+      responses:
+        '200':
+          description: "Tuteur modifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TuteurReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Tuteur introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Champ invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /users:
     post:
       tags:
@@ -8097,6 +9897,425 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KlassciIndisponible'
+
+  /banque/categories:
+    get:
+      tags:
+        - Evaluations
+      operationId: listerLesCategoriesDeQuestions
+      summary: "Les categories de la banque de questions (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: matiere_id
+          in: query
+          required: false
+          description: "Restreint a une matiere (id local)."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les categories visibles du lecteur."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CategorieDeQuestions'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Evaluations
+      operationId: creerUneCategorieDeQuestions
+      summary: "Creer une categorie de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorieDeQuestionsSaisie'
+      responses:
+        '201':
+          description: "La categorie creee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/CategorieDeQuestions'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /banque/categories/{id}:
+    patch:
+      tags:
+        - Evaluations
+      operationId: renommerUneCategorieDeQuestions
+      summary: "Renommer une categorie de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 150
+      responses:
+        '200':
+          description: "La categorie renommee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/CategorieDeQuestions'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Evaluations
+      operationId: supprimerUneCategorieDeQuestions
+      summary: "Supprimer une categorie et ses questions (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La categorie supprimee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    required: [id]
+                    properties:
+                      id:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /banque/categories/{id}/questions:
+    get:
+      tags:
+        - Evaluations
+      operationId: listerLesQuestionsDUneCategorie
+      summary: "Les questions d une categorie (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les questions, dans l ordre de creation."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QuestionDeBanque'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Evaluations
+      operationId: ajouterUneQuestionDeBanque
+      summary: "Ajouter une question a une categorie (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionDeBanqueSaisie'
+      responses:
+        '201':
+          description: "La question ajoutee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/QuestionDeBanque'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /banque/questions/{id}:
+    put:
+      tags:
+        - Evaluations
+      operationId: modifierUneQuestionDeBanque
+      summary: "Modifier une question de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionDeBanqueSaisie'
+      responses:
+        '200':
+          description: "La question modifiee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/QuestionDeBanque'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Evaluations
+      operationId: supprimerUneQuestionDeBanque
+      summary: "Supprimer une question de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La question supprimee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    required: [id]
+                    properties:
+                      id:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /evaluations/{id}/reclamations:
     post:
@@ -12198,7 +14417,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
         '404':
-          description: "Not found"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
             Erreur de validation (`errors`), `is_published` envoye (`publish_via_dedicated_route`, la
@@ -12261,7 +14484,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
         '404':
-          description: "Not found"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # ============ CYCLE EVALUATION (#892) ============
   # Chaque code et chaque cle ci-dessous a ete MESURE par appel reel de la
@@ -13138,13 +15365,18 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
             Aucune question (`reason: evaluation_without_questions`, C16, le meme refus que la mise
@@ -13258,14 +15490,19 @@ paths:
         '403':
           description: |
             Role insuffisant, enseignant non proprietaire, coordinateur sur une
-            evaluation non terminee — ou evaluation inconnue dans cet
-            etablissement : elle rend 403, pas 404. Seul le refus du coordinateur
+            evaluation non terminee (dans son ecole). Seul le refus du coordinateur
             porte `reason: preview_requires_finished_evaluation`.
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusApercuEvaluation'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -13367,13 +15604,18 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, enseignant non proprietaire — ou evaluation
-            inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -13458,15 +15700,14 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '404':
-          description: "Copie inexistante, ou appartenant a une autre evaluation"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs. Aussi : copie inexistante, ou appartenant a une autre evaluation"
           content:
             application/json:
               schema:
@@ -13647,13 +15888,18 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
-            Role insuffisant, enseignant non proprietaire — ou evaluation
-            inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '503':
@@ -13817,15 +16063,14 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '404':
-          description: "KLASSCI ne connait pas cette evaluation, relaye. Rien n est marque."
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs. Aussi : KLASSCI ne connait pas cette evaluation, relaye. Rien n est marque."
           content:
             application/json:
               schema:
@@ -14606,7 +16851,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [lesson_published, forum_reply, quiz_available, grade_received, lesson_updated, forum_solution, quiz_deadline, visio_scheduled, visio_starting, evaluation_approaching, annonce, reclamation_deposee, reclamation_a_trancher, reclamation_tranchee]
+            enum: [lesson_published, forum_reply, quiz_available, grade_received, lesson_updated, forum_solution, quiz_deadline, visio_scheduled, visio_starting, evaluation_approaching, annonce, absence_justification_decided, reclamation_deposee, reclamation_a_trancher, reclamation_tranchee]
         - name: per_page
           in: query
           schema:

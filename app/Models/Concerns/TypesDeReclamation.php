@@ -19,4 +19,7 @@ trait TypesDeReclamation
 
     /** La réclamation est tranchée : l'élève est averti. */
     public const TYPE_RECLAMATION_TRANCHEE = 'reclamation_tranchee';
+
+    /** Les trois, que `Notification::TYPES` étale dans sa liste blanche. */
+    public const TYPES_DE_RECLAMATION = [self::TYPE_RECLAMATION_DEPOSEE, self::TYPE_RECLAMATION_A_TRANCHER, self::TYPE_RECLAMATION_TRANCHEE];
 }

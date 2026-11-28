@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Attendances\Appel;
 
 use App\Exceptions\BusinessException;
+use App\Models\Seance;
 use App\Models\User;
 
 /**
@@ -23,6 +24,12 @@ final class KlassciSaisieDeLAppel implements SaisieDeLAppel
     public function saisir(int $seanceId, User $acteur, array $marques): void
     {
         throw self::refus();
+    }
+
+    /** L'appel se fait dans KLASSCI : aucune carte ne l'offre ici. */
+    public function peutSaisir(Seance $seance, User $lecteur): bool
+    {
+        return false;
     }
 
     private static function refus(): BusinessException

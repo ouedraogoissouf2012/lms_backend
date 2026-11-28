@@ -69,6 +69,9 @@ class Notification extends Model
 
     public const TYPE_EVALUATION_APPROACHING = 'evaluation_approaching';
 
+    /** #1681 : la gestion a tranché un justificatif d'absence de l'élève. */
+    public const TYPE_ABSENCE_JUSTIFICATION_DECIDED = 'absence_justification_decided';
+
     /** #1650 : une annonce du personnel à toute une classe (`data.annonce_id`). */
     public const TYPE_ANNONCE = 'annonce';
 
@@ -77,7 +80,7 @@ class Notification extends Model
         self::TYPE_LESSON_PUBLISHED, self::TYPE_FORUM_REPLY, self::TYPE_QUIZ_AVAILABLE, self::TYPE_GRADE_RECEIVED,
         self::TYPE_LESSON_UPDATED, self::TYPE_FORUM_SOLUTION, self::TYPE_QUIZ_DEADLINE, self::TYPE_VISIO_SCHEDULED,
         self::TYPE_VISIO_STARTING, self::TYPE_EVALUATION_APPROACHING, self::TYPE_ANNONCE,
-        self::TYPE_RECLAMATION_DEPOSEE, self::TYPE_RECLAMATION_A_TRANCHER, self::TYPE_RECLAMATION_TRANCHEE,
+        self::TYPE_ABSENCE_JUSTIFICATION_DECIDED, ...self::TYPES_DE_RECLAMATION,
     ];
 
     /**

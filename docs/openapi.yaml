@@ -4965,6 +4965,27 @@ components:
     # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
     # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
     # le code machine est `reason` (ADR-906-01, ADR-919-01).
+    RegleDeTirage:
+      type: object
+      description: "#1702 : une regle de tirage au sort d une evaluation."
+      required: [id, categorie_id, libelle, nombre, disponibles, avertissement]
+      properties:
+        id:
+          type: integer
+        categorie_id:
+          type: integer
+          nullable: true
+          description: "Nulle si la categorie a disparu de la banque apres la publication (le vivier copie reste)."
+        libelle:
+          type: string
+          nullable: true
+        nombre:
+          type: integer
+        disponibles:
+          type: integer
+        avertissement:
+          type: string
+          nullable: true
     CategorieDeQuestions:
       type: object
       description: "#1702 : une categorie de la banque de questions d un enseignant, pour une matiere (id local)."
@@ -10656,6 +10677,144 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /evaluations/{id}/tirages:
+    get:
+      tags:
+        - Evaluations
+      operationId: lireLesTirages
+      summary: "Les regles de tirage au sort d une evaluation (#1702)"
+      description: |
+        Chaque regle tire `nombre` questions d une categorie de la banque. `disponibles` dit ce
+        que la categorie offre ; `avertissement` signale une banque de moins de deux fois le
+        nombre a tirer (recommandation, pas un refus).
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les regles, dans leur ordre de definition."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RegleDeTirage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Ecriture : ni auteur ni admin de l ecole (le coordinateur ne modifie pas une evaluation) ; lecture : sans droit sur les notes ; ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evaluation introuvable : absente, supprimee ou d une autre ecole (#1782)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Evaluations
+      operationId: definirLesTirages
+      summary: "Definir les regles de tirage au sort d une evaluation (#1702)"
+      description: |
+        Remplace les regles. Avant la publication seulement (409 `draw_rules_locked`). Chaque
+        categorie doit etre de l AUTEUR de l evaluation et de SA matiere (422
+        `question_category_out_of_scope`). A la publication, chaque categorie est COPIEE dans
+        l evaluation (le vivier) : une modification ulterieure de la banque ne change jamais
+        une epreuve publiee ; au demarrage, `nombre` questions du vivier sont tirees et figees
+        sur la copie de l eleve.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tirages]
+              properties:
+                tirages:
+                  type: array
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [categorie_id, nombre]
+                    properties:
+                      categorie_id:
+                        type: integer
+                      nombre:
+                        type: integer
+                        minimum: 1
+                        maximum: 200
+      responses:
+        '200':
+          description: "Les regles definies."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RegleDeTirage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Ecriture : ni auteur ni admin de l ecole (le coordinateur ne modifie pas une evaluation) ; lecture : sans droit sur les notes ; ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evaluation introuvable : absente, supprimee ou d une autre ecole (#1782)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Evaluation deja publiee (`draw_rules_locked`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), ou categorie hors de l auteur et de la matiere (`question_category_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /classes:
     post:
       tags:
@@ -15700,6 +15859,10 @@ paths:
           description: |
             Aucune question (`reason: evaluation_without_questions`, C16, le meme refus que la mise
             a jour d une evaluation publiee), ou evaluation deja terminee (sans `reason`).
+
+            #1702 : `reason: question_pool_invalid`, le tirage au sort ne peut pas etre constitue ;
+            `errors.tirages.N` dit pourquoi pour chaque regle (categorie disparue, moins de questions
+            que le nombre a tirer, ou des points inegaux, en NOMMANT les questions qui s ecartent).
           content:
             application/json:
               schema:
@@ -15717,6 +15880,14 @@ paths:
                     type: string
                     enum:
                       - evaluation_without_questions
+                      - question_pool_invalid
+                  errors:
+                    type: object
+                    description: "`question_pool_invalid` : le detail par regle (`tirages.N`)."
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
 
   /evaluations/{id}/preview:
     get:

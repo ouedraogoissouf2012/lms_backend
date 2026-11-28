@@ -62,6 +62,8 @@ return [
         // #1702 (D1) : la banque de questions.
         'categories_de_questions',
         'questions_de_banque',
+        // #1702 (D3) : les règles de tirage d'une évaluation.
+        'tirages_d_evaluation',
         'seances',
         'esbtp_attendance',
         // #1680 : les codes d'émargement d'une séance.

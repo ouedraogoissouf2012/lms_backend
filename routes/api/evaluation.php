@@ -10,6 +10,7 @@ use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
 use App\Http\Controllers\API\Evaluation\EvaluationReleaseController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
+use App\Http\Controllers\API\Evaluation\EvaluationTiragesController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentListController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentSubmissionController;
@@ -76,6 +77,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:evaluations.gerer
     Route::post('banque/categories/{id}/questions', [BanqueDeQuestionsController::class, 'ajouterQuestion'])->whereNumber('id');
     Route::put('banque/questions/{id}', [BanqueDeQuestionsController::class, 'modifierQuestion'])->whereNumber('id');
     Route::delete('banque/questions/{id}', [BanqueDeQuestionsController::class, 'supprimerQuestion'])->whereNumber('id');
+
+    // #1702 (D3) : les règles de tirage au sort d'une évaluation.
+    Route::get('evaluations/{id}/tirages', [EvaluationTiragesController::class, 'lire'])->whereNumber('id');
+    Route::put('evaluations/{id}/tirages', [EvaluationTiragesController::class, 'definir'])->whereNumber('id');
 });
 
 // Routes du personnel (permission `evaluations.gerer`, #1665) pour les résultats d'évaluations

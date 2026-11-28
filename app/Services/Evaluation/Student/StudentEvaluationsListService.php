@@ -8,6 +8,7 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Support\Evaluation\NombreDeQuestionsPosees;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
@@ -89,8 +90,8 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
         // Ce que cette liste doit vraiment porter est plus étroit : le NOMBRE
         // de questions, et la propre copie de l'élève, que `enrichEvaluation`
         // allait déjà chercher séparément.
-        $evaluationsLMS = $this->scope->visibleIn($classeId, $user->institution_id)
-            ->withCount('questions')
+        // #1702 (D3) : le nombre de questions POSÉES (un tirage n'annonce jamais son vivier).
+        $evaluationsLMS = NombreDeQuestionsPosees::charger($this->scope->visibleIn($classeId, $user->institution_id))
             ->orderBy('date_evaluation', 'desc')
             ->get();
 
@@ -146,7 +147,7 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
 
         // `withCount` a déjà posé le compte : plus besoin de charger les
         // questions elles-mêmes pour les dénombrer.
-        $evalArray['questions_count'] = (int) $evalLMS->questions_count;
+        $evalArray['questions_count'] = NombreDeQuestionsPosees::de($evalLMS);
         // Sa copie, par l'UNIQUE définition de la propriété d'une copie, sans
         // sa note si les résultats ne sont pas visibles (C25).
         $evalArray['student_submission'] = ResultatsVisibles::masquer(

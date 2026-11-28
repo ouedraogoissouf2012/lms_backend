@@ -6,6 +6,7 @@ namespace App\Services\Evaluation;
 
 use App\Models\Evaluation;
 use App\Models\User;
+use App\Services\Evaluation\Tirage\ViviersDesTirages;
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 
@@ -42,6 +43,7 @@ final class EvaluationStateService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
+        private readonly ViviersDesTirages $viviers,
     ) {}
 
     /**
@@ -89,7 +91,10 @@ final class EvaluationStateService
         // publication, puis relit l'évaluation publiée sur la ligne.
         $refus = $this->db->transaction(function () use ($evaluation): ?array {
             $this->verrouiller($evaluation);
-            $refus = $this->refusSansQuestion($evaluation->questions()->count())
+            // #1702 (D3) : le vivier des tirages est copié de la banque, sous ce verrou, avant le
+            // comptage ; une banque qui ne permet pas le tirage refuse la publication.
+            $refus = $this->viviers->constituer($evaluation)
+                ?? $this->refusSansQuestion($evaluation->questions()->count())
                 ?? ($evaluation->isTerminee() ? $this->refusTerminee() : null);
             if ($refus === null) {
                 // Publication : visible aux étudiants, statut planifiée (= prête).

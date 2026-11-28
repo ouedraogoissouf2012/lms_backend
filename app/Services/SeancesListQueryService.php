@@ -166,7 +166,8 @@ final class SeancesListQueryService implements SeancesListReader
      */
     private static function nonModifiables(array $cartes): array
     {
-        return array_map(static fn (array $carte): array => array_merge($carte, ['can_be_edited' => false]), $cartes);
+        // front#719 : l'appel non plus ne se fait pas ici, mais dans KLASSCI.
+        return array_map(static fn (array $carte): array => array_merge($carte, ['can_be_edited' => false, 'can_take_attendance' => false]), $cartes);
     }
 
     /**

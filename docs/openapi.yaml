@@ -2135,7 +2135,7 @@ components:
               items:
                 type: object
                 additionalProperties: false
-                required: [user_id, nom, mark, origin, delegated_at]
+                required: [user_id, nom, mark, origin, delegated_at, presence_visio]
                 properties:
                   user_id:
                     type: integer
@@ -2153,6 +2153,11 @@ components:
                     type: string
                     format: date-time
                     nullable: true
+                  presence_visio:
+                    type: string
+                    nullable: true
+                    enum: [connected, disconnected, kicked, null]
+                    description: "La connexion visio de l'eleve, a cote de sa marque ; nulle sans visio."
 
     TypeDeSeance:
       type: string
@@ -2342,6 +2347,14 @@ components:
             compris pour une seance creee dans le LMS. Ecole creee depuis le LMS :
             `true` si le lecteur en est l'auteur ou la gere, que la seance n'est
             pas passee et que sa visio n'est pas en cours.
+        can_take_attendance:
+          type: boolean
+          description: |
+            front#719 : ce lecteur peut-il faire l'appel (`PUT
+            /lms/seances/{seanceId}/appel`) ? Calcule par la porte de l'appel.
+            Ecole creee depuis KLASSCI : toujours `false` (l'appel s'y fait dans
+            KLASSCI). Ecole creee depuis le LMS : `true` si le lecteur en est
+            l'auteur ou la gere, et que la seance a commence.
 
     # Les enseignants de l'etablissement (lot 3b).
     EnseignantsAnnuaire:

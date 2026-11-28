@@ -9,6 +9,7 @@ use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
+use App\Services\Attendances\Appel\LocalSaisieDeLAppel;
 use App\Services\Classe\ClassesAtteintes;
 use App\Services\Enrollment\InscriptionNonActive;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,6 +38,7 @@ final class SeancesLocalesVisibles
     public function __construct(
         private readonly SeanceCalendarProjection $projection,
         private readonly LocalModificationDeSeance $modification,
+        private readonly LocalSaisieDeLAppel $appel,
     ) {}
 
     /** @return Builder<Seance> */
@@ -130,7 +132,11 @@ final class SeancesLocalesVisibles
             $matiere = $seance->matiere_id !== null ? ($matieres[$seance->matiere_id] ?? null) : null;
 
             return $this->projection->project($seance, SeanceIdentite::locale($seance, is_string($auteur) ? $auteur : null, $classe, $matiere))
-                + ['can_be_edited' => $this->modification->peutModifier($seance, $lecteur)];
+                + [
+                    'can_be_edited' => $this->modification->peutModifier($seance, $lecteur),
+                    // front#719 : ce lecteur peut-il faire l'appel ? La porte de l'appel le dit.
+                    'can_take_attendance' => $this->appel->peutSaisir($seance, $lecteur),
+                ];
         })->all());
     }
 

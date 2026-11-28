@@ -49,7 +49,12 @@ return [
         'dossiers_eleves',
         'tuteurs',
         'matricules_sequences',
+        // #1659 : les demandes d'inscription (institution_id NOT NULL).
+        'demandes_inscription',
         'creneaux',
+        // #1648 — filières et niveaux d'une école qui tient son catalogue ; tables neuves, NOT NULL.
+        'filieres',
+        'niveaux_etudes',
         // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
         'sous_periodes',
         'classes',

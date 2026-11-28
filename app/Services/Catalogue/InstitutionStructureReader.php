@@ -22,4 +22,18 @@ interface InstitutionStructureReader
      * @return array<string, mixed>
      */
     public function structure(): array;
+
+    /**
+     * Les filières seules, `GET /api/proxy/filieres` (#1648).
+     *
+     * @return array<string, mixed>
+     */
+    public function filieres(): array;
+
+    /**
+     * Les niveaux d'études seuls, `GET /api/proxy/niveaux-etudes` (#1648).
+     *
+     * @return array<string, mixed>
+     */
+    public function niveauxEtudes(): array;
 }

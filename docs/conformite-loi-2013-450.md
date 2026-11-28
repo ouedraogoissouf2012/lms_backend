@@ -40,6 +40,8 @@
 | Présences aux séances | celle du compte | la purge du compte de l'élève | la purge du compte (cascade) |
 | Progression dans les leçons et les quiz | celle du compte | la purge du compte de l'élève | la purge du compte (cascade) |
 | Messages du forum, notifications et fichiers déposés | celle du compte | la purge du compte | la purge du compte (cascade) |
+| Demandes d'inscription décidées (rejetées ou inscrites) | 90 jours | la décision | purge planifiée chaque nuit (`admissions:purge --apply`) |
+| Demandes d'inscription jamais traitées | 365 jours | le dépôt de la demande | purge planifiée chaque nuit (`admissions:purge --apply`) |
 
 **La purge d'un établissement reste manuelle**, par décision. Elle détruit une école entière, avec toutes ses
 données ; une telle destruction se déclenche à la main, après lecture d'une simulation (`purge:run institutions`),

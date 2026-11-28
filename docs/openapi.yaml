@@ -6945,6 +6945,124 @@ paths:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
 
+  /annonces:
+    post:
+      tags:
+        - Notifications
+      operationId: publierUneAnnonce
+      summary: "Annoncer a toute une classe"
+      description: |
+        #1650. Le personnel de l ecole (admin, superAdmin, coordinateur ; l enseignant pour ses
+        seules classes) annonce a toute une classe. L annonce est enregistree, et chaque eleve
+        inscrit et ACTIF de la classe en recoit une notification `annonce` (`data.annonce_id`,
+        `data.classe_id`). Les eleves viennent de la source d inscription de l ecole, dans les deux
+        types d ecole.
+
+        Si un canal de courriel existe, une tache en file ecrit aussi a chaque destinataire
+        (`courriel` vrai) ; sans canal, aucun courriel (`courriel` faux). Une classe sans eleve
+        n est pas une erreur : `destinataires` vaut 0.
+
+        `classe_id` est l id de la classe dans l ESPACE SOURCE de l ecole (`ClasseDeLEspaceSource`,
+        comme `/lms/classes/{classe}/resultats`) : l id KLASSCI dans une ecole KLASSCI, celui que
+        donnent ses ecrans de classe ; l id local dans une ecole autonome. La reponse le rend tel
+        quel. Limite nommee `annonce` (10 par minute et par compte).
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - classe_id
+                - titre
+                - message
+              properties:
+                classe_id:
+                  type: integer
+                  minimum: 1
+                titre:
+                  type: string
+                  maxLength: 150
+                message:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: "Annonce envoyee"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - classe_id
+                      - titre
+                      - destinataires
+                      - courriel
+                    properties:
+                      id:
+                        type: integer
+                      classe_id:
+                        type: integer
+                      titre:
+                        type: string
+                      destinataires:
+                        type: integer
+                        minimum: 0
+                        description: "Le nombre d eleves prevenus."
+                      courriel:
+                        type: boolean
+                        description: "Vrai si un courriel part aussi (canal disponible et au moins un eleve)."
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role hors du personnel de l ecole (eleve), ou enseignant hors de ses classes. Aussi,
+            sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: |
+            Classe introuvable : absente, supprimee, d une AUTRE ecole, ou designee hors de
+            l espace source (un id local dans une ecole KLASSCI). Le meme corps dans tous les cas
+            (isolation).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Classe, titre (150 au plus) ou message (2 000 au plus) absent ou invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /inscriptions/reglage:
     put:
       tags:
@@ -14289,27 +14407,102 @@ paths:
     get:
       tags:
         - Notifications
-      summary: "List notifications"
+      summary: "Les notifications de l appelant, paginees"
+      description: |
+        Les notifications de l APPELANT seul, les plus recentes d abord. `type` filtre sur un
+        type connu : `type=annonce` est le fil « Mes annonces » (#1650, front#690). La page
+        est gardee en cache 60 s, par appelant, filtre, taille et numero de page.
       security:
         - sanctum: []
       parameters:
-        - name: read
+        - name: unread_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: type
           in: query
           schema:
             type: string
-            enum: [true, false]
+            enum: [lesson_published, forum_reply, quiz_available, grade_received, lesson_updated, forum_solution, quiz_deadline, visio_scheduled, visio_starting, evaluation_approaching, annonce]
         - name: per_page
           in: query
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
             default: 10
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
       responses:
         '200':
-          description: "List of notifications"
+          description: "Une page de notifications"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - meta
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      required:
+                        - id
+                        - type
+                        - title
+                        - message
+                      properties:
+                        id:
+                          type: integer
+                        type:
+                          type: string
+                        title:
+                          type: string
+                        message:
+                          type: string
+                        data:
+                          type: object
+                          additionalProperties: true
+                          description: "Les donnees du type (`annonce_id`, `classe_id` pour une annonce). Toujours un objet, `{}` quand il est vide."
+                        read_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      last_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '422':
+          description: "`type` inconnu, `per_page` hors bornes, `page` ou `unread_only` invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

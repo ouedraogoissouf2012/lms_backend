@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * (`defaults('niveau', …)`), jamais par le client.
  *
  * À la création : `libelle` exigé, et le parent (`domaine_id` pour une mention, `mention_id` pour un parcours). À la
- * modification, seuls les champs envoyés changent ; `actif: false` désactive. Que le parent soit de l'école, c'est
+ * modification, seuls les champs envoyés changent ; `is_active: false` désactive. Que le parent soit de l'école, c'est
  * le service qui le dit (422 sous son champ).
  *
  * `authorize()` rend `true` : le rôle est vérifié par le groupe de la route, le droit par la porte du catalogue.
@@ -33,7 +33,7 @@ final class EcrireUnElementLmdRequest extends FormRequest
         $regles = [
             'libelle' => [$exige, 'string', 'max:191', 'not_regex:/^\s*$/'],
             'code' => ['sometimes', 'nullable', 'string', 'max:50'],
-            'actif' => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
 
         $parent = $this->niveau()->colonneDuParent();

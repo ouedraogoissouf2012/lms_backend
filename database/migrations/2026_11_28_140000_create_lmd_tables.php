@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * #1654 (PR A) — l'arbre LMD d'une école qui tient son catalogue : domaines → mentions → parcours.
  *
  * - `institution_id` NOT NULL, clé RESTRICT (déclarée dans `config/tenancy.php`) ; parents en RESTRICT : un élément
- *   ne se supprime pas, il se DÉSACTIVE (`actif`), car un parcours a pu porter des classes.
+ *   ne se supprime pas, il se DÉSACTIVE (`is_active`), car un parcours a pu porter des classes.
  * - Le code est facultatif ; donné, il est unique PAR NIVEAU et par école, à la casse et aux espaces près : colonne
  *   générée `code_local` (`UPPER(NULLIF(TRIM(code), ''))`) et unique `(institution_id, code_local)` par table. La
  *   base tranche ; plusieurs éléments sans code cohabitent.
@@ -42,7 +42,7 @@ return new class extends Migration
                 $t->string('libelle', 191);
                 $t->string('code', 50)->nullable();
                 $t->string('code_local', 50)->nullable()->virtualAs(self::CODE_NORMALISE);
-                $t->boolean('actif')->default(true);
+                $t->boolean('is_active')->default(true);
                 $t->timestamps();
                 $t->unique(['institution_id', 'code_local'], "{$table}_ecole_code_local_unique");
             });

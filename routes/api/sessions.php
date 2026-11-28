@@ -100,7 +100,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         }
 
         // L arbre LMD d une ecole qui tient son catalogue (#1654) : domaines, mentions, parcours. Le niveau est fixe
-        // par la route ; un element se desactive (`actif`), il ne se supprime pas. Ecole KLASSCI : 403 (KLASSCI
+        // par la route ; un element se desactive (`is_active`), il ne se supprime pas. Ecole KLASSCI : 403 (KLASSCI
         // n expose aucune structure LMD au LMS).
         Route::get('/lmd/arbre', [LMSArbreLmdController::class, 'index']);
         foreach (['domaines' => 'domaine', 'mentions' => 'mention', 'parcours' => 'parcours'] as $chemin => $niveau) {

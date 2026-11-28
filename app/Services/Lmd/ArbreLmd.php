@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
  * - Tout est borné EXPLICITEMENT à l'école (le scope multi-tenant est fail-OPEN) : un élément d'une autre école,
  *   404 ; un parent d'une autre école, 422 sous son champ.
  * - Le code est facultatif ; son unicité par niveau et par école est tranchée par la base (`code_local`) : 422
- *   `lmd_code_already_used`. Un élément ne se supprime pas : il se désactive (`actif`).
+ *   `lmd_code_already_used`. Un élément ne se supprime pas : il se désactive (`is_active`).
  */
 final class ArbreLmd
 {
@@ -63,7 +63,7 @@ final class ArbreLmd
 
     /**
      * @param  array<string, mixed>  $donnees
-     * @return array{id: int, libelle: string, code: string|null, actif: bool}
+     * @return array{id: int, libelle: string, code: string|null, is_active: bool}
      *
      * @throws BusinessException 403
      * @throws ValidationException 422
@@ -80,7 +80,7 @@ final class ArbreLmd
 
     /**
      * @param  array<string, mixed>  $modifications
-     * @return array{id: int, libelle: string, code: string|null, actif: bool}
+     * @return array{id: int, libelle: string, code: string|null, is_active: bool}
      *
      * @throws BusinessException 403, 404
      * @throws ValidationException 422
@@ -99,7 +99,7 @@ final class ArbreLmd
 
     /**
      * @param  array<string, mixed>  $donnees
-     * @return array{id: int, libelle: string, code: string|null, actif: bool}
+     * @return array{id: int, libelle: string, code: string|null, is_active: bool}
      *
      * @throws ValidationException
      */
@@ -112,7 +112,7 @@ final class ArbreLmd
             throw ValidationException::withMessages([$colonne => 'Ce parent n\'existe pas dans cet établissement.']);
         }
 
-        $colonnes = array_intersect_key($donnees, array_flip(array_filter(['libelle', 'code', 'actif', $colonne])));
+        $colonnes = array_intersect_key($donnees, array_flip(array_filter(['libelle', 'code', 'is_active', $colonne])));
         if (array_key_exists('libelle', $colonnes)) {
             $colonnes['libelle'] = trim(self::texte($colonnes['libelle']));
         }
@@ -134,7 +134,7 @@ final class ArbreLmd
     private function niveau(NiveauLmd $niveau, int $ecole, bool $actifsSeulement): array
     {
         return array_values($this->dansLEcole($niveau, $ecole)
-            ->when($actifsSeulement, fn (Builder $q) => $q->where('actif', true))
+            ->when($actifsSeulement, fn (Builder $q) => $q->where('is_active', true))
             ->orderBy('libelle')->orderBy('id')->get()->all());
     }
 
@@ -159,7 +159,7 @@ final class ArbreLmd
         return $niveau->modele()::query()->withoutGlobalScopes()->where('institution_id', $ecole);
     }
 
-    /** @return array{id: int, libelle: string, code: string|null, actif: bool} */
+    /** @return array{id: int, libelle: string, code: string|null, is_active: bool} */
     private static function vue(Model $element): array
     {
         $code = $element->getAttribute('code');
@@ -168,7 +168,7 @@ final class ArbreLmd
             'id' => self::cle($element),
             'libelle' => self::texte($element->getAttribute('libelle')),
             'code' => $code === null ? null : self::texte($code),
-            'actif' => (bool) $element->getAttribute('actif'),
+            'is_active' => (bool) $element->getAttribute('is_active'),
         ];
     }
 

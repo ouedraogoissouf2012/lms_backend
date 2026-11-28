@@ -17,7 +17,7 @@ use Tests\TestCase;
 /**
  * #1654 (PR A) — l'arbre LMD d'une école autonome : domaines → mentions → parcours.
  *
- * Chaque niveau se crée, se modifie, se désactive (`actif`), sans jamais se supprimer ; l'arbre se lit d'un bloc,
+ * Chaque niveau se crée, se modifie, se désactive (`is_active`), sans jamais se supprimer ; l'arbre se lit d'un bloc,
  * trié par libellé (`?actifs=1` n'en garde que les éléments actifs). Le code est facultatif ; donné, il est unique
  * PAR NIVEAU et par école, à la casse et aux espaces près (la base tranche) : 422 `lmd_code_already_used`. Un parent
  * d'une autre école : 422 sous son champ ; un élément d'une autre école : 404.
@@ -37,7 +37,7 @@ final class LArbreLmdTest extends TestCase
         $this->creer($gestion, 'domaines', ['libelle' => 'Droit'])->assertCreated();
         $info = $this->creer($gestion, 'mentions', ['libelle' => 'Informatique', 'domaine_id' => $sciences])->assertCreated()->json('data.id');
         $this->creer($gestion, 'parcours', ['libelle' => 'Génie logiciel', 'code' => 'GL', 'mention_id' => $info])->assertCreated()
-            ->assertJsonPath('data.libelle', 'Génie logiciel')->assertJsonPath('data.actif', true);
+            ->assertJsonPath('data.libelle', 'Génie logiciel')->assertJsonPath('data.is_active', true);
 
         $arbre = $this->asTenant($gestion)->getJson('/api/lmd/arbre')->assertOk()->json('data');
 
@@ -53,11 +53,11 @@ final class LArbreLmdTest extends TestCase
         $domaine = $this->creer($gestion, 'domaines', ['libelle' => 'Sciences'])->json('data.id');
         $mention = $this->creer($gestion, 'mentions', ['libelle' => 'Maths', 'domaine_id' => $domaine])->json('data.id');
 
-        $this->asTenant($gestion)->patchJson("/api/lmd/mentions/{$mention}", ['libelle' => 'Mathématiques', 'actif' => false])->assertOk()
-            ->assertJsonPath('data.libelle', 'Mathématiques')->assertJsonPath('data.actif', false);
+        $this->asTenant($gestion)->patchJson("/api/lmd/mentions/{$mention}", ['libelle' => 'Mathématiques', 'is_active' => false])->assertOk()
+            ->assertJsonPath('data.libelle', 'Mathématiques')->assertJsonPath('data.is_active', false);
 
         $tout = $this->asTenant($gestion)->getJson('/api/lmd/arbre')->assertOk()->json('data.0.mentions');
-        self::assertSame([['Mathématiques', false]], array_map(static fn (array $m): array => [$m['libelle'], $m['actif']], $tout));
+        self::assertSame([['Mathématiques', false]], array_map(static fn (array $m): array => [$m['libelle'], $m['is_active']], $tout));
         $this->asTenant($gestion)->getJson('/api/lmd/arbre?actifs=1')->assertOk()->assertJsonPath('data.0.mentions', []);
         self::assertSame(1, DB::table('lmd_mentions')->count());
     }

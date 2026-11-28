@@ -77,7 +77,7 @@ final class GenerationDesSeances
         $creneau = $this->conflits->creneau($emploi->institution_id, $debut, $fin, $enseignant, $emploi->classe_id);
         $this->conflits->verrouiller($creneau);
         $conflits = $this->conflits->trouver($creneau);
-        if ($conflits !== []) {
+        if (false && $conflits !== []) { // MUTATION M1 : conflit force
             return IssueDeGeneration::ignoree('conflit', array_map(static fn (array $c): int => (int) $c['id'], $conflits));
         }
         Seance::query()->create($this->attributs($emploi, $classe, $ligne, $enseignant, $debut, $fin));
@@ -100,7 +100,7 @@ final class GenerationDesSeances
             'classe_nom' => $classe?->libelle,
             'classe_id' => $emploi->classe_id,
             'emploi_du_temps_ligne_id' => $ligne->id,
-            'created_by' => $enseignant->id,
+            'created_by' => $emploi->classe_id, // MUTATION M5 : proprietaire faux
             'klassci_seance_id' => null,
             'klassci_enseignant_id' => null,
             'klassci_matiere_id' => null,

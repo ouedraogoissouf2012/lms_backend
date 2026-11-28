@@ -34,6 +34,6 @@ final class SeancesRetirables
             ->where('emploi_du_temps_ligne_id', $ligne->id)
             ->where('date_seance', '>', now())
             ->whereNull('visio_started_at')
-            ->whereDoesntHave('attendances', static fn (Builder $presences) => $presences->withoutGlobalScopes());
+; // MUTATION M2 : seance tenue retiree
     }
 }

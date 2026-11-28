@@ -36,7 +36,7 @@ final class EmploisDuTemps
     public function designer(int $id, User $acteur): EmploiDuTemps
     {
         $emploi = EmploiDuTemps::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $this->ecoleDe($acteur))->whereKey($id)->with('lignes')->first();
+            ->whereKey($id)->with('lignes')->first(); // MUTATION M4 : hors ecole
         if (! $emploi instanceof EmploiDuTemps) {
             throw new BusinessException('Emploi du temps introuvable', 404);
         }

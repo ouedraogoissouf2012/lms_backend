@@ -43,7 +43,7 @@ final class GrilleDeLEmploi
     public function remplacer(EmploiDuTemps $emploi, array $lignes): int
     {
         $voulues = array_map(fn (array $l): array => $this->resolue($l, $emploi), $lignes);
-        self::exigerSansChevauchement($voulues);
+        // MUTATION M3 : chevauchement accepte
         $retirees = $this->db->transaction(fn (): int => $this->synchroniser($emploi, $voulues));
 
         return is_int($retirees) ? $retirees : 0;

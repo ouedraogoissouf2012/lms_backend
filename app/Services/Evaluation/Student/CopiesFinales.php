@@ -7,6 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\Classe\NotesDeLaClasse;
 use App\Services\Evaluation\EvaluationGradingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -28,11 +29,17 @@ final class CopiesFinales
      * l'identifiant KLASSCI seul, qui désignerait aussi les copies d'un homonyme d'une autre
      * école quand aucun tenant n'est résolu. Les plus récentes d'abord.
      *
+     * #1715 : UNE copie par évaluation, la plus récente des copies finales. Une évaluation à
+     * plusieurs tentatives (`max_attempts`) ne pèse qu'une fois, comme dans le bilan de la
+     * classe ({@see NotesDeLaClasse::copieDe()}).
+     *
      * @return Collection<int, EvaluationSubmission>
      */
     public function deLEleve(User $eleve): Collection
     {
-        return $this->finales(EvaluationSubmission::query()->ownedBy($eleve));
+        return $this->finales(EvaluationSubmission::query()->ownedBy($eleve))
+            ->unique(static fn (EvaluationSubmission $copie): int => (int) $copie->evaluation_id)
+            ->values();
     }
 
     /**
@@ -68,10 +75,10 @@ final class CopiesFinales
             return true;
         }
 
-        $evaluation = $copie->evaluation;
-
-        return $evaluation instanceof Evaluation
-            && ! $this->grading->evaluationRequiresManualGrading($evaluation);
+        // #1702 (D2) : sur les questions POSÉES de la copie (l'évaluation et ses questions sont
+        // préchargées par `finales()` : aucune requête par copie).
+        return $copie->evaluation instanceof Evaluation
+            && ! $this->grading->copieRequiresManualGrading($copie);
     }
 
     /**
@@ -80,8 +87,47 @@ final class CopiesFinales
      */
     private function finales(Builder $copies): Collection
     {
-        $remises = $copies
-            ->whereIn('status', ['soumis', 'corrige'])
+        $remises = self::comptables($copies, ['soumis', 'corrige'])->get();
+
+        return $remises->filter(fn (EvaluationSubmission $copie): bool => $this->estFinale($copie))->values();
+    }
+
+    /**
+     * #1698 : les copies de ces évaluations qui n'ont PAS de note finale, et qui le disent : les
+     * remises dont la note attend une correction manuelle, et les verrouillées (remise refusée
+     * après l'échéance, ou tentative ouverte échue, qui se LIT `verrouille`). Mêmes bornes que
+     * les copies finales : cet établissement, hors entraînement, évaluation publiée.
+     *
+     * @param  list<int>  $evaluations
+     * @return Collection<int, EvaluationSubmission>
+     */
+    public function sansNoteFinale(array $evaluations, int $etablissement): Collection
+    {
+        if ($evaluations === []) {
+            return new Collection;
+        }
+
+        $copies = self::comptables(EvaluationSubmission::query()
+            ->where('institution_id', $etablissement)
+            ->whereIn('evaluation_id', $evaluations), ['soumis', 'en_cours', 'verrouille'])->get();
+
+        return $copies->filter(fn (EvaluationSubmission $copie): bool => $copie->status === 'verrouille'
+            || ($copie->status === 'soumis' && ! $this->estFinale($copie)))->values();
+    }
+
+    /**
+     * Les copies qui peuvent porter une note de l'élève : de ces statuts STOCKÉS, hors
+     * entraînement (`feedback` préfixé `[PRACTICE]`), sur une évaluation publiée. Les plus
+     * récentes d'abord.
+     *
+     * @param  Builder<EvaluationSubmission>  $copies
+     * @param  list<string>  $statuts
+     * @return Builder<EvaluationSubmission>
+     */
+    private static function comptables(Builder $copies, array $statuts): Builder
+    {
+        return $copies
+            ->whereIn('status', $statuts)
             ->where(function ($q) {
                 $q->whereNull('feedback')
                     ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
@@ -90,9 +136,6 @@ final class CopiesFinales
             // sans ce préchargement chaque note coûterait une requête de plus.
             ->with(['evaluation' => fn ($query) => $query->where('is_published', true)->with('questions')])
             ->whereRelation('evaluation', 'is_published', true)
-            ->orderBy('submitted_at', 'desc')
-            ->get();
-
-        return $remises->filter(fn (EvaluationSubmission $copie): bool => $this->estFinale($copie))->values();
+            ->orderBy('submitted_at', 'desc');
     }
 }

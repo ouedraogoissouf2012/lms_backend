@@ -16,7 +16,8 @@ use Illuminate\Database\ConnectionInterface;
  * Modifier une Période, supprimer un brouillon, désigner la période EN COURS (#1651).
  *
  * - Modifier : en brouillon ou publiée. Une période close, annulée ou archivée est de l'histoire.
- *   Une période publiée garde une date de début, comme l'exige sa publication.
+ *   Une période publiée garde une date de début, comme l'exige sa publication. Ses nouvelles
+ *   dates contiennent ses sous-périodes (#1806).
  * - Supprimer : un brouillon SANS classe rattachée, en douceur. Une classe rattachée perdrait sa
  *   Période (`nullOnDelete`) et, avec elle, la règle qui ouvre ses codes.
  * - En cours : UNE période PUBLIÉE par école. La marque se déplace en une transaction, sous le
@@ -32,6 +33,7 @@ final class EditionDeLaPeriode
     public function __construct(
         private readonly PeriodesDeLEcole $periodes,
         private readonly ConnectionInterface $db,
+        private readonly SousPeriodesDeLaPeriode $sousPeriodes,
     ) {}
 
     /**
@@ -59,6 +61,8 @@ final class EditionDeLaPeriode
             );
         }
 
+        // #1806 : les nouvelles dates contiennent les sous-périodes, sinon 409 nommé.
+        $this->sousPeriodes->exigerQueLaPeriodeLesContienne($periode, $modifications['starts_on'], $modifications['ends_on']);
         $periode->fill($modifications)->save();
 
         return $periode->load('program');

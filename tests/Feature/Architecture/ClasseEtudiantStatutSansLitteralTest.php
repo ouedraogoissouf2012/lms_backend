@@ -29,6 +29,8 @@ final class ClasseEtudiantStatutSansLitteralTest extends TestCase
     private const ENUMERATIONS = [
         'app/Enums/ClasseEtudiantStatut.php',
         'app/Enums/EtatCodeInscription.php',
+        // #1657 : le statut du DOSSIER d'un élève, qui a son propre `actif`.
+        'app/Enums/StatutDuDossierEleve.php',
     ];
 
     /** Fichier => nombre exact de littéraux, tous dans une charge KLASSCI. */

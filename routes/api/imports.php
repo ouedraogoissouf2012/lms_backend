@@ -20,18 +20,23 @@ use Illuminate\Support\Facades\Route;
 | à l'identique : ce déplacement ne change aucun comportement, et la table
 | de routage complète a été comparée avant/après.
 |
+| #1708 : l'admin d'école importe. L'écran d'import s'ouvre à lui, et la
+| couche métier l'admettait déjà (`authorize()` de la requête, `isAdmin()`
+| des contrôleurs) : seule la route le refusait. Depuis #1665, la garde est
+| `permission:imports.importer`, que `PermissionsDuRole` donne à l'admin.
+|
 */
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     Route::post('/imports/preview', [ImportPreviewController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:imports'])
+        ->middleware(['permission:imports.importer', 'throttle:imports'])
         ->name('lms.imports.preview');
     Route::post('/imports/{id}/confirm', [ImportConfirmController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:imports'])
+        ->middleware(['permission:imports.importer', 'throttle:imports'])
         ->whereNumber('id')
         ->name('lms.imports.confirm');
     Route::get('/imports/{id}', [ImportShowController::class, 'show'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin'])
+        ->middleware(['permission:imports.importer'])
         ->whereNumber('id')
         ->name('lms.imports.show');
 });

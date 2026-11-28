@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 /**
@@ -98,7 +99,8 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     }
 
     // REQ-4 #3
-    public function test_returns_false_when_evaluation_not_found(): void
+    /** #1782 : une évaluation absente est introuvable (404), avant tout contrôle de droit. */
+    public function test_an_unknown_evaluation_is_not_found(): void
     {
         $user = User::factory()->create([
             'institution_id' => $this->institution->id,
@@ -107,11 +109,12 @@ final class ChecksEvaluationOwnershipTest extends TestCase
             'klassci_enseignant_id' => 42,
         ]);
 
-        self::assertFalse($this->runTraitWith($user, 999999));
+        $this->expectException(NotFoundHttpException::class);
+        $this->runTraitWith($user, 999999);
     }
 
-    // REQ-4 #4 — Multi-tenant: éval dans autre institution.
-    public function test_returns_false_for_evaluation_in_other_institution(): void
+    // REQ-4 #4 — Multi-tenant: éval dans autre institution. #1782 : introuvable (404), comme une absente.
+    public function test_an_evaluation_of_another_institution_is_not_found(): void
     {
         $user = User::factory()->create([
             'institution_id' => $this->institution->id,
@@ -124,7 +127,8 @@ final class ChecksEvaluationOwnershipTest extends TestCase
             'klassci_enseignant_id' => 42,    // même owner, autre tenant
         ]);
 
-        self::assertFalse($this->runTraitWith($user, $foreignEval->id));
+        $this->expectException(NotFoundHttpException::class);
+        $this->runTraitWith($user, $foreignEval->id);
     }
 
     // REQ-4 #5 — Happy path.

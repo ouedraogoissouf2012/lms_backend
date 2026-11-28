@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Enums\TypeDeSeance;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class StoreLocalSeanceRequest extends FormRequest
 {
@@ -42,6 +44,12 @@ final class StoreLocalSeanceRequest extends FormRequest
             'classe_id' => 'sometimes|nullable|integer|min:1',
             // Même motif : l'appartenance et le programme sont vérifiés par LocalSeanceCreator.
             'matiere_id' => 'sometimes|nullable|integer|min:1',
+            // #1668 : le type, dans la liste fermée ; absent, la séance reste sans type.
+            'type_seance' => ['sometimes', 'nullable', Rule::enum(TypeDeSeance::class)],
+            // #1668 : la fin, facultative ; absente, aucune n'est écrite (fin effective : ConflitsDHoraire).
+            'fin_seance' => ['sometimes', 'nullable', 'date', 'regex:'.self::DATE_ISO_AVEC_DECALAGE, 'after:date_seance'],
+            // #1668 : passer outre un conflit d'horaire ; la gestion seule (ConflitsDHoraire).
+            'forcer_conflit' => 'sometimes|boolean',
         ];
     }
 }

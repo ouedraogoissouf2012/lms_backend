@@ -85,6 +85,7 @@ final class VisioDeactivation
                 'visio_room_id' => null,
                 'visio_active' => false,
                 'visio_started_at' => null,
+                'visio_demarree_par_id' => null,
                 'updated_by' => $user->id,
             ]);
             $this->logger->info('Visio désactivée', ['seance_id' => $seanceId, 'user_id' => $user->id]);

@@ -94,7 +94,7 @@ final class ClassesLocalesListTest extends TestCase
         // `array_key_exists` et non `??` : `??` prend une valeur nulle pour une clé absente.
         self::assertTrue(array_key_exists('effectif', $ligne), 'La clé effectif est absente.');
         self::assertNull($ligne['effectif'], 'Une capacité non renseignée sort en null.');
-        self::assertSame(['id', 'libelle', 'code', 'training_session_id', 'effectif', 'code_inscription'], array_keys($ligne));
+        self::assertSame(['id', 'libelle', 'code', 'description', 'training_session_id', 'effectif', 'code_inscription', 'archivee_le'], array_keys($ligne));
     }
 
     // ───────────────────────── LA garde de ce fichier
@@ -171,7 +171,7 @@ final class ClassesLocalesListTest extends TestCase
     #[DataProvider('gestionnaires')]
     public function test_chaque_role_de_gestion_lit_ses_codes(string $role): void
     {
-        // `superAdmin` passe par une branche à part d'`EnsureRole` : chaque rôle
+        // `superAdmin` a sa ligne à part dans `PermissionsDuRole` : chaque rôle
         // admis est éprouvé, pas seulement le coordinateur.
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique', 'BUR7K2');

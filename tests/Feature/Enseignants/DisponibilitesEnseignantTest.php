@@ -91,13 +91,52 @@ final class DisponibilitesEnseignantTest extends TestCase
         self::assertSame(['2026-12-16'], array_column($this->asTenant($this->coordinateur)->getJson($this->chemin($this->awa))->json('data.exceptions'), 'date'));
     }
 
-    public function test_l_enseignant_lit_les_siennes_mais_ne_les_ecrit_pas(): void
+    /** Décision du 28/11 (issue jumelle front#673) : l'enseignant remplit SES disponibilités, la gestion les relit et les corrige. */
+    public function test_l_enseignant_ecrit_les_siennes(): void
     {
-        $this->semaine($this->awa, [['jour' => 1, 'debut' => '08:00', 'fin' => '12:00', 'disponible' => true]])->assertOk();
+        $this->asTenant($this->awa)->putJson($this->chemin($this->awa), ['semaine' => [
+            ['jour' => 1, 'debut' => '08:00', 'fin' => '12:00', 'disponible' => true],
+        ]])->assertOk();
+        $id = (int) $this->asTenant($this->awa)->postJson($this->chemin($this->awa).'/exceptions', ['date' => '2026-12-15', 'disponible' => false])
+            ->assertCreated()->json('data.id');
+        $this->asTenant($this->awa)->deleteJson($this->chemin($this->awa)."/exceptions/{$id}")->assertOk();
 
-        $this->asTenant($this->awa)->getJson($this->chemin($this->awa))->assertOk()->assertJsonCount(1, 'data.semaine');
-        $this->asTenant($this->awa)->putJson($this->chemin($this->awa), ['semaine' => []])->assertForbidden();
-        $this->asTenant($this->awa)->getJson($this->chemin($this->membre($this->ecole, 'enseignant')))->assertNotFound();
+        $relu = $this->asTenant($this->coordinateur)->getJson($this->chemin($this->awa))->assertOk()->json('data');
+        self::assertSame([[1, '08:00', '12:00']], array_map(static fn (array $c): array => [$c['jour'], $c['debut'], $c['fin']], $relu['semaine']));
+        self::assertSame([], $relu['exceptions']);
+    }
+
+    public function test_l_enseignant_recoit_404_sur_celles_d_un_autre_comme_pour_un_id_inconnu(): void
+    {
+        $moussa = $this->membre($this->ecole, 'enseignant');
+        $semaine = ['semaine' => [['jour' => 1, 'debut' => '08:00', 'fin' => '12:00', 'disponible' => true]]];
+
+        $autre = $this->asTenant($this->awa)->putJson($this->chemin($moussa), $semaine)->assertNotFound();
+        $inconnu = $this->asTenant($this->awa)->putJson('/api/lms/enseignants/424242/disponibilites', $semaine)->assertNotFound();
+        $this->asTenant($this->awa)->postJson($this->chemin($moussa).'/exceptions', ['date' => '2026-12-15', 'disponible' => false])->assertNotFound();
+        $this->asTenant($this->awa)->getJson($this->chemin($moussa))->assertNotFound();
+
+        self::assertSame($inconnu->json(), $autre->json(), 'Le refus ne dit pas que le compte existe.');
+        self::assertSame(0, DB::table('disponibilites_enseignant')->count());
+    }
+
+    public function test_un_eleve_est_refuse(): void
+    {
+        $eleve = $this->membre($this->ecole, 'etudiant');
+
+        $this->asTenant($eleve)->putJson($this->chemin($this->awa), ['semaine' => []])->assertNotFound();
+        $this->asTenant($eleve)->postJson($this->chemin($this->awa).'/exceptions', ['date' => '2026-12-15', 'disponible' => false])->assertNotFound();
+        $this->asTenant($eleve)->getJson($this->chemin($this->awa))->assertNotFound();
+        self::assertSame(0, DB::table('exceptions_disponibilite')->count());
+    }
+
+    public function test_la_gestion_corrige_celles_d_un_enseignant(): void
+    {
+        $this->asTenant($this->awa)->putJson($this->chemin($this->awa), ['semaine' => [['jour' => 1, 'debut' => '08:00', 'fin' => '12:00', 'disponible' => true]]])->assertOk();
+
+        $this->semaine($this->awa, [['jour' => 2, 'debut' => '09:00', 'fin' => '11:00', 'disponible' => true]])->assertOk();
+
+        self::assertSame([2], array_column($this->asTenant($this->awa)->getJson($this->chemin($this->awa))->json('data.semaine'), 'jour'));
     }
 
     public function test_une_exception_d_un_autre_enseignant_ne_se_retire_pas_par_celui_ci(): void

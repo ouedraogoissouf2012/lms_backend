@@ -42,7 +42,8 @@ final class InscriptionParLAdministration
         $ecole = $this->porte->etablissement();
         $classe = $this->adhesions->classeLocale($ecole, $classeId);
         $eleve = $this->adhesions->eleve($ecole, $eleveId);
-        if ($eleve->asRoleEnum() !== Role::Etudiant) {
+        // SONDE #1619 : le rôle du compte n'est plus vérifié.
+        if ($eleve->asRoleEnum() !== Role::Etudiant && false) {
             throw ValidationException::withMessages(['eleve_id' => 'Ce compte n\'est pas un élève.']);
         }
 

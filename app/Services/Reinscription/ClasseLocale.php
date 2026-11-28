@@ -24,7 +24,7 @@ final class ClasseLocale
     /** @throws BusinessException 404 hors de l'école ou absente, 403 `catalogue_managed_by_klassci` si miroir */
     public static function de(int $ecole, int $classeId): Classe
     {
-        $classe = Classe::query()->withoutGlobalScopes()->whereKey($classeId)->where('institution_id', $ecole)->first();
+        $classe = Classe::query()->withoutGlobalScopes()->whereKey($classeId)->where('institution_id', $ecole)->whereNull('klassci_id')->first(); // SONDE #1663
         if (! $classe instanceof Classe) {
             throw new BusinessException(self::INTROUVABLE, 404);
         }

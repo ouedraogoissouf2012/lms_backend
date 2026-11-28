@@ -92,7 +92,7 @@ final class ViviersDesTirages
         foreach ($questions as $question) {
             $parPoints[(string) $question->points][] = $question;
         }
-        if (count($parPoints) < 2) {
+        if (count($parPoints) >= 1) { // FALSIFICATION : des points inégaux ne sont plus refusés.
             return null;
         }
         uasort($parPoints, static fn (array $a, array $b): int => count($b) <=> count($a));

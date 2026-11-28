@@ -43,10 +43,11 @@ final class ReglagesDuDecrochageTest extends TestCase
         $this->regler($admin, $seuils)->assertOk()->assertJsonPath('data', $seuils);
         $this->lire($admin)->assertOk()->assertJsonPath('data', $seuils);
 
-        self::assertSame(['seuil_reussite' => 12, 'decrochage' => $seuils], Institution::query()->findOrFail($ecole->id)->settings);
+        // assertEquals : une colonne JSON de MySQL ne garde pas l'ordre des clés.
+        self::assertEquals(['seuil_reussite' => 12, 'decrochage' => $seuils], Institution::query()->findOrFail($ecole->id)->settings);
         $journal = AuditLog::query()->where('action', 'decrochage_settings_updated')->sole();
         self::assertSame($admin->id, $journal->user_id);
-        self::assertSame(['avant' => self::DEFAUTS, 'apres' => $seuils], $journal->after);
+        self::assertEquals(['avant' => self::DEFAUTS, 'apres' => $seuils], $journal->after);
     }
 
     public function test_un_seuil_hors_bornes_ou_absent_est_refuse_et_rien_n_est_ecrit(): void
@@ -65,7 +66,7 @@ final class ReglagesDuDecrochageTest extends TestCase
             $this->regler($admin, $saisie)->assertUnprocessable();
         }
 
-        self::assertSame($avant, Institution::query()->findOrFail($ecole->id)->settings);
+        self::assertEquals($avant, Institution::query()->findOrFail($ecole->id)->settings);
         self::assertSame(0, AuditLog::query()->where('action', 'decrochage_settings_updated')->count());
     }
 

@@ -7,6 +7,7 @@ namespace App\Services\Admission;
 use App\Exceptions\BusinessException;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Catalogue\PorteDuCatalogueLocal;
 
 /**
  * La porte des demandes d'inscription (#1659) : une école les reçoit et les traite si elle inscrit elle-même ses
@@ -22,12 +23,13 @@ final class PorteDesAdmissions
 
     public const REASON = 'enrolment_managed_by_klassci';
 
-    public function __construct(private readonly DroitDInscription $droit) {}
+    // SONDE #1659 : la decision repasse par la porte du catalogue.
+    public function __construct(private readonly DroitDInscription $droit, private readonly PorteDuCatalogueLocal $catalogue) {}
 
     /** Le droit seul, sans refus : la porte publique, qui ne doit rien confirmer, s'en sert pour se taire. */
     public function ouvertePour(?Institution $ecole): bool
     {
-        return $ecole instanceof Institution && $this->droit->ouvertPour($ecole);
+        return $this->catalogue->ouvertePour($ecole);
     }
 
     /**
@@ -41,7 +43,7 @@ final class PorteDesAdmissions
         if (! $ecole instanceof Institution) {
             throw new BusinessException('Aucun établissement résolu.', 409, reason: 'no_institution');
         }
-        if (! $this->droit->ouvertPour($ecole)) {
+        if (! $this->catalogue->ouvertePour($ecole)) {
             throw new BusinessException(self::REFUS, 403, reason: self::REASON);
         }
 

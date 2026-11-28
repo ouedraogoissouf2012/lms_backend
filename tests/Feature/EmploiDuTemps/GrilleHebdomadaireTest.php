@@ -165,6 +165,21 @@ final class GrilleHebdomadaireTest extends TestCase
         self::assertSame([$expire], array_column($data['expires'], 'id'));
     }
 
+    /** #1763 : une classe archivée ne reçoit plus d'élèves ; elle n'a rien à traiter, dans aucune des deux alertes. */
+    public function test_une_classe_archivee_n_est_pas_une_alerte(): void
+    {
+        $archivee = $this->classeDansLaPeriode('Terminale Z');
+        $this->asTenant($this->coordinateur)->postJson(self::RACINE, [
+            'classe_id' => $archivee->id, 'titre' => 'Ancien', 'du' => '2026-11-01', 'au' => '2026-11-30',
+        ])->assertCreated();
+        $archivee->forceFill(['archivee_le' => now()])->save();
+
+        $data = $this->asTenant($this->coordinateur)->getJson(self::RACINE.'/alertes')->assertOk()->json('data');
+
+        self::assertNotContains('Terminale Z', array_column($data['sans_emploi_du_temps'], 'libelle'));
+        self::assertSame([], array_column($data['expires'], 'classe_id'), 'L\'emploi du temps expiré d\'une classe archivée n\'est pas une alerte.');
+    }
+
     public function test_copier_une_grille_vers_une_autre_classe(): void
     {
         $id = $this->grilleType();

@@ -50,6 +50,8 @@ return [
         'tuteurs',
         'matricules_sequences',
         'creneaux',
+        // #1662 — les documents de scolarité émis ; table neuve, NOT NULL.
+        'documents_emis',
         // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
         'sous_periodes',
         'classes',

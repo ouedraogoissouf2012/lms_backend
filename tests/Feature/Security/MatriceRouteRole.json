@@ -473,6 +473,7 @@
         "supradmin"
     ],
     "GET api/documentation": "*",
+    "GET api/documents/verification/{code}": "*",
     "GET api/eleves/{eleve}/dossier": "*",
     "GET api/eleves/{eleve}/photo": "*",
     "GET api/evaluations": "*",
@@ -945,6 +946,7 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/v1/documents/verification/{code}": "*",
     "GET api/v1/eleves/{eleve}/dossier": "*",
     "GET api/v1/eleves/{eleve}/photo": "*",
     "GET api/v1/evaluations": "*",
@@ -1703,6 +1705,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/lms/eleves/{eleve}/documents": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/lms/emargement": [
         "etudiant",
         "student",
@@ -2301,6 +2311,14 @@
     "POST api/v1/lms/codes-emargement": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/eleves/{eleve}/documents": [
         "coordinateur",
         "coordinator",
         "admin",

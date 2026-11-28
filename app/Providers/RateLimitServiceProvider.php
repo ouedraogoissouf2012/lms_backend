@@ -102,6 +102,9 @@ final class RateLimitServiceProvider extends ServiceProvider
      */
     private const SCHOOL_REQUESTS_PER_MINUTE = 5;
 
+    /** #1662 : la verification publique d'un document de scolarite, par adresse. */
+    private const VERIFICATIONS_PER_MINUTE = 30;
+
     private const SCHOOL_REQUESTS_PER_DAY = 200;
 
     /**
@@ -182,6 +185,8 @@ final class RateLimitServiceProvider extends ServiceProvider
             ];
         });
 
+        $this->limiteDeLaVerificationDesDocuments();
+
         RateLimiter::for('rejoindre-classe', function (Request $request): array {
             // La route est authentifiée ; l'IP n'est qu'un repli défensif.
             $user = $request->user();
@@ -247,5 +252,19 @@ final class RateLimitServiceProvider extends ServiceProvider
 
         return Limit::perMinute(self::VISIO_HEARTBEAT_PER_MINUTE)
             ->by($actor.':seance:'.$seanceId);
+    }
+
+    /**
+     * #1662 : la page PUBLIQUE de verification d'un document. Un code fait 12 caracteres sur 32 symboles :
+     * l'enumeration est hors de portee, la borne protege le service contre l'inondation. Seau NOMME, par adresse.
+     */
+    private function limiteDeLaVerificationDesDocuments(): void
+    {
+        RateLimiter::for('verification-documents', function (Request $request): array {
+            return [
+                Limit::perMinute(self::VERIFICATIONS_PER_MINUTE)->by((string) $request->ip())
+                    ->response($this->refusMotive('ip_quota_exceeded')),
+            ];
+        });
     }
 }

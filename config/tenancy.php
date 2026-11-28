@@ -29,6 +29,8 @@ return [
         // sur ces trois tables neuves, contrairement aux historiques.
         'programs',
         'training_sessions',
+        // #1650 : les annonces à une classe, institution_id NOT NULL.
+        'annonces',
         // #1657 : le dossier de l'élève, ses tuteurs, la séquence du matricule (institution_id NOT NULL).
         'dossiers_eleves',
         'tuteurs',

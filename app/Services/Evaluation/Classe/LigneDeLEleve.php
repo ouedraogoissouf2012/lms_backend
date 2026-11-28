@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Classe;
 
+use App\Enums\EtatDeLaCase;
 use App\Services\Evaluation\Student\Moyennes;
 
 /**
@@ -13,16 +14,19 @@ use App\Services\Evaluation\Student\Moyennes;
  *
  * Une évaluation sans note finale de l'élève est une note MANQUANTE : elle n'entre dans aucune
  * moyenne (jamais un 0 fabriqué), et elle est nommée dans `notes_manquantes`.
+ *
+ * #1698 : la ligne du carnet de notes, `cellules` : une case par évaluation, dans l'ordre des
+ * colonnes, avec son état ({@see EtatDeLaCase}) ; seule une case `rendu` porte une note.
  */
 final class LigneDeLEleve
 {
     /**
      * @param  array<int, float>  $coefficients  coefficient de la matière (id local), dans la classe
-     * @return array{compte_id: int|null, nom: string, moyenne_generale: float|null, rang: int|null, matieres: list<array{matiere_id: int|null, moyenne: float|null}>, notes: list<array{evaluation_id: int, note: float}>, notes_manquantes: list<int>}
+     * @return array{compte_id: int|null, nom: string, moyenne_generale: float|null, rang: int|null, matieres: list<array{matiere_id: int|null, moyenne: float|null}>, notes: list<array{evaluation_id: int, note: float}>, notes_manquantes: list<int>, cellules: list<array{evaluation_id: int, etat: string, note: float|null}>}
      */
     public static function calculer(EleveDeLaClasse $eleve, NotesDeLaClasse $notes, array $coefficients): array
     {
-        [$parMatiere, $notees, $manquantes] = self::notes($eleve, $notes);
+        [$parMatiere, $notees, $manquantes, $cellules] = self::notes($eleve, $notes);
 
         $matieres = [];
         $generale = [];
@@ -42,32 +46,36 @@ final class LigneDeLEleve
             'matieres' => $matieres,
             'notes' => $notees,
             'notes_manquantes' => $manquantes,
+            'cellules' => $cellules,
         ];
     }
 
     /**
-     * @return array{0: array<int, list<array{0: float, 1: float}>>, 1: list<array{evaluation_id: int, note: float}>, 2: list<int>}
+     * @return array{0: array<int, list<array{0: float, 1: float}>>, 1: list<array{evaluation_id: int, note: float}>, 2: list<int>, 3: list<array{evaluation_id: int, etat: string, note: float|null}>}
      */
     private static function notes(EleveDeLaClasse $eleve, NotesDeLaClasse $notes): array
     {
         $parMatiere = [];
         $notees = [];
         $manquantes = [];
+        $cellules = [];
         foreach ($notes->evaluations as $evaluation) {
             $id = (int) $evaluation->id;
             $copie = $notes->copieDe($eleve, $id);
             if ($copie === null || ! is_numeric($copie->note_sur_20)) {
                 $manquantes[] = $id;
+                $cellules[] = ['evaluation_id' => $id, 'etat' => $notes->etatSansNote($eleve, $id)->value, 'note' => null];
 
                 continue;
             }
 
             $note = (float) $copie->note_sur_20;
             $notees[] = ['evaluation_id' => $id, 'note' => $note];
+            $cellules[] = ['evaluation_id' => $id, 'etat' => EtatDeLaCase::Rendu->value, 'note' => $note];
             $coefficient = (float) $evaluation->coefficient;
             $parMatiere[$notes->matieres[$id] ?? 0][] = [$note, $coefficient];
         }
 
-        return [$parMatiere, $notees, $manquantes];
+        return [$parMatiere, $notees, $manquantes, $cellules];
     }
 }

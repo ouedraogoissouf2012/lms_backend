@@ -446,7 +446,10 @@ final class ParcoursEcoleAutonomeTest extends TestCase
         });
     }
 
-    /** Le corrigé s'ouvre à l'élève 7 jours après la remise (EvaluationStudentSubmissionController:30). */
+    /**
+     * Le corrigé s'ouvre à l'élève par défaut avec les notes (`show_results`, posé à la création),
+     * jamais avant la fermeture de l'évaluation pour tous (#1699). Huit jours plus tard, elle l'est.
+     */
     private function corrigeApresLeDelai(): void
     {
         $this->maillon("l'élève lit le corrigé", ["l'enseignant corrige"], function (): bool {

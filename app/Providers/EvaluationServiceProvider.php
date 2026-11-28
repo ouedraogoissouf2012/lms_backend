@@ -9,7 +9,10 @@ use App\Services\Classe\KlassciClasseDeLEspaceSource;
 use App\Services\Classe\LocalClasseDeLEspaceSource;
 use App\Services\Evaluation\Classe\ElevesDeLaClasse;
 use App\Services\Evaluation\Classe\KlassciElevesDeLaClasse;
+use App\Services\Evaluation\Classe\KlassciPorteDesDispenses;
 use App\Services\Evaluation\Classe\LocalElevesDeLaClasse;
+use App\Services\Evaluation\Classe\LocalePorteDesDispenses;
+use App\Services\Evaluation\Classe\PorteDesDispenses;
 use App\Services\Evaluation\Programming\EvaluationProgramming;
 use App\Services\Evaluation\Programming\KlassciEvaluationProgramming;
 use App\Services\Evaluation\Programming\LocalEvaluationProgramming;
@@ -73,6 +76,13 @@ final class EvaluationServiceProvider extends ServiceProvider
             ElevesDeLaClasse::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(KlassciElevesDeLaClasse::class, LocalElevesDeLaClasse::class),
+        );
+
+        // #1698 (C2) : dispenser un élève ; une école KLASSCI tient ses notes dans KLASSCI et refuse.
+        $this->app->bind(
+            PorteDesDispenses::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciPorteDesDispenses::class, LocalePorteDesDispenses::class),
         );
 
         // #1676 : la classe désignée par l'identifiant de l'espace source de l'école.

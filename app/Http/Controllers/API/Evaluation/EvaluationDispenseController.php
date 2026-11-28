@@ -11,6 +11,7 @@ use App\Http\Requests\DispenserUnEleveRequest;
 use App\Models\DispenseDEvaluation;
 use App\Services\Evaluation\Classe\DispensesDEvaluation;
 use App\Services\Evaluation\Classe\EleveDeLaClasse;
+use App\Services\Evaluation\Classe\PorteDesDispenses;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
@@ -18,36 +19,39 @@ use RuntimeException;
  * #1698 (C2) : `PUT` et `DELETE /api/evaluations/{id}/dispenses` — dispenser un élève d'une
  * évaluation, ou lever sa dispense. L'accès est tranché par {@see DispenserUnEleveRequest}.
  *
- * Un refus métier (élève hors de la classe, évaluation sans classe) est rendu avec son statut et
+ * Un refus métier (élève hors de la classe, évaluation sans classe, école KLASSCI) est rendu avec son statut et
  * son motif ; un refus ou une panne du roster KLASSCI, par {@see RendersKlassciBackedErrors}.
+ *
+ * Le service et la porte sont reçus par la MÉTHODE, jamais par le constructeur : leurs sources se choisissent sur
+ * l'école courante, et Laravel garde le contrôleur sur l'objet Route (une source capturée à la construction
+ * servirait la première école à toutes les suivantes).
  */
 final class EvaluationDispenseController extends AuthenticatedController
 {
     use RendersKlassciBackedErrors;
 
-    public function __construct(private readonly DispensesDEvaluation $dispenses) {}
-
-    public function accorder(DispenserUnEleveRequest $request, int $id): JsonResponse
+    public function accorder(DispenserUnEleveRequest $request, int $id, DispensesDEvaluation $dispenses, PorteDesDispenses $porte): JsonResponse
     {
-        return $this->agir($request, $id, true);
+        return $this->agir($request, $id, $dispenses, $porte, true);
     }
 
-    public function lever(DispenserUnEleveRequest $request, int $id): JsonResponse
+    public function lever(DispenserUnEleveRequest $request, int $id, DispensesDEvaluation $dispenses, PorteDesDispenses $porte): JsonResponse
     {
-        return $this->agir($request, $id, false);
+        return $this->agir($request, $id, $dispenses, $porte, false);
     }
 
-    private function agir(DispenserUnEleveRequest $request, int $id, bool $accorder): JsonResponse
+    private function agir(DispenserUnEleveRequest $request, int $id, DispensesDEvaluation $dispenses, PorteDesDispenses $porte, bool $accorder): JsonResponse
     {
         $auteur = $this->authenticatedUser($request);
 
         try {
-            $evaluation = $this->dispenses->evaluation($id, $auteur);
-            $eleve = $this->dispenses->eleve($evaluation, $auteur, $request->compte(), $request->identiteKlassci());
+            $evaluation = $dispenses->evaluation($id, $auteur);
+            $porte->ouvrir();
+            $eleve = $dispenses->eleve($evaluation, $auteur, $request->compte(), $request->identiteKlassci());
             if ($accorder) {
-                $dispense = $this->dispenses->accorder($evaluation, $eleve, $auteur, $request->motif());
+                $dispense = $dispenses->accorder($evaluation, $eleve, $auteur, $request->motif());
             } else {
-                $this->dispenses->lever($evaluation, $eleve);
+                $dispenses->lever($evaluation, $eleve);
                 $dispense = null;
             }
 

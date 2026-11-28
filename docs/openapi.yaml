@@ -8625,6 +8625,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : ses notes sont tenues dans KLASSCI, la dispense n y est pas tenue par le LMS (`grades_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: "Eleve non designe, eleve hors de la classe de l evaluation (`student_not_in_class`), ou evaluation sans classe dans l etablissement (`evaluation_without_class`)."
           content:
@@ -8699,6 +8705,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: "Evaluation introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : ses notes sont tenues dans KLASSCI, la dispense n y est pas tenue par le LMS (`grades_managed_by_klassci`)."
           content:
             application/json:
               schema:

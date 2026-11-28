@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Report;
 
+use App\Enums\AttendanceMark;
 use App\Models\Classe;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
+use App\Services\Attendances\PresenceRetenue;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
 
 /**
  * Le contexte du rapport de présences d'une période, pour l'école ou pour UNE classe.
@@ -43,24 +46,20 @@ final class AttendanceReportContextBuilder
             ->whereIn('seance_id', $seances->select('id'))
             ->with(['user', 'seance'])
             ->get();
-        $total = $attendances->count();
-        $presents = $attendances->whereIn('status', ['connected', 'disconnected'])->count();
-        $absents = $attendances->where('status', 'kicked')->count();
+        $ecole = $this->compte($attendances);
 
-        $students = $attendances->groupBy('user_id')->map(function ($items): array {
-            $first = $items->first();
-            $student = $first?->user;
-            $count = $items->count();
-            $presentCount = $items->whereIn('status', ['connected', 'disconnected'])->count();
+        $students = $attendances->groupBy('user_id')->map(function (Collection $items): array {
+            $student = $items->first()?->user;
+            $compte = $this->compte($items);
 
             return [
                 'name' => $student->name ?? 'Inconnu',
                 'email' => $student->email ?? '',
-                'total' => $count,
-                'presents' => $presentCount,
-                'absents' => $items->where('status', 'kicked')->count(),
-                'retards' => 0,
-                'taux' => $count > 0 ? round(($presentCount / $count) * 100, 2) : 0.0,
+                'total' => $compte['total'],
+                'presents' => $compte['presents'],
+                'absents' => $compte['absents'],
+                'retards' => $compte['retards'],
+                'taux' => $compte['total'] > 0 ? round(($compte['presents'] / $compte['total']) * 100, 2) : 0.0,
             ];
         })->values();
 
@@ -69,12 +68,8 @@ final class AttendanceReportContextBuilder
             'date_start' => $dateStart->format('d/m/Y'),
             'date_end' => $dateEnd->format('d/m/Y'),
             'generated_at' => Carbon::now()->format('d/m/Y H:i'),
-            'stats' => [
-                'total' => $total,
-                'presents' => $presents,
-                'absents' => $absents,
-                'retards' => 0,
-                'taux_presence' => $total > 0 ? round(($presents / $total) * 100, 2) : 0.0,
+            'stats' => $ecole + [
+                'taux_presence' => $ecole['total'] > 0 ? round(($ecole['presents'] / $ecole['total']) * 100, 2) : 0.0,
             ],
             'students' => $students,
         ];
@@ -118,6 +113,25 @@ final class AttendanceReportContextBuilder
             ->where('institution_id', $institutionId)
             ->whereKey($classeId)
             ->firstOrFail(['id', 'klassci_id']);
+    }
+
+    /**
+     * Ce que comptent des lignes, par LA règle ({@see PresenceRetenue}, #1649) : la marque de l'appel l'emporte sur
+     * le statut visio ; un statut nul n'est jamais présent. Un retard compte présent ET retard.
+     *
+     * @param  Collection<int, ESBTPAttendance>  $lignes
+     * @return array{total: int, presents: int, absents: int, retards: int}
+     */
+    private function compte(Collection $lignes): array
+    {
+        $retenues = $lignes->map(static fn (ESBTPAttendance $l): ?AttendanceMark => PresenceRetenue::de($l));
+
+        return [
+            'total' => $lignes->count(),
+            'presents' => $lignes->filter(static fn (ESBTPAttendance $l): bool => PresenceRetenue::estPresente($l))->count(),
+            'absents' => $retenues->filter(static fn (?AttendanceMark $m): bool => $m === AttendanceMark::Absent)->count(),
+            'retards' => $retenues->filter(static fn (?AttendanceMark $m): bool => $m === AttendanceMark::Late)->count(),
+        ];
     }
 
     /** @param array<string, mixed> $data */

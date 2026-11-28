@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Catalogue;
 
-use App\Enums\Role;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
-use App\Models\Matiere;
-use App\Models\User;
 
 /**
  * Rattacher une matière à une classe, et y désigner un formateur (#848).
@@ -37,9 +34,8 @@ use App\Models\User;
  * normale. Le scope global ne suffit pas : il est fail-OPEN quand aucun tenant
  * n'est résolu.
  *
- * Le message d'erreur ne distingue PAS « n'existe pas » de « appartient à
- * quelqu'un d'autre » : les séparer dirait à un établissement quels
- * identifiants existent chez ses voisins.
+ * Les trois appartenances vivent dans `AppartenancesALEcole` (#1653), partagées avec
+ * `ProgrammeDeLaClasse` qui modifie et retire une matière d'une classe.
  *
  * ## Le rattachement est idempotent, l'affectation ne l'est pas
  *
@@ -53,6 +49,7 @@ final class LocalClasseMatiereLinker
 {
     public function __construct(
         private readonly PorteDuCatalogueLocal $porte,
+        private readonly AppartenancesALEcole $appartenances,
     ) {}
 
     /**
@@ -62,87 +59,19 @@ final class LocalClasseMatiereLinker
     {
         $institution = $this->porte->etablissement();
 
-        $classe = $this->saClasse($classeId, $institution);
-        $this->saMatiere($matiereId, $institution);
+        $classe = $this->appartenances->classe($classeId, $institution);
+        $this->appartenances->matiere($matiereId, $institution);
 
         // L'école explicitement : le pivot ne passe pas par `BelongsToInstitution`, et la ligne
         // s'écrivait sans elle (#801). `ClasseMatiere` la dériverait de la classe ; elle est
         // posée ici quand même, là où l'écrivain la connaît.
         $classe->matieres()->syncWithoutDetaching([
             $matiereId => [
-                'enseignant_id' => $this->formateur($enseignantId, $institution),
+                'enseignant_id' => $this->appartenances->formateur($enseignantId, $institution),
                 'institution_id' => $institution,
             ],
         ]);
 
         return $classe;
-    }
-
-    /**
-     * `withoutGlobalScopes` parce que le scope multi-tenant est fail-OPEN : on
-     * borne ici, explicitement, plutôt que de dépendre d'une garde qui se tait
-     * quand aucun tenant n'est résolu.
-     *
-     * Deux méthodes jumelles plutôt qu'une générique : celle-ci rendait `mixed`,
-     * et PHPStan n9 l'a refusée à juste titre — le gain d'une ligne partagée ne
-     * valait pas la perte du type sur le chemin d'une garde d'accès.
-     *
-     * @throws BusinessException
-     */
-    private function saClasse(int $id, int $institution): Classe
-    {
-        $classe = Classe::query()->withoutGlobalScopes()
-            ->where('id', $id)
-            ->where('institution_id', $institution)
-            ->first();
-
-        if (! $classe instanceof Classe) {
-            throw new BusinessException('Classe introuvable dans cet établissement.', 404);
-        }
-
-        return $classe;
-    }
-
-    /**
-     * @throws BusinessException
-     */
-    private function saMatiere(int $id, int $institution): Matiere
-    {
-        $matiere = Matiere::query()->withoutGlobalScopes()
-            ->where('id', $id)
-            ->where('institution_id', $institution)
-            ->first();
-
-        if (! $matiere instanceof Matiere) {
-            throw new BusinessException('Matière introuvable dans cet établissement.', 404);
-        }
-
-        return $matiere;
-    }
-
-    /**
-     * Le formateur est FACULTATIF — on compose souvent un programme avant de
-     * savoir qui l'assurera. Mais s'il est nommé, il doit être de la maison et
-     * enseigner : `classe_matiere.enseignant_id` ne désigne qu'UNE personne par
-     * couple, et y laisser entrer un étudiant lui ouvrirait la classe.
-     *
-     * @throws BusinessException
-     */
-    private function formateur(?int $enseignantId, int $institution): ?int
-    {
-        if ($enseignantId === null) {
-            return null;
-        }
-
-        $user = User::query()->withoutGlobalScopes()
-            ->where('id', $enseignantId)
-            ->where('institution_id', $institution)
-            ->first();
-
-        if (! $user instanceof User || Role::tryFromString($user->role) !== Role::Enseignant) {
-            throw new BusinessException('Formateur introuvable dans cet établissement.', 404);
-        }
-
-        return $enseignantId;
     }
 }

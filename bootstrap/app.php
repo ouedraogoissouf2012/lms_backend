@@ -3,11 +3,9 @@
 use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\UncaughtExceptionReporting;
 use App\Http\Middleware\AssignRequestId;
-use App\Http\Middleware\EnsureGestion;
 use App\Http\Middleware\EnsureKlassciSync;
-use App\Http\Middleware\EnsurePersonnel;
+use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsurePlatformSupradmin;
-use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Http\Middleware\MarksAnyAccountRoute;
 use App\Http\Middleware\MarksPlatformRoute;
@@ -85,10 +83,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // Enregistrer les middlewares personnalisés
         $middleware->alias([
             'klassci.sync' => EnsureKlassciSync::class,
-            'role' => EnsureRole::class,
-            // D499/D502 : une garde par prédicat de rôle, au lieu de listes recopiées.
-            EnsureGestion::ALIAS => EnsureGestion::class,
-            EnsurePersonnel::ALIAS => EnsurePersonnel::class,
+            // #1665 : la garde de route par permission (catalogue App\Enums\Permission). Elle remplace
+            // `role:…`, `gestion` et `personnel` (D499/D502), retirées : une route exige une permission.
+            EnsurePermission::ALIAS => EnsurePermission::class,
             'institution' => ResolveInstitution::class,
             'institution.header' => RequireInstitutionHeader::class,
             // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).

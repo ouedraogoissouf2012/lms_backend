@@ -90,7 +90,7 @@ Route::post('/inscriptions', [InscriptionParCodeController::class, 'store'])
 // Seau compte PAR APPRENANT : le jour de la rentree, une classe entiere rejoint
 // depuis le wifi de l ecole, derriere une seule IP.
 Route::post('/me/inscriptions', [RejoindreParCodeController::class, 'store'])
-    ->middleware(['auth:sanctum', 'klassci.sync', 'role:etudiant', 'throttle:rejoindre-classe']);
+    ->middleware(['auth:sanctum', 'klassci.sync', 'permission:inscription.rejoindre', 'throttle:rejoindre-classe']);
 
 Route::post('/activation', [ActivationController::class, 'store'])
     ->middleware('throttle:activation');
@@ -137,7 +137,7 @@ Route::prefix('auth')->middleware(['auth:sanctum', 'plateforme'])->group(functio
 // PROXY KLASSCI - Test de connexion (SÉCURISÉ)
 // ============================================
 Route::prefix('proxy')
-    ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin', 'throttle:proxy'])
+    ->middleware(['auth:sanctum', 'klassci.sync', 'permission:klassci.tester_connexion', 'throttle:proxy'])
     ->group(function () {
         // Test de connexion KLASSCI — réservé aux admins
         Route::get('/test-connection', [ProxyOrganisationController::class, 'testConnection'])->middleware('plateforme');
@@ -160,7 +160,7 @@ Route::prefix('proxy')
         // Réservé au personnel (GHSA-gg7j) : le LMS ne délègue plus à KLASSCI le
         // soin de refuser un élève — c'est le point 4 de #617, resté ouvert.
         Route::get('/classes/{id}/etudiants', [ProxyOrganisationController::class, 'etudiants'])
-            ->middleware('personnel');
+            ->middleware('permission:referentiel.consulter');
 
         // Matières et enseignants
         Route::get('/matieres', [ProxyOrganisationController::class, 'matieres']);
@@ -178,7 +178,7 @@ Route::prefix('proxy')
 // PROXY KLASSCI - Routes ENSEIGNANTS uniquement
 // ============================================
 Route::prefix('proxy')
-    ->middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur', 'throttle:proxy-write'])
+    ->middleware(['auth:sanctum', 'klassci.sync', 'permission:notes.saisir', 'throttle:proxy-write'])
     ->group(function () {
 
         // Sauvegarder les notes (Enseignants/Coordinateurs uniquement)
@@ -194,20 +194,20 @@ Route::prefix('proxy')
 // ============================================
 // ADMIN - Gestion des utilisateurs et configuration
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:comptes.gerer'])->group(function () {
     Route::post('users', [AdminController::class, 'createUser']);
     Route::put('users/{user}', [AdminController::class, 'updateUser']);
     Route::delete('users/{user}', [AdminController::class, 'deleteUser']);
     // #1275 : l'admin et le superAdmin seuls (le coordinateur, qui gère les comptes, est
     // refusé : définir un mot de passe, c'est pouvoir se connecter à la place du compte).
     Route::put('users/{user}/password', [MotDePasseDuCompteController::class, 'definir'])
-        ->middleware(['role:admin,superAdmin', 'throttle:mot-de-passe-defini']);
+        ->middleware(['permission:comptes.mot_de_passe', 'throttle:mot-de-passe-defini']);
 });
 
 // ============================================
 // CONFIGURATION - Gestion de la configuration système
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin', 'plateforme'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:ecole.configuration', 'plateforme'])->group(function () {
     Route::get('configuration', [ConfigurationController::class, 'get'])
         ->middleware('throttle:configuration-lecture');
     Route::put('configuration', [ConfigurationController::class, 'update']);
@@ -217,7 +217,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin', 'plateform
 // ============================================
 // INTEGRATIONS - Services tiers
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin', 'plateforme'])->prefix('integrations')->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:ecole.integrations', 'plateforme'])->prefix('integrations')->group(function () {
     Route::post('connect', [IntegrationController::class, 'connect']);
     Route::post('authorize', [IntegrationController::class, 'authorize']);
     Route::post('test', [IntegrationController::class, 'testConnection']);
@@ -236,7 +236,7 @@ Route::prefix('proxy')
 
         // Dashboard enseignant (réservé aux enseignants/coordinateurs)
         Route::get('/me/teacher-dashboard', [ProxyDashboardController::class, 'teacherDashboard'])
-            ->middleware('role:enseignant,coordinateur');
+            ->middleware('permission:enseignement.consulter');
     });
 
 // ============================================

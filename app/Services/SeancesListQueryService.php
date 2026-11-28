@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\TypeDeSeance;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Models\User;
+use App\Services\Seances\CartesDuType;
 use App\Services\Seances\FenetreVisio;
 use App\Services\Seances\KlassciModificationDeSeance;
 use App\Services\Seances\SeancesListReader;
@@ -73,7 +75,7 @@ final class SeancesListQueryService implements SeancesListReader
      *
      * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
-    public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId): array
+    public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId, ?TypeDeSeance $type = null): array
     {
         $klassciToken = $this->requireToken($user);
 
@@ -88,10 +90,11 @@ final class SeancesListQueryService implements SeancesListReader
         ]);
 
         // Depuis minuit : la séance terminée ce matin n'est plus « à venir » (FenetreVisio).
-        $seancesEnrichies = FenetreVisio::sansLesPassees(
+        // #1668 : le type se lit sur les cartes, qui portent `type_cours` repris, ou null.
+        $seancesEnrichies = CartesDuType::garder(FenetreVisio::sansLesPassees(
             $this->upcomingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin, $teacherId, $classeId),
             Carbon::now(),
-        );
+        ), $type);
 
         return [
             'data' => self::nonModifiables($seancesEnrichies),
@@ -102,6 +105,7 @@ final class SeancesListQueryService implements SeancesListReader
                 'filtres' => [
                     'teacher_id' => $teacherId,
                     'classe_id' => $classeId,
+                    'type' => $type?->value,
                 ],
             ],
         ];
@@ -162,7 +166,8 @@ final class SeancesListQueryService implements SeancesListReader
      */
     private static function nonModifiables(array $cartes): array
     {
-        return array_map(static fn (array $carte): array => array_merge($carte, ['can_be_edited' => false]), $cartes);
+        // front#719 : l'appel non plus ne se fait pas ici, mais dans KLASSCI.
+        return array_map(static fn (array $carte): array => array_merge($carte, ['can_be_edited' => false, 'can_take_attendance' => false]), $cartes);
     }
 
     /**

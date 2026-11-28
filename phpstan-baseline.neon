@@ -295,12 +295,6 @@ parameters:
 			path: app/Jobs/DetectDisconnectedParticipants.php
 
 		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Attendances/SeanceAttendancesQueryService.php
-
-		-
 			message: '#^Method App\\Services\\Chapter\\ChapterAccessGate\:\:blockingQuiz\(\) never returns array\{chapter_id\: int, chapter_title\: string, quiz_title\: string, passing_score\: int\} so it can be removed from the return type\.$#'
 			identifier: return.unusedType
 			count: 1
@@ -583,12 +577,6 @@ parameters:
 			path: app/Services/Evaluation/EvaluationGradingService.php
 
 		-
-			message: '#^Cannot access property \$questions on App\\Models\\Evaluation\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/Evaluation/EvaluationGradingService.php
-
-		-
 			message: '#^Method App\\Services\\Evaluation\\EvaluationListService\:\:listForTeacher\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
 			identifier: return.type
 			count: 1
@@ -664,12 +652,6 @@ parameters:
 		-
 			message: '#^Cannot access offset ''note'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''is_published'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 

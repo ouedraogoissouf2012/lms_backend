@@ -50,6 +50,8 @@ final class LimitesNommees
         // #1667 : un compte change son mot de passe, rarement ; la vérification de l'actuel ne doit pas servir à le deviner.
         'mot-de-passe-change' => [5, 'compte'],
         'profil-modifie' => [20, 'compte'],
+        // #1650 : une annonce part à toute une classe ; une rafale inonderait ses élèves.
+        'annonce' => [10, 'compte'],
     ];
 
     public static function enregistrer(): void

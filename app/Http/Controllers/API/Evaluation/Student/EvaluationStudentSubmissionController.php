@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
+use App\Enums\CorrectionRelease;
 use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\QuestionsDeLaCopie;
+use App\Services\Evaluation\Student\OuvertureDuCorrige;
 use App\Services\Evaluation\Student\ResultatsVisibles;
 use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
@@ -16,9 +19,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
- * Lecture de la dernière soumission étudiant pour une évaluation, avec
- * masquage des bonnes réponses tant que le délai de correction
- * (7 jours par défaut) n'est pas écoulé.
+ * Lecture de la dernière soumission étudiant pour une évaluation, avec son
+ * corrigé quand la règle d'ouverture le permet ({@see OuvertureDuCorrige}, #1699).
  *
  * Extrait de `EvaluationStudentController::getMySubmission` (split §5).
  *
@@ -26,11 +28,10 @@ use Illuminate\Support\Collection;
  */
 final class EvaluationStudentSubmissionController extends AuthenticatedController
 {
-    /** Délai (jours) avant que les corrections soient visibles à l'étudiant. */
-    private const CORRECTION_DELAY_DAYS = 7;
-
     public function __construct(
         private readonly CaughtExceptionLog $journal,
+        private readonly QuestionsDeLaCopie $questionsDeLaCopie,
+        private readonly OuvertureDuCorrige $corrige,
     ) {}
 
     public function getMySubmission(int $id, Request $request): JsonResponse
@@ -47,27 +48,10 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 return $this->errorResponse('Aucune soumission trouvée pour cette évaluation', 404);
             }
 
-            $submittedAt = $submission->submitted_at ? Carbon::parse($submission->submitted_at) : null;
-            // `now()->diffInDays($passe)` rend un écart SIGNÉ depuis Carbon 3 :
-            // -30 pour une copie rendue il y a trente jours. La comparaison
-            // `>= 7` ne pouvait donc JAMAIS être vraie, et l'élève n'a jamais
-            // vu sa correction. Comparer deux instants ne dépend d'aucun signe.
-            $correctionAvailable = $submittedAt !== null
-                && now()->greaterThanOrEqualTo($submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS));
-            $correctionAvailableAt = $submittedAt
-                ? $submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS)->toIso8601String()
-                : null;
-
-            $questionsData = $this->questionsDe($evaluation, $correctionAvailable);
-
-            $score = $submission->score;
-            $note = $submission->note_sur_20;
-            // La règle « résultats visibles » (C25), partagée avec la liste et
-            // la remise.
-            if (! ResultatsVisibles::pour($evaluation)) {
-                $score = null;
-                $note = null;
-            }
+            $corrige = $this->corrige->pour($user, $evaluation, Carbon::now());
+            // La règle « résultats visibles » (C25), partagée avec la liste et la remise. Le
+            // commentaire de l'enseignant suit la note (#1699) : il la dévoilerait.
+            $visibles = ResultatsVisibles::pour($evaluation);
 
             return $this->successResponse([
                 'id' => $submission->id,
@@ -77,21 +61,26 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 'started_at' => $submission->started_at,
                 'ends_at' => $submission->ends_at,
                 'submitted_at' => $submission->submitted_at,
-                'score' => $score,
-                'note_sur_20' => $note,
-                'feedback' => $submission->feedback,
-                'questions' => $questionsData,
+                'score' => $visibles ? $submission->score : null,
+                'note_sur_20' => $visibles ? $submission->note_sur_20 : null,
+                'feedback' => $visibles ? $submission->feedback : null,
+                'questions' => $this->questionsDe($submission, $evaluation, $corrige['ouvert']),
                 // Toujours un objet JSON, `{}` quand la copie est vide : un tableau vide
                 // s'encoderait `[]`, contre la spec et la prop `Object` du front.
                 'answers' => (object) ($submission->answers ?? []),
-                'correction_available' => $correctionAvailable,
-                'correction_available_at' => $correctionAvailableAt,
-                'correction_delay_days' => self::CORRECTION_DELAY_DAYS,
+                'correction_available' => $corrige['ouvert'],
+                'correction_available_at' => $corrige['ouvre_le']?->toIso8601String(),
+                // Déprécié (#1699) : plus de délai fixe. Retiré quand le front ne le lit plus.
+                'correction_delay_days' => null,
                 'evaluation' => [
                     'id' => $evaluation->id,
                     'titre' => $evaluation->titre,
                     'bareme' => $evaluation->bareme,
                     'coefficient' => $evaluation->coefficient,
+                    // front#693 : « notes pas encore publiées » se lit ici, pas sur une note
+                    // `null`, qu'a aussi une dissertation pas encore corrigée.
+                    'show_results' => $visibles,
+                    'correction_release' => ($evaluation->correction_release ?? CorrectionRelease::WithResults)->value,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -104,23 +93,20 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
     }
 
     /**
-     * Les questions de la copie, dans l'ordre de l'évaluation (mélangées si elle le
-     * demande).
+     * Les questions de la copie, dans l'ordre PRÉSENTÉ à l'élève et figé à son démarrage
+     * (#1702, {@see QuestionsDeLaCopie}). Avant, le mélange était recalculé à chaque lecture.
      *
      * Le corrigé est masqué par défaut sur le modèle ({@see
      * \App\Models\EvaluationQuestion}). Ce chemin — la copie de l'élève lui-même,
-     * après le délai — est le seul à le révéler, et il le fait explicitement.
+     * une fois le corrigé ouvert — est le seul à le révéler, et il le fait explicitement.
      * L'ancien `unset` faisait l'inverse : il retirait ce que tous les autres
      * chemins laissaient passer.
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function questionsDe(Evaluation $evaluation, bool $correctionAvailable): Collection
+    private function questionsDe(EvaluationSubmission $copie, Evaluation $evaluation, bool $correctionAvailable): Collection
     {
-        $questions = $evaluation->questions()->get();
-        if ($evaluation->shuffle_questions) {
-            $questions = $questions->shuffle()->values();
-        }
+        $questions = $this->questionsDeLaCopie->de($copie, $evaluation);
 
         return $questions->map(static function ($question) use ($correctionAvailable) {
             if ($correctionAvailable) {

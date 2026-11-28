@@ -55,7 +55,7 @@ final class ReclamationDeNoteTest extends TestCase
         $this->decision($coordinateur, $id, ['decision' => 'corrigee', 'note_decidee' => 12])->assertOk()
             ->assertJsonPath('data.statut', 'tranchee')->assertJsonPath('data.decision.note_decidee', 12)->assertJsonPath('data.klassci', null);
 
-        self::assertSame('12.00', $this->copie->fresh()?->getRawOriginal('note_sur_20'));
+        self::assertSame('12.00', $this->copie->fresh()?->note_sur_20);
         self::assertSame([
             Notification::TYPE_RECLAMATION_DEPOSEE => [$this->enseignant->id],
             Notification::TYPE_RECLAMATION_A_TRANCHER => [$coordinateur->id],
@@ -73,7 +73,7 @@ final class ReclamationDeNoteTest extends TestCase
 
         $this->decision($this->membre($this->ecole, 'superAdmin'), $id, ['decision' => 'maintenue'])->assertOk()->assertJsonPath('data.decision.decision', 'maintenue');
 
-        self::assertSame('8.00', $this->copie->fresh()?->getRawOriginal('note_sur_20'));
+        self::assertSame('8.00', $this->copie->fresh()?->note_sur_20);
     }
 
     public function test_le_delai_et_la_reclamation_deja_ouverte(): void

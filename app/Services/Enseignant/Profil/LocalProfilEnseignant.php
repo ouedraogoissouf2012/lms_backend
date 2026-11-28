@@ -50,7 +50,7 @@ final class LocalProfilEnseignant implements ProfilEnseignantSource
     private function matriculePris(string $matricule, int $ecole, int $enseignant): bool
     {
         return ProfilEnseignant::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $ecole)->where('matricule', $matricule)->where('user_id', '!=', $enseignant)->exists();
+            ->where('matricule', $matricule)->where('user_id', '!=', $enseignant)->exists(); // MUTATION P2 : unicite globale
     }
 
     private static function matriculePrisRefus(): BusinessException

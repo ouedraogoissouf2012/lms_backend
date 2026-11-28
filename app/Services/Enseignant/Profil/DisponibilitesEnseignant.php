@@ -44,12 +44,12 @@ final class DisponibilitesEnseignant
     /** @param  list<array{jour: int, debut: string, fin: string, disponible: bool}>  $semaine */
     public function remplacerSemaine(User $enseignant, array $semaine): void
     {
-        self::exigerSansChevauchement($semaine);
+        // MUTATION P3 : chevauchement accepte
         $this->db->transaction(static function () use ($enseignant, $semaine): void {
             DisponibiliteEnseignant::query()->withoutGlobalScope('institution')
                 ->where('institution_id', $enseignant->institution_id)->where('user_id', $enseignant->id)->delete();
             foreach ($semaine as $creneau) {
-                DisponibiliteEnseignant::query()->create(['institution_id' => $enseignant->institution_id, 'user_id' => $enseignant->id] + $creneau);
+                DisponibiliteEnseignant::query()->create(['institution_id' => $enseignant->institution_id, 'user_id' => $enseignant->klassci_enseignant_id ?? $enseignant->id] + $creneau); // MUTATION P4
             }
         });
     }
@@ -69,7 +69,7 @@ final class DisponibilitesEnseignant
     public function retirerException(User $enseignant, int $id): void
     {
         $retirees = ExceptionDisponibilite::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $enseignant->institution_id)->where('user_id', $enseignant->id)->whereKey($id)->delete();
+            ->where('institution_id', $enseignant->institution_id)->whereKey($id)->delete(); // MUTATION P6
         if ($retirees === 0) {
             throw new BusinessException('Exception introuvable', 404);
         }

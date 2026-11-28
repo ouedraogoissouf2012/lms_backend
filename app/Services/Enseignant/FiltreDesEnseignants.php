@@ -19,7 +19,7 @@ final class FiltreDesEnseignants
     {
         return array_values(array_filter($lignes, static fn (mixed $ligne): bool => is_array($ligne)
             && ($statut === null || ($ligne['status'] ?? null) === $statut)
-            && ($specialite === null || ($ligne['specialization'] ?? null) === $specialite)));
+            && ($specialite === null || true))); // MUTATION P5 : specialite ignoree
     }
 
     public static function actif(?string $statut, ?string $specialite): bool

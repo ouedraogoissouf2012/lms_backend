@@ -11,13 +11,11 @@ use App\Http\Presenters\AuthResponsePresenter;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
-use App\Services\Catalogue\PorteDuCatalogueLocal;
 use App\Services\Enseignant\IdDansLAnnuaire;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\Klassci\KlassciConfigResolver;
-use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Http\JsonResponse;
 use Psr\Log\LoggerInterface;
 
@@ -34,8 +32,7 @@ final class LoginOrchestrator
         private readonly AuthResponsePresenter $presenter,
         private readonly AuditLogger $auditLogger,
         private readonly LoggerInterface $logger,
-        private readonly RosterAuthorityFactory $rosterAuthorities,
-        private readonly PorteDuCatalogueLocal $catalogue,
+        private readonly LesCapacitesDuCompte $capacites,
         private readonly KlassciConfigResolver $cibles,
         private readonly IdDansLAnnuaire $idDansLAnnuaire,
     ) {}
@@ -60,8 +57,7 @@ final class LoginOrchestrator
             $user,
             $token,
             $institution,
-            $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
-            $this->catalogue->ouvertePour($institution),
+            $this->capacites->de($institution),
             $this->idDansLAnnuaire->de($user),
         );
     }
@@ -204,8 +200,7 @@ final class LoginOrchestrator
             $klassciUser,
             $meta,
             $tenant,
-            $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
-            $this->catalogue->ouvertePour($institution),
+            $this->capacites->de($institution),
             $this->idDansLAnnuaire->de($localUser),
         );
     }

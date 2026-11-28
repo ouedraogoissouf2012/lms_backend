@@ -31,4 +31,10 @@ interface SuiviDesPresences
      * @throws BusinessException
      */
     public function synthese(User $gestion, FiltresDePresences $filtres, int $seuil): array;
+
+    /**
+     * L'école tient-elle ses présences dans le LMS ? La capacité que la connexion dit au front
+     * (`meta.peut_suivre_les_presences`, front#689) : la source répond, le mode n'est jamais lu.
+     */
+    public function tenuDansLeLms(): bool;
 }

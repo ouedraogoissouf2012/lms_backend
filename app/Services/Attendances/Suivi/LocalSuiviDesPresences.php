@@ -26,6 +26,11 @@ final class LocalSuiviDesPresences implements SuiviDesPresences
 
     public function __construct(private readonly ConnectionInterface $db) {}
 
+    public function tenuDansLeLms(): bool
+    {
+        return true;
+    }
+
     public function lister(User $gestion, FiltresDePresences $filtres): array
     {
         $marque = PresenceRetenue::expression('a.mark', 'a.status');

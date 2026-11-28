@@ -24,6 +24,11 @@ final class KlassciSuiviDesPresences implements SuiviDesPresences
         throw self::refus();
     }
 
+    public function tenuDansLeLms(): bool
+    {
+        return false;
+    }
+
     private static function refus(): BusinessException
     {
         return new BusinessException('Les présences de cette école se tiennent dans KLASSCI.', 409, null, KlassciSaisieDeLAppel::REASON);

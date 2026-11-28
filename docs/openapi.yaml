@@ -5109,6 +5109,26 @@ components:
                     (`/proxy/enseignants`) emet pour ce compte. Le client y reconnait sa
                     propre fiche sans connaitre le mode de l'ecole (#805). null pour un
                     compte qui n'est pas enseignant, ou que l'annuaire ecarte.
+        meta:
+          type: object
+          description: |
+            Les CAPACITES de l'ecole du compte, jamais son mode (#805) : chacune est
+            demandee a l'autorite ou a la source de son domaine. Sans etablissement,
+            toutes valent false. Le role reste juge par chaque route.
+          required: [peut_inscrire_localement, peut_gerer_catalogue_local, peut_suivre_les_presences]
+          properties:
+            peut_inscrire_localement:
+              type: boolean
+              description: "L'ecole inscrit ses apprenants dans le LMS (#805)."
+            peut_gerer_catalogue_local:
+              type: boolean
+              description: "L'ecole tient son catalogue (classes, matieres, sessions) dans le LMS (#1184)."
+            peut_suivre_les_presences:
+              type: boolean
+              description: |
+                L'ecole tient ses presences dans le LMS : `GET /lms/presences` et
+                `GET /lms/presences/synthese` lui repondent (#1683, front#689). false
+                en ecole KLASSCI, ou ces routes rendent 409 `attendance_managed_by_klassci`.
 
     User:
       type: object

@@ -4358,6 +4358,26 @@ components:
           type: string
           format: date-time
 
+    PhotoDEleveReponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - photo_url
+          properties:
+            photo_url:
+              type: string
+              description: "La route authentifiee de la photo (jamais une URL publique)."
+
     TuteurDuDossier:
       type: object
       additionalProperties: false
@@ -4472,7 +4492,7 @@ components:
                 photo_url:
                   type: string
                   nullable: true
-                  description: "Nulle jusqu a la photo (PR 2 de #1657)."
+                  description: "La route authentifiee de la photo (`GET /eleves/{eleve}/photo`), ou nulle sans photo."
                 tuteurs:
                   type: array
                   items:
@@ -8589,6 +8609,177 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/photo:
+    get:
+      tags:
+        - Eleves
+      operationId: lireLaPhotoDeLEleve
+      summary: "La photo d un eleve"
+      description: |
+        #1657 (PR 2). Servie par cette route seule, jamais par une URL publique, selon les regles de
+        lecture du dossier : la gestion, l eleve lui-meme, un enseignant d une de ses classes. Une image
+        JPEG re-encodee par le serveur.
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La photo"
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Ni la gestion, ni l eleve lui-meme, ni un enseignant d une de ses classes. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement, ou sans photo."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Eleves
+      operationId: deposerLaPhotoDeLEleve
+      summary: "Deposer la photo d un eleve (ecole autonome)"
+      description: |
+        #1657 (PR 2). Gestion d une ecole autonome, sur un eleve qui a un dossier. Une image JPEG, PNG ou
+        WebP (type lu sur le contenu), 5 Mo au plus. Le serveur la DECODE puis la RE-ENCODE en JPEG, 512 px
+        au plus de cote : le fichier d origine et ses metadonnees ne sont jamais gardes. Stockage prive.
+        Remplace la photo precedente (201 la premiere fois, 200 ensuite).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - photo
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: "Photo remplacee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoDEleveReponse'
+        '201':
+          description: "Premiere photo"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoDEleveReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas encore de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Pas de photo, type refuse, plus de 5 Mo, ou fichier qui ne se decode pas comme une image."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Eleves
+      operationId: retirerLaPhotoDeLEleve
+      summary: "Retirer la photo d un eleve (ecole autonome)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Photo retiree, fichier supprime"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

@@ -29,6 +29,9 @@ return [
         // sur ces trois tables neuves, contrairement aux historiques.
         'programs',
         'training_sessions',
+        // #1663 : règles et décisions de passage (institution_id NOT NULL).
+        'regles_de_passage',
+        'decisions_de_passage',
         'creneaux',
         'classes',
         'matieres',

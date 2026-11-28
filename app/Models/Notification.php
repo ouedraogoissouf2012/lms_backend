@@ -71,6 +71,17 @@ class Notification extends Model
     /** #1681 : la gestion a tranché un justificatif d'absence de l'élève. */
     public const TYPE_ABSENCE_JUSTIFICATION_DECIDED = 'absence_justification_decided';
 
+    /** #1650 : une annonce du personnel à toute une classe (`data.annonce_id`). */
+    public const TYPE_ANNONCE = 'annonce';
+
+    /** Les types connus : la liste blanche du filtre `type` de `GET /notifications` (front#690). */
+    public const TYPES = [
+        self::TYPE_LESSON_PUBLISHED, self::TYPE_FORUM_REPLY, self::TYPE_QUIZ_AVAILABLE, self::TYPE_GRADE_RECEIVED,
+        self::TYPE_LESSON_UPDATED, self::TYPE_FORUM_SOLUTION, self::TYPE_QUIZ_DEADLINE, self::TYPE_VISIO_SCHEDULED,
+        self::TYPE_VISIO_STARTING, self::TYPE_EVALUATION_APPROACHING, self::TYPE_ANNONCE,
+        self::TYPE_ABSENCE_JUSTIFICATION_DECIDED,
+    ];
+
     /**
      * Relation: Utilisateur destinataire
      *

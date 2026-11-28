@@ -317,24 +317,26 @@ final class EvaluationLearnerReachTest extends TestCase
 
     /**
      * L'élève passé dans une autre classe lit toujours SA copie, et le corrigé
-     * suit la même règle qu'avant (#883) : visible après le délai, masqué avant.
+     * suit la règle de son ouverture (#1699) : notes publiées, et jamais avant la
+     * fermeture de l'évaluation pour tous. KLASSCI ne programme ici aucune
+     * fenêtre : la fin de la ligne fait foi.
      */
-    public function test_sa_copie_d_une_classe_passee_reste_lisible_avec_le_corrige_selon_le_delai(): void
+    public function test_sa_copie_d_une_classe_passee_reste_lisible_avec_le_corrige_selon_la_fermeture(): void
     {
         $eleve = $this->eleveConnecte();
         $this->klassciRend(self::CLASSE);
-        $ancienne = $this->evaluation(self::AUTRE_CLASSE, ['status' => 'terminee']);
-        $recente = $this->evaluation(self::AUTRE_CLASSE, ['status' => 'terminee']);
-        $this->copieRendue($ancienne, $eleve, now()->subDays(8));
-        $this->copieRendue($recente, $eleve, now()->subDays(2));
+        $fermee = $this->evaluation(self::AUTRE_CLASSE, ['date_evaluation' => now()->subDays(8), 'duree_minutes' => 60, 'deadline_at' => null]);
+        $ouverte = $this->evaluation(self::AUTRE_CLASSE, ['date_evaluation' => now()->subMinutes(30), 'duree_minutes' => 60, 'deadline_at' => null]);
+        $this->copieRendue($fermee, $eleve, now()->subDays(8));
+        $this->copieRendue($ouverte, $eleve, now()->subMinutes(10));
 
-        $apresDelai = $this->asTenant($eleve)->getJson("/api/evaluations/{$ancienne->id}/my-submission")->assertOk();
-        $avantDelai = $this->asTenant($eleve)->getJson("/api/evaluations/{$recente->id}/my-submission")->assertOk();
+        $apresFermeture = $this->asTenant($eleve)->getJson("/api/evaluations/{$fermee->id}/my-submission")->assertOk();
+        $avantFermeture = $this->asTenant($eleve)->getJson("/api/evaluations/{$ouverte->id}/my-submission")->assertOk();
 
-        $apresDelai->assertJsonPath('data.correction_available', true);
-        self::assertStringContainsString('LA-REPONSE-SECRETE', (string) $apresDelai->getContent());
-        $avantDelai->assertJsonPath('data.correction_available', false);
-        self::assertStringNotContainsString('LA-REPONSE-SECRETE', (string) $avantDelai->getContent());
+        $apresFermeture->assertJsonPath('data.correction_available', true);
+        self::assertStringContainsString('LA-REPONSE-SECRETE', (string) $apresFermeture->getContent());
+        $avantFermeture->assertJsonPath('data.correction_available', false);
+        self::assertStringNotContainsString('LA-REPONSE-SECRETE', (string) $avantFermeture->getContent());
     }
 
     public function test_la_copie_d_un_camarade_reste_introuvable(): void

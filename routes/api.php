@@ -25,4 +25,5 @@ Route::middleware('etablissement.requis')->group(function (): void {
     require __DIR__.'/api/assiduite.php';
     require __DIR__.'/api/evaluation.php';
     require __DIR__.'/api/admin.php';
+    require __DIR__.'/api/annonces.php';
 });

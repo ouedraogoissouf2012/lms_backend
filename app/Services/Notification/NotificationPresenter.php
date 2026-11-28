@@ -92,6 +92,7 @@ class NotificationPresenter
             Notification::TYPE_VISIO_STARTING => 'mdi-video-check',
             Notification::TYPE_EVALUATION_APPROACHING => 'mdi-calendar-alert',
             Notification::TYPE_ABSENCE_JUSTIFICATION_DECIDED => 'mdi-file-check',
+            Notification::TYPE_ANNONCE => 'mdi-bullhorn',
             default => 'mdi-bell',
         };
     }
@@ -111,6 +112,7 @@ class NotificationPresenter
             Notification::TYPE_VISIO_STARTING => 'warning',
             Notification::TYPE_EVALUATION_APPROACHING => 'warning',
             Notification::TYPE_ABSENCE_JUSTIFICATION_DECIDED => 'info',
+            Notification::TYPE_ANNONCE => 'info',
             default => 'secondary',
         };
     }

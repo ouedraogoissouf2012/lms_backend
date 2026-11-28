@@ -6,6 +6,7 @@ namespace App\Services\Visio\Lifecycle;
 
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Attendances\Heures\HeuresEmargees;
 use App\Services\ClasseSyncService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use App\Services\Seances\FenetreVisio;
@@ -68,12 +69,7 @@ final class VisioSessionService
                 ];
             }
 
-            $visio->update([
-                'visio_status' => 'active',
-                'visio_active' => true,
-                'visio_started_at' => now(),
-                'updated_by' => $user->id,
-            ]);
+            $this->demarrer($visio, $user);
 
             $this->logger->info('Visio démarrée', [
                 'seance_id' => $seanceId,
@@ -180,6 +176,21 @@ final class VisioSessionService
                 ],
             ];
         }
+    }
+
+    /**
+     * La visio passe à active, horodatée, avec qui la démarre : les heures de l'enseignant (#1682,
+     * {@see HeuresEmargees}) lisent `visio_demarree_par_id`.
+     */
+    private function demarrer(Seance $visio, User $user): void
+    {
+        $visio->update([
+            'visio_status' => 'active',
+            'visio_active' => true,
+            'visio_started_at' => now(),
+            'visio_demarree_par_id' => $user->id,
+            'updated_by' => $user->id,
+        ]);
     }
 
     /**

@@ -21,8 +21,8 @@ use Tests\TestCase;
  * #1198 — un modérateur dont le rôle est stocké sous un ALIAS (`teacher`, `coordinator`)
  * modère comme son rôle le prévoit.
  *
- * La table des alias est `Role::aliases()`. Les gardes de route la lisent : `personnel`
- * (`EnsurePersonnel`, par `isStaff()`) admet `teacher` et `coordinator`, et les routes
+ * La table des alias est `Role::aliases()`. Les gardes de route la lisent : `permission:forum.moderer`
+ * (par le rôle socle, #1665) admet `teacher` et `coordinator`, et les routes
  * sans garde de rôle admettent tout compte de l'école. Mais
  * `ChecksForumAuthorization::isForumActionAuthorized()` compare la valeur BRUTE
  * (`in_array($user->role, $moderatorRoles, true)`, ligne 93) à des listes recopiées

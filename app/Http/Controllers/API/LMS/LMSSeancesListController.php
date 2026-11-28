@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\UpcomingSeancesRequest;
 use App\Services\Seances\SeancesListReader;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
@@ -47,7 +48,7 @@ final class LMSSeancesListController extends AuthenticatedController
     /**
      * GET /api/lms/seances/upcoming
      */
-    public function upcomingSeances(Request $request, SeancesListReader $seances): JsonResponse
+    public function upcomingSeances(UpcomingSeancesRequest $request, SeancesListReader $seances): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
@@ -59,7 +60,7 @@ final class LMSSeancesListController extends AuthenticatedController
             $classeId = $request->input('classe_id');
             $classeId = $classeId !== null ? (int) $classeId : null;
 
-            $payload = $seances->getUpcomingForUser($user, $days, $teacherId, $classeId);
+            $payload = $seances->getUpcomingForUser($user, $days, $teacherId, $classeId, $request->typeDeSeance());
 
             // NON migré vers successResponse() : cette réponse expose une clé sœur
             // `meta` à la racine. Le trait (DRY-only) OMET `meta` quand il est vide,

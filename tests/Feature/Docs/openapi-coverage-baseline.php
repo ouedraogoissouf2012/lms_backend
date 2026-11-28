@@ -29,7 +29,6 @@ return [
     'DELETE /notifications/read/all',
     'DELETE /notifications/{id}',
     'DELETE /quizzes/{quiz}',
-    'DELETE /users/{user}',
     'GET /__test/tenant-scope-probe',
     'GET /admin/analytics/activity-trends',
     'GET /admin/analytics/pending-tasks',
@@ -140,5 +139,4 @@ return [
     'PUT /lessons/{id}',
     'PUT /proxy/cours/{id}/statut',
     'PUT /quizzes/{quiz}',
-    'PUT /users/{user}',
 ];

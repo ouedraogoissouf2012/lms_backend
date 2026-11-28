@@ -6,6 +6,7 @@ namespace App\Services\Attendances\Appel;
 
 use App\Enums\AttendanceMark;
 use App\Exceptions\BusinessException;
+use App\Models\Seance;
 use App\Models\User;
 
 /**
@@ -18,7 +19,7 @@ interface SaisieDeLAppel
     /**
      * La classe de la séance, chaque élève actif avec sa marque.
      *
-     * @return array{seance_id: int, eleves: list<array{user_id: int, nom: string, mark: ?string, origin: ?string, delegated_at: ?string}>}
+     * @return array{seance_id: int, eleves: list<array{user_id: int, nom: string, mark: ?string, origin: ?string, delegated_at: ?string, presence_visio: ?string}>}
      *
      * @throws BusinessException
      */
@@ -30,4 +31,10 @@ interface SaisieDeLAppel
      * @throws BusinessException
      */
     public function saisir(int $seanceId, User $acteur, array $marques): void;
+
+    /**
+     * Le marqueur `can_take_attendance` d'une carte (front#719) : ce que {@see saisir()} accepterait de CE lecteur
+     * sur cette séance, sans écrire. L'écran masque le geste par cette capacité, jamais par le mode.
+     */
+    public function peutSaisir(Seance $seance, User $lecteur): bool;
 }

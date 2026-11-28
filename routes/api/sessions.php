@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\API\LMS\LMSClasseArchiveController;
 use App\Http\Controllers\API\LMS\LMSClasseCapaciteController;
+use App\Http\Controllers\API\LMS\LMSClasseEleveController;
 use App\Http\Controllers\API\LMS\LMSClasseEleveMutationController;
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
@@ -144,5 +145,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:formations.gerer'
         // Changer un eleve de classe dans son ecole (#1652) : en une transaction, l ancienne
         // adhesion se ferme (inactif, datee, motif mutation) et la nouvelle s ouvre.
         Route::post('/classes/{classe}/eleves/{eleve}/muter', [LMSClasseEleveMutationController::class, 'store'])
+            ->whereNumber(['classe', 'eleve']);
+
+        // Inscrire un eleve existant dans une classe, ou l en retirer (#1619) : l entree decidee
+        // par l ecole (memes refus que la mutation) ; le retrait ferme l adhesion, le dossier demeure.
+        Route::post('/classes/{classe}/eleves', [LMSClasseEleveController::class, 'store'])->whereNumber('classe');
+        Route::delete('/classes/{classe}/eleves/{eleve}', [LMSClasseEleveController::class, 'destroy'])
             ->whereNumber(['classe', 'eleve']);
     });

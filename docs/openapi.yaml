@@ -5014,6 +5014,10 @@ components:
             - seance_past
             - evaluation_locked
             - class_full
+            # #1619 : les refus de l admission par l ecole (AdmissionParLEcole), aussi ceux de la mutation.
+            - class_archived
+            - class_period_closed
+            - already_in_class
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -12004,6 +12008,157 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /classes/{classe}/eleves:
+    post:
+      tags:
+        - Session de formation
+      summary: "Inscrire un eleve existant dans une classe"
+      description: |
+        #1619. L entree decidee par l ecole (admin, coordinateur) : memes refus que la
+        mutation (classe archivee, Periode close, eleve deja actif, classe pleine). Une
+        ancienne adhesion est REACTIVEE, jamais doublee. `eleve_id` est l id LOCAL.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - eleve_id
+              properties:
+                eleve_id:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          description: "L eleve est inscrit"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      eleve_id:
+                        type: integer
+                      classe_id:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant ; ou inscriptions de l ecole tenues par KLASSCI (`enrolment_managed_by_klassci`, le droit d inscription, comme les demandes de #1817) ; ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`, un refus motive). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe ou eleve introuvable DANS CET ETABLISSEMENT (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`class_archived`, `class_period_closed`, `already_in_class`, `class_full` : la classe ne recoit pas cet eleve."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "`eleve_id` absent, invalide, ou compte qui n est pas un eleve."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /classes/{classe}/eleves/{eleve}:
+    delete:
+      tags:
+        - Session de formation
+      summary: "Retirer un eleve d une classe"
+      description: |
+        #1619. L adhesion ACTIVE se ferme (`inactif`, datee, motif `retrait`). Le dossier,
+        les notes et les presences demeurent.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: eleve
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "L eleve est retire de la classe"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      eleve_id:
+                        type: integer
+                      classe_id:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant ; ou inscriptions de l ecole tenues par KLASSCI (`enrolment_managed_by_klassci`, le droit d inscription, comme les demandes de #1817) ; ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`, un refus motive). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe ou eleve introuvable DANS CET ETABLISSEMENT ; ou eleve sans adhesion dans la classe."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`enrolment_not_active` : l adhesion n est pas active."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /classes/{classe}/code-inscription:

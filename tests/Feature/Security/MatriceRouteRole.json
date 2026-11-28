@@ -40,6 +40,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/classes/{classe}/eleves/{eleve}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/classes/{classe}/matieres/{matiere}": [
         "coordinateur",
         "coordinator",
@@ -192,6 +200,14 @@
         "supradmin"
     ],
     "DELETE api/v1/classes/{classe}/code-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/classes/{classe}/eleves/{eleve}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1544,6 +1560,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/classes/{classe}/eleves": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/classes/{classe}/eleves/{eleve}/muter": [
         "coordinateur",
         "coordinator",
@@ -2159,6 +2183,14 @@
         "supradmin"
     ],
     "POST api/v1/classes/{classe}/desarchiver": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes/{classe}/eleves": [
         "coordinateur",
         "coordinator",
         "admin",

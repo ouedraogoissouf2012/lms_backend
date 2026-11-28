@@ -40,7 +40,8 @@ final class ExportDesDonneesDeLEleve
             throw new BusinessException(self::INTROUVABLE, 404);
         }
         $eleve = User::query()->withoutGlobalScopes()->whereKey($idEleve)
-            ->where('institution_id', $ecole)->whereIn('role', Role::Etudiant->aliases())->first();
+            // SONDE #1705 : l'élève n'est plus cherché dans l'école de l'acteur.
+            ->whereIn('role', Role::Etudiant->aliases())->first();
         if (! $eleve instanceof User) {
             throw new BusinessException(self::INTROUVABLE, 404);
         }

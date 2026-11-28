@@ -753,6 +753,14 @@
     "GET api/notifications/recent": "*",
     "GET api/notifications/unread-count": "*",
     "GET api/oauth2-callback": "*",
+    "GET api/pieces-a-fournir": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/ping": "*",
     "GET api/programs": [
         "coordinateur",
@@ -1240,6 +1248,14 @@
     "GET api/v1/notifications": "*",
     "GET api/v1/notifications/recent": "*",
     "GET api/v1/notifications/unread-count": "*",
+    "GET api/v1/pieces-a-fournir": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/ping": "*",
     "GET api/v1/programs": [
         "coordinateur",
@@ -1989,6 +2005,14 @@
     ],
     "POST api/notifications/mark-all-as-read": "*",
     "POST api/notifications/{id}/mark-as-read": "*",
+    "POST api/pieces-a-fournir": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/programs": [
         "coordinateur",
         "coordinator",
@@ -2627,6 +2651,14 @@
     ],
     "POST api/v1/notifications/mark-all-as-read": "*",
     "POST api/v1/notifications/{id}/mark-as-read": "*",
+    "POST api/v1/pieces-a-fournir": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/v1/programs": [
         "coordinateur",
         "coordinator",
@@ -2827,6 +2859,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "PUT api/pieces-a-fournir/{piece}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/proxy/cours/{id}/statut": [
         "enseignant",
         "teacher",
@@ -2943,6 +2983,14 @@
     "PUT api/v1/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/pieces-a-fournir/{piece}": [
         "coordinateur",
         "coordinator",
         "admin",

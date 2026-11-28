@@ -51,6 +51,8 @@ return [
         'matricules_sequences',
         // #1659 : les demandes d'inscription (institution_id NOT NULL).
         'demandes_inscription',
+        // #1661 : le catalogue des pièces à fournir (institution_id NOT NULL).
+        'pieces_a_fournir',
         'creneaux',
         // #1648 — filières et niveaux d'une école qui tient son catalogue ; tables neuves, NOT NULL.
         'filieres',

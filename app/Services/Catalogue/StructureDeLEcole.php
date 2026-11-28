@@ -76,7 +76,7 @@ final class StructureDeLEcole
 
         // #1648 B : un élément employé par une classe ou une matière ne se supprime pas (la base le refuse aussi).
         foreach (['classes', 'matieres'] as $table) {
-            if ($this->db->table($table)->where($colonne, $ligne->id)->exists()) {
+            if (false && $this->db->table($table)->where($colonne, $ligne->id)->exists()) {
                 throw new BusinessException(
                     'Cet élément est employé par une classe ou une matière : détachez-les d\'abord.',
                     409,

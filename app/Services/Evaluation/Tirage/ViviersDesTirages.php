@@ -39,7 +39,7 @@ final class ViviersDesTirages
         foreach ($tirages as $rang => $tirage) {
             $questions = $tirage->categorie_id === null ? collect() : QuestionDeBanque::query()->withoutGlobalScope('institution')
                 ->where('institution_id', $evaluation->institution_id)->where('categorie_id', $tirage->categorie_id)->orderBy('id')->get();
-            $erreur = self::erreur($tirage, $questions->all());
+            $erreur = self::erreur($tirage, array_values($questions->all()));
             if ($erreur !== null) {
                 $erreurs['tirages.'.$rang] = [$erreur];
             }
@@ -54,7 +54,8 @@ final class ViviersDesTirages
             ]];
         }
 
-        $ordre = (int) $evaluation->questions()->max('ordre');
+        $dernier = $evaluation->questions()->max('ordre');
+        $ordre = is_numeric($dernier) ? (int) $dernier : 0;
         foreach ($viviers as $tirage => $questions) {
             foreach ($questions as $question) {
                 EvaluationQuestion::query()->create([

@@ -67,6 +67,10 @@ class EvaluationQuestion extends Model
     protected $hidden = [
         'correct_answers',
         'explanation',
+        // #1702 (D3) : la provenance d'une question tirée (règle et question de banque) reste interne ; la copie de
+        // l'élève ne dit jamais d'où vient une question ni quel vivier l'a fournie.
+        'tirage_id',
+        'question_de_banque_id',
     ];
 
     /**

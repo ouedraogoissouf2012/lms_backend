@@ -10,6 +10,7 @@ use App\Models\EmploiDuTemps;
 use App\Models\LigneEmploiDuTemps;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Catalogue\ClasseArchivee;
 use App\Services\Catalogue\PorteDuCatalogueLocal;
 use Illuminate\Support\Carbon;
 
@@ -60,6 +61,10 @@ final class EmploisDuTemps
     {
         $ecole = $this->ecoleDe($acteur);
         $classe = $this->classeDeLEcole($champs['classe_id'], $ecole);
+        // #1763 : une classe archivée ne reçoit plus d'emploi du temps ; la copie passe aussi par ici.
+        if ($classe->estArchivee()) {
+            throw ClasseArchivee::exception();
+        }
         $this->exigerDansLaPeriode($classe, $champs['du'], $champs['au']);
 
         return EmploiDuTemps::query()->create(['institution_id' => $ecole, 'classe_id' => $classe->id] + $champs)->load('lignes');

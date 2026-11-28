@@ -10,6 +10,7 @@ use App\Models\LigneEmploiDuTemps;
 use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Catalogue\ClasseArchivee;
 use App\Services\Seances\Conflits\ConflitsDHoraire;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
@@ -26,6 +27,7 @@ use LogicException;
  *   enseignant a retiré ;
  * - chaque séance passe par {@see ConflitsDHoraire} : en conflit, elle est IGNORÉE et rapportée (`conflit`), jamais
  *   forcée (exigence de la superviseure) ; une ligne sans enseignant est ignorée (`sans_enseignant`).
+ * Une classe ARCHIVÉE (#1763) ne génère rien : 409 `class_archived`.
  * Les jours fermés du calendrier arrivent avec #1671.
  */
 final class GenerationDesSeances
@@ -41,6 +43,9 @@ final class GenerationDesSeances
         $cours = $emploi->lignes->filter(static fn (LigneEmploiDuTemps $l): bool => $l->estUnCours())->values();
         $rapport = ['creees' => 0, 'ignorees' => []];
         $classe = Classe::query()->withoutGlobalScope('institution')->whereKey($emploi->classe_id)->first();
+        if ($classe?->estArchivee() === true) {
+            throw ClasseArchivee::exception();
+        }
         $debut = CarbonImmutable::parse($emploi->du)->max(CarbonImmutable::today());
         for ($jour = $debut; $jour->lte(CarbonImmutable::parse($emploi->au)); $jour = $jour->addDay()) {
             foreach ($cours->where('jour', $jour->dayOfWeekIso) as $ligne) {

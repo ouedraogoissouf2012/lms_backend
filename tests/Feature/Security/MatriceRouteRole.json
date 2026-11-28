@@ -1234,6 +1234,7 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/v1/reclamations": "*",
     "GET api/v1/search": "*",
     "GET api/v1/search/history": "*",
     "GET api/v1/search/suggestions": "*",
@@ -2182,6 +2183,27 @@
         "supradmin"
     ],
     "POST api/v1/evaluations/{id}/publish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/evaluations/{id}/reclamations": "*",
+    "POST api/v1/evaluations/{id}/reclamations/{reclamation}/avis": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/evaluations/{id}/reclamations/{reclamation}/decision": [
         "enseignant",
         "teacher",
         "coordinateur",

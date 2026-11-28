@@ -23,5 +23,6 @@ Route::middleware('etablissement.requis')->group(function (): void {
     require __DIR__.'/api/sessions.php';
     require __DIR__.'/api/lms.php';
     require __DIR__.'/api/evaluation.php';
+    require __DIR__.'/api/suivi.php';
     require __DIR__.'/api/admin.php';
 });

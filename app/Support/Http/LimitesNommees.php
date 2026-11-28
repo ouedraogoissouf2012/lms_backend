@@ -47,6 +47,8 @@ final class LimitesNommees
         'consentement-visio' => [10, 'compte'],
         // #1275 : l'administration définit un mot de passe, rarement ; une rafale est suspecte.
         'mot-de-passe-defini' => [10, 'compte'],
+        // #1650 : une annonce part à toute une classe ; une rafale inonderait ses élèves.
+        'annonce' => [10, 'compte'],
         // #1705 : un export porte toutes les données d'une personne ; une rafale est suspecte.
         'export-donnees' => [10, 'compte'],
     ];

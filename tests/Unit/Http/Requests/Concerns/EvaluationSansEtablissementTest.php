@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 /**
@@ -24,18 +25,21 @@ use Tests\TestCase;
  * ce que ce fichier garde.
  * Défense en profondeur : la règle tient d'elle-même, quelle que soit la garde
  * placée devant elle.
+ *
+ * #1782 : sans établissement, aucune évaluation n'est dans la portée : elle est
+ * INTROUVABLE (404), avant tout contrôle de droit, et non plus refusée en 403.
  */
 final class EvaluationSansEtablissementTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** L'auteur, sans établissement, d'une évaluation : refusé. */
+    /** L'auteur, sans établissement, d'une évaluation : elle lui est introuvable. */
     public function test_l_auteur_sans_etablissement_ne_designe_pas_son_evaluation(): void
     {
         $auteur = $this->compteSansEtablissement('enseignant', 42);
         $evaluation = $this->evaluationDUneEcole(['enseignant_id' => $auteur->id, 'klassci_enseignant_id' => 42]);
 
-        self::assertFalse($this->autorise(new MutationDEvaluationRequest, $auteur, $evaluation));
+        self::assertTrue($this->introuvable(new MutationDEvaluationRequest, $auteur, $evaluation));
     }
 
     /** Le contournement d'un rôle d'administration n'ouvre rien sans établissement. */
@@ -44,7 +48,7 @@ final class EvaluationSansEtablissementTest extends TestCase
         $administrateur = $this->compteSansEtablissement('superAdmin', null);
         $evaluation = $this->evaluationDUneEcole(['klassci_enseignant_id' => 999]);
 
-        self::assertFalse($this->autorise(new MutationDEvaluationRequest, $administrateur, $evaluation));
+        self::assertTrue($this->introuvable(new MutationDEvaluationRequest, $administrateur, $evaluation));
     }
 
     /** La lecture des notes par un coordinateur, même règle. */
@@ -53,7 +57,7 @@ final class EvaluationSansEtablissementTest extends TestCase
         $coordinateur = $this->compteSansEtablissement('coordinateur', null);
         $evaluation = $this->evaluationDUneEcole(['klassci_enseignant_id' => 999]);
 
-        self::assertFalse($this->autorise(new LectureDEvaluationRequest, $coordinateur, $evaluation));
+        self::assertTrue($this->introuvable(new LectureDEvaluationRequest, $coordinateur, $evaluation));
     }
 
     private function compteSansEtablissement(string $role, ?int $klassciEnseignantId): User
@@ -72,6 +76,18 @@ final class EvaluationSansEtablissementTest extends TestCase
     private function evaluationDUneEcole(array $attributs): Evaluation
     {
         return Evaluation::factory()->create(['institution_id' => Institution::factory()->create()->id] + $attributs);
+    }
+
+    /** #1782 : la garde déclare-t-elle l'évaluation introuvable (404) ? Une autorisation rendue n'en est pas une. */
+    private function introuvable(FormRequest $requete, User $appelant, Evaluation $evaluation): bool
+    {
+        try {
+            $this->autorise($requete, $appelant, $evaluation);
+        } catch (NotFoundHttpException) {
+            return true;
+        }
+
+        return false;
     }
 
     /** La requête liée à `/evaluations/{id}`, l'appelant authentifié comme le ferait Sanctum. */

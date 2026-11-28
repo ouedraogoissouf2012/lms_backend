@@ -8,6 +8,7 @@ use App\Enums\ClasseEtudiantStatut;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use App\Models\User;
+use App\Services\Catalogue\ClasseArchivee;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\UniqueConstraintViolationException;
 
@@ -76,6 +77,15 @@ final class StudentEnrolmentService
             return StudentEnrolment::refusee(
                 'classe_inconnue',
                 sprintf('Aucune classe ne porte le code « %s » dans cet établissement.', $code),
+            );
+        }
+
+        // #1652 : une classe archivée ne reçoit plus personne, l'import compris. Refusée
+        // ligne à ligne, nommément, comme une classe inconnue : jamais en silence.
+        if ($classe->estArchivee()) {
+            return StudentEnrolment::refusee(
+                'classe_archivee',
+                sprintf('La classe « %s » est archivée : elle ne reçoit plus d\'inscription.', $code),
             );
         }
 
@@ -167,8 +177,14 @@ final class StudentEnrolmentService
      * s'écrit sous le verrou de la ligne de la classe : deux codes envoyés
      * ensemble ne dépassent pas la capacité ({@see Classe::isComplete()}).
      *
-     * @throws BusinessException 409 si une adhésion non active existe, ou si la
-     *                           classe est complète (`class_full`)
+     * ## Une classe archivée ne reçoit plus personne (#1652)
+     *
+     * Lu sur la ligne VERROUILLÉE, avant l'adhésion existante : un archivage concurrent ne
+     * laisse rien passer, et même un membre déjà actif reçoit le refus (aucune écriture
+     * n'aurait lieu, mais « déjà inscrit » laisserait croire la classe ouverte).
+     *
+     * @throws BusinessException 409 si une adhésion non active existe, si la classe est
+     *                           complète (`class_full`) ou archivée (`class_archived`)
      */
     public function rejoindre(User $etudiant, Classe $classe): Adhesion
     {
@@ -214,11 +230,15 @@ final class StudentEnrolmentService
      * Sous le verrou de la classe : rend le statut d'une adhésion existante, ou
      * écrit l'adhésion nouvelle s'il reste une place et rend `null`.
      *
-     * @throws BusinessException 409 `class_full`
+     * @throws BusinessException 409 `class_full`, 409 `class_archived`
      */
     private function entrer(User $etudiant, Classe $classe): ?string
     {
-        Classe::query()->withoutGlobalScopes()->whereKey($classe->id)->lockForUpdate()->first();
+        $verrouillee = Classe::query()->withoutGlobalScopes()->whereKey($classe->id)->lockForUpdate()->first();
+
+        if ($verrouillee?->estArchivee() === true) {
+            throw ClasseArchivee::exception();
+        }
 
         $statut = $this->statutActuel($etudiant, $classe);
 

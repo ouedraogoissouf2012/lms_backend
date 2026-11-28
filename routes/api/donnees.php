@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | L'export des données d'un élève, à sa demande, par l'ADMINISTRATION de son
-| école (admin, superAdmin) : un acte de responsable de traitement, pas du
-| coordinateur. Les deux volets. Journalisé.
+| école (`permission:eleves.exporter` : admin et superAdmin) : un acte de
+| responsable de traitement, pas du coordinateur. Les deux volets. Journalisé.
 */
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:admin,superAdmin', 'throttle:export-donnees'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:eleves.exporter', 'throttle:export-donnees'])->group(function (): void {
     Route::get('eleves/{eleve}/export', [ExportDesDonneesController::class, 'show'])->whereNumber('eleve');
 });

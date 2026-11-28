@@ -5272,6 +5272,238 @@ components:
               items:
                 type: integer
 
+    ProfilEnseignant:
+      type: object
+      additionalProperties: false
+      required: [enseignant_id, matricule, specialite, titre, grade, diplome, universite, date_debut, statut, charge_hebdo_max]
+      properties:
+        enseignant_id:
+          type: integer
+        matricule:
+          type: string
+          nullable: true
+        specialite:
+          type: string
+          nullable: true
+        titre:
+          type: string
+          nullable: true
+        grade:
+          type: string
+          nullable: true
+          enum: [assistant, maitre_assistant, maitre_de_conferences, professeur, null]
+        diplome:
+          type: string
+          nullable: true
+        universite:
+          type: string
+          nullable: true
+        date_debut:
+          type: string
+          format: date
+          nullable: true
+        statut:
+          type: string
+          nullable: true
+          enum: [en_activite, inactif, null]
+        charge_hebdo_max:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 60
+          description: "La charge hebdomadaire maximale, en heures."
+
+    UnProfilEnseignant:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/ProfilEnseignant'
+
+    SaisieDuProfilEnseignant:
+      type: object
+      additionalProperties: false
+      properties:
+        matricule:
+          type: string
+          nullable: true
+          maxLength: 50
+        specialite:
+          type: string
+          nullable: true
+          maxLength: 150
+        titre:
+          type: string
+          nullable: true
+          maxLength: 50
+        grade:
+          type: string
+          nullable: true
+          enum: [assistant, maitre_assistant, maitre_de_conferences, professeur, null]
+        diplome:
+          type: string
+          nullable: true
+          maxLength: 150
+        universite:
+          type: string
+          nullable: true
+          maxLength: 150
+        date_debut:
+          type: string
+          format: date
+          nullable: true
+        statut:
+          type: string
+          nullable: true
+          enum: [en_activite, inactif, null]
+        charge_hebdo_max:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 60
+
+    CreneauDeDisponibilite:
+      type: object
+      additionalProperties: false
+      required: [id, jour, debut, fin, disponible]
+      properties:
+        id:
+          type: integer
+        jour:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: "ISO : 1 = lundi ... 7 = dimanche."
+        debut:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        fin:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        disponible:
+          type: boolean
+
+    ExceptionDeDisponibilite:
+      type: object
+      additionalProperties: false
+      required: [id, date, debut, fin, disponible, motif]
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        debut:
+          type: string
+          nullable: true
+          description: "`null` : la journee entiere."
+        fin:
+          type: string
+          nullable: true
+        disponible:
+          type: boolean
+        motif:
+          type: string
+          nullable: true
+
+    DisponibilitesDUnEnseignant:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          additionalProperties: false
+          required: [enseignant_id, semaine, exceptions]
+          properties:
+            enseignant_id:
+              type: integer
+              description: "L'id LOCAL du compte."
+            semaine:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreneauDeDisponibilite'
+            exceptions:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExceptionDeDisponibilite'
+
+    UneExceptionDeDisponibilite:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ExceptionDeDisponibilite'
+
+    ExceptionDeDisponibiliteRetiree:
+      type: object
+      additionalProperties: false
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    SemaineDeDisponibilites:
+      type: object
+      additionalProperties: false
+      required: [semaine]
+      properties:
+        semaine:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [jour, debut, fin, disponible]
+            properties:
+              jour:
+                type: integer
+                minimum: 1
+                maximum: 7
+              debut:
+                type: string
+                pattern: '^\d{2}:\d{2}$'
+              fin:
+                type: string
+                pattern: '^\d{2}:\d{2}$'
+                description: "Apres `debut`."
+              disponible:
+                type: boolean
+
+    SaisieDExceptionDeDisponibilite:
+      type: object
+      additionalProperties: false
+      required: [date, disponible]
+      properties:
+        date:
+          type: string
+          format: date
+        debut:
+          type: string
+          nullable: true
+          description: "Avec `fin`, ou aucun des deux : la journee entiere."
+        fin:
+          type: string
+          nullable: true
+        disponible:
+          type: boolean
+        motif:
+          type: string
+          nullable: true
+          maxLength: 150
+
     ErrorResponse:
       type: object
       properties:
@@ -5581,6 +5813,410 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: "Trop de demandes depuis cette adresse IP"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/enseignants/{enseignantId}/profil:
+    get:
+      tags:
+        - Enseignants
+      operationId: lireProfilEnseignant
+      summary: "Le profil d'un enseignant"
+      description: |
+        #1666. Ecole creee depuis le LMS seulement : une ecole KLASSCI tient le profil dans KLASSCI, qui
+        n'en relaie que le matricule, la specialite et le statut (dans `GET /lms/enseignants`).
+        La gestion lit tout enseignant de l'ecole ; un enseignant, lui-meme seulement. Sans profil enregistre, chaque champ vaut `null`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: enseignantId
+          in: path
+          required: true
+          description: "L'id LOCAL du compte enseignant (`users.id`), dans les deux volets ; jamais un id KLASSCI."
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Le profil."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnProfilEnseignant'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961) ; `teacher_profile_managed_by_klassci` : une ecole KLASSCI tient le profil dans KLASSCI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant ne lit pas (un enseignant ne lit que lui-meme)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Enseignants
+      operationId: ecrireProfilEnseignant
+      summary: "Ecrire le profil d'un enseignant"
+      description: |
+        #1666. Ecole creee depuis le LMS seulement : une ecole KLASSCI tient le profil dans KLASSCI, qui
+        n'en relaie que le matricule, la specialite et le statut (dans `GET /lms/enseignants`).
+        La gestion seule. Le profil est remplace en entier ; un champ absent ou vide est efface. Le
+        matricule est FACULTATIF, saisi librement, unique dans l'ecole.
+      security:
+        - sanctum: []
+      parameters:
+        - name: enseignantId
+          in: path
+          required: true
+          description: "L'id LOCAL du compte enseignant (`users.id`), dans les deux volets ; jamais un id KLASSCI."
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaisieDuProfilEnseignant'
+      responses:
+        '200':
+          description: "Le profil enregistre."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnProfilEnseignant'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961) ; `teacher_profile_managed_by_klassci` : une ecole KLASSCI tient le profil dans KLASSCI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant ne lit pas (un enseignant ne lit que lui-meme)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ : grade ou statut hors enumeration, charge hors 1..60, date) ; `matricule_deja_pris` : un autre enseignant de l'ecole porte ce matricule."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/enseignants/{enseignantId}/disponibilites:
+    get:
+      tags:
+        - Enseignants
+      operationId: lireDisponibilitesEnseignant
+      summary: "Les disponibilites d'un enseignant"
+      description: |
+        #1666. Les DEUX volets : les disponibilites sont locales, rattachees a l'id LOCAL du compte, jamais a
+        son id KLASSCI.
+        La gestion lit tout enseignant de l'ecole ; un enseignant, lui-meme seulement.
+      security:
+        - sanctum: []
+      parameters:
+        - name: enseignantId
+          in: path
+          required: true
+          description: "L'id LOCAL du compte enseignant (`users.id`), dans les deux volets ; jamais un id KLASSCI."
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "La semaine type et les exceptions datees."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisponibilitesDUnEnseignant'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant ne lit pas (un enseignant ne lit que lui-meme)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Enseignants
+      operationId: remplacerSemaineDeDisponibilites
+      summary: "Remplacer la semaine type"
+      description: |
+        #1666. Les DEUX volets : les disponibilites sont locales, rattachees a l'id LOCAL du compte, jamais a
+        son id KLASSCI.
+        L'enseignant pour lui-meme, et la gestion (qui relit et corrige). La semaine est remplacee d'un bloc ; deux creneaux d'un meme jour ne se
+        chevauchent pas.
+      security:
+        - sanctum: []
+      parameters:
+        - name: enseignantId
+          in: path
+          required: true
+          description: "L'id LOCAL du compte enseignant (`users.id`), dans les deux volets ; jamais un id KLASSCI."
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SemaineDeDisponibilites'
+      responses:
+        '200':
+          description: "Les disponibilites enregistrees."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisponibilitesDUnEnseignant'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant n'atteint pas (un enseignant n'atteint que lui-meme ; un eleve, aucun) : meme corps qu'un id inconnu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ, fin avant le debut) ; `disponibilites_en_conflit` : deux creneaux d'un meme jour se chevauchent."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/enseignants/{enseignantId}/disponibilites/exceptions:
+    post:
+      tags:
+        - Enseignants
+      operationId: ajouterExceptionDeDisponibilite
+      summary: "Ajouter une exception datee"
+      description: |
+        #1666. Les DEUX volets : les disponibilites sont locales, rattachees a l'id LOCAL du compte, jamais a
+        son id KLASSCI.
+        L'enseignant pour lui-meme, et la gestion (qui relit et corrige). Sans creneau, l'exception couvre la journee entiere.
+      security:
+        - sanctum: []
+      parameters:
+        - name: enseignantId
+          in: path
+          required: true
+          description: "L'id LOCAL du compte enseignant (`users.id`), dans les deux volets ; jamais un id KLASSCI."
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaisieDExceptionDeDisponibilite'
+      responses:
+        '201':
+          description: "L'exception ajoutee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UneExceptionDeDisponibilite'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant n'atteint pas (un enseignant n'atteint que lui-meme ; un eleve, aucun) : meme corps qu'un id inconnu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ : date, creneau incomplet ou fin avant le debut)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/enseignants/{enseignantId}/disponibilites/exceptions/{exceptionId}:
+    delete:
+      tags:
+        - Enseignants
+      operationId: retirerExceptionDeDisponibilite
+      summary: "Retirer une exception datee"
+      description: |
+        #1666. Les DEUX volets : les disponibilites sont locales, rattachees a l'id LOCAL du compte, jamais a
+        son id KLASSCI.
+        L'enseignant pour lui-meme, et la gestion (qui relit et corrige). Une exception d'un autre enseignant ne se retire pas par celui-ci (404).
+      security:
+        - sanctum: []
+      parameters:
+        - name: enseignantId
+          in: path
+          required: true
+          description: "L'id LOCAL du compte enseignant (`users.id`), dans les deux volets ; jamais un id KLASSCI."
+          schema:
+            type: integer
+            minimum: 1
+        - name: exceptionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Retiree."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionDeDisponibiliteRetiree'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant n'atteint pas (un enseignant n'atteint que lui-meme ; un eleve, aucun) : meme corps qu'un id inconnu ; ou exception introuvable pour cet enseignant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
           content:
             application/json:
               schema:
@@ -14621,6 +15257,18 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: statut
+          in: query
+          required: false
+          description: "#1666 : ne garder que les lignes dont `status` vaut cette valeur, dans les deux volets (la valeur RENDUE : `en_activite` ou `inactif` dans une ecole creee depuis le LMS, la valeur de KLASSCI sinon). Le `meta.total` compte alors les lignes gardees."
+          schema:
+            type: string
+        - name: specialite
+          in: query
+          required: false
+          description: "#1666 : ne garder que les lignes dont `specialization` vaut cette valeur, dans les deux volets."
+          schema:
+            type: string
       responses:
         '200':
           description: "Les enseignants lisibles par l'appelant"

@@ -44,6 +44,9 @@ use App\Services\Dashboard\TeacherDashboardReader;
 use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Enseignant\KlassciInstitutionTeachersReader;
 use App\Services\Enseignant\LocalInstitutionTeachersReader;
+use App\Services\Enseignant\Profil\KlassciProfilEnseignant;
+use App\Services\Enseignant\Profil\LocalProfilEnseignant;
+use App\Services\Enseignant\Profil\ProfilEnseignantSource;
 use App\Services\Evaluation\Programming\KlassciProgrammationDesEvaluations;
 use App\Services\Evaluation\Programming\LocalProgrammationDesEvaluations;
 use App\Services\Evaluation\Programming\ProgrammationDesEvaluationsReader;
@@ -119,6 +122,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         // Lot 3c : les matières et la structure de l'établissement.
         InstitutionMatieresReader::class => [KlassciInstitutionMatieresReader::class, LocalInstitutionMatieresReader::class],
         InstitutionStructureReader::class => [KlassciInstitutionStructureReader::class, LocalInstitutionStructureReader::class],
+        // #1666 : le profil d'un enseignant ; une école KLASSCI le tient dans KLASSCI.
+        ProfilEnseignantSource::class => [KlassciProfilEnseignant::class, LocalProfilEnseignant::class],
         // Lot 3d : les séances de l'utilisateur, et son emploi du temps.
         SeancesListReader::class => [SeancesListQueryService::class, LocalSeancesListReader::class],
         // Lot 3b : les enseignants de l'établissement.

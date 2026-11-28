@@ -102,6 +102,7 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/lms/enseignants/{enseignantId}/disponibilites/exceptions/{exceptionId}": "*",
     "DELETE api/lms/seances/local/{seanceId}": [
         "enseignant",
         "teacher",
@@ -261,6 +262,7 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/v1/lms/enseignants/{enseignantId}/disponibilites/exceptions/{exceptionId}": "*",
     "DELETE api/v1/lms/seances/local/{seanceId}": [
         "enseignant",
         "teacher",
@@ -597,6 +599,8 @@
         "supradmin"
     ],
     "GET api/lms/enseignants": "*",
+    "GET api/lms/enseignants/{enseignantId}/disponibilites": "*",
+    "GET api/lms/enseignants/{enseignantId}/profil": "*",
     "GET api/lms/heures-enseignants": [
         "coordinateur",
         "coordinator",
@@ -1085,6 +1089,8 @@
         "supradmin"
     ],
     "GET api/v1/lms/enseignants": "*",
+    "GET api/v1/lms/enseignants/{enseignantId}/disponibilites": "*",
+    "GET api/v1/lms/enseignants/{enseignantId}/profil": "*",
     "GET api/v1/lms/heures-enseignants": [
         "coordinateur",
         "coordinator",
@@ -1759,6 +1765,7 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/lms/enseignants/{enseignantId}/disponibilites/exceptions": "*",
     "POST api/lms/imports/preview": [
         "enseignant",
         "teacher",
@@ -2381,6 +2388,7 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/v1/lms/enseignants/{enseignantId}/disponibilites/exceptions": "*",
     "POST api/v1/lms/imports/preview": [
         "enseignant",
         "teacher",
@@ -2721,6 +2729,15 @@
     "PUT api/forum/posts/{post}": "*",
     "PUT api/forum/topics/{topic}": "*",
     "PUT api/knowledge-checks/{id}": "*",
+    "PUT api/lms/enseignants/{enseignantId}/disponibilites": "*",
+    "PUT api/lms/enseignants/{enseignantId}/profil": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",
@@ -2844,6 +2861,15 @@
     "PUT api/v1/forum/posts/{post}": "*",
     "PUT api/v1/forum/topics/{topic}": "*",
     "PUT api/v1/knowledge-checks/{id}": "*",
+    "PUT api/v1/lms/enseignants/{enseignantId}/disponibilites": "*",
+    "PUT api/v1/lms/enseignants/{enseignantId}/profil": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/v1/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Enseignant;
 
 use App\Enums\Role;
+use App\Models\ProfilEnseignant;
 use App\Models\User;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Support\Catalogue\SourceLocale;
@@ -69,17 +70,31 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
             ->get();
 
         $institution = self::entier($lecteur->institution_id);
+        $profils = $institution !== null && $enseignants->isNotEmpty() ? $this->profils($enseignants->modelKeys(), $institution) : [];
         $lireDetails = $details && $enseignants->isNotEmpty() && $institution !== null;
         $parEnseignant = $lireDetails ? $this->designationsParEnseignant($enseignants->modelKeys(), $institution) : [];
         $ordreDesClasses = $lireDetails ? $this->ordreDesClasses($enseignants->modelKeys(), $institution) : [];
 
         return array_values($enseignants->map(fn (User $enseignant): array => $details
-            ? $this->ligne($enseignant) + $this->details($parEnseignant[$enseignant->id] ?? [], $ordreDesClasses[$enseignant->id] ?? [])
-            : $this->ligne($enseignant))->all());
+            ? $this->ligne($enseignant, $profils[$enseignant->id] ?? null) + $this->details($parEnseignant[$enseignant->id] ?? [], $ordreDesClasses[$enseignant->id] ?? [])
+            : $this->ligne($enseignant, $profils[$enseignant->id] ?? null))->all());
+    }
+
+    /**
+     * Les profils des enseignants lus, en UNE requête, bornés à l'établissement (#1666).
+     *
+     * @param  array<int, int|string>  $enseignantIds
+     * @return array<int, ProfilEnseignant>
+     */
+    private function profils(array $enseignantIds, int $institution): array
+    {
+        return ProfilEnseignant::query()->withoutGlobalScope('institution')
+            ->where('institution_id', $institution)->whereIn('user_id', $enseignantIds)->get()
+            ->keyBy('user_id')->all();
     }
 
     /** @return array<string, mixed> */
-    private function ligne(User $enseignant): array
+    private function ligne(User $enseignant, ?ProfilEnseignant $profil): array
     {
         return [
             'id' => $enseignant->id,
@@ -88,10 +103,10 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
             'prenom' => '',
             'email' => $enseignant->email,
             'telephone' => $enseignant->phone,
-            // Aucune colonne locale ne les porte.
-            'matricule' => null,
-            'specialization' => null,
-            'status' => null,
+            // #1666 : le profil local, et `null` seulement quand l'enseignant n'en a pas.
+            'matricule' => $profil?->matricule,
+            'specialization' => $profil?->specialite,
+            'status' => $profil?->statut?->value,
         ];
     }
 

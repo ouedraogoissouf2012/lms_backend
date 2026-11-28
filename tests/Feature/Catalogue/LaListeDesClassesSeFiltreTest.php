@@ -53,6 +53,21 @@ final class LaListeDesClassesSeFiltreTest extends TestCase
         self::assertStringStartsWith('2026-11-20', (string) $lignes[1]['archivee_le']);
     }
 
+    /** front#659 : l'écran préremplit « Modifier » avec la ligne, sans relire la fiche. */
+    public function test_chaque_ligne_porte_sa_description(): void
+    {
+        $ecole = $this->ecole();
+        $this->classe($ecole, 'Avec');
+        DB::table('classes')->where('libelle', 'Avec')->update(['description' => 'Section bilingue']);
+        $this->classe($ecole, 'Sans');
+        DB::table('classes')->where('libelle', 'Sans')->update(['description' => null]);
+
+        $lignes = $this->asTenant($this->gestion($ecole))->getJson('/api/classes')->assertOk()->json('data');
+
+        self::assertIsArray($lignes);
+        self::assertSame(['Section bilingue', null], [$lignes[0]['description'], $lignes[1]['description']]);
+    }
+
     /** La règle de `isComplete()` : seules les adhésions actives occupent ; capacité 0 = sans limite. */
     public function test_la_liste_se_filtre_par_places(): void
     {

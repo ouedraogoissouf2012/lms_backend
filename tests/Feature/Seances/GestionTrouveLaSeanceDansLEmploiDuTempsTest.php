@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Seances;
 
 use App\Enums\InstitutionMode;
+use App\Enums\TypeDeSeance;
 use App\Jobs\DispatchVisioNotification;
 use App\Models\Institution;
 use App\Models\Seance;
@@ -122,6 +123,8 @@ final class GestionTrouveLaSeanceDansLEmploiDuTempsTest extends TestCase
         // Ni `enseignant.id` ni `enseignant.teacher_id` d'emploi-temps ne sont établis
         // comme l'identifiant que la synchronisation écrit : rien n'est deviné.
         self::assertNull($ligne->klassci_enseignant_id);
+        // #1668 : `type_cours` « CM » de l'emploi du temps devient le type de la ligne.
+        self::assertSame(TypeDeSeance::Cm, $ligne->type_seance);
 
         $jobs = Queue::pushed(DispatchVisioNotification::class);
         self::assertCount(1, $jobs, 'Les élèves de la classe sont avertis.');

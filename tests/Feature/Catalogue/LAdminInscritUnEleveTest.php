@@ -10,6 +10,7 @@ use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Admission\DroitDInscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
@@ -28,7 +29,9 @@ use Tests\TestCase;
  *   Une ancienne adhésion est réactivée, jamais doublée.
  * - Retirer : `DELETE /api/classes/{classe}/eleves/{eleve}`. L'adhésion active se ferme (`inactif`, datée, motif
  *   `retrait`) ; le dossier demeure.
- * - École KLASSCI : 403 `catalogue_managed_by_klassci`. Classe ou élève d'une autre école : 404, du même corps qu'un
+ * - Le droit est celui des INSCRIPTIONS (`PorteDesAdmissions`, comme #1817) : école KLASSCI, 403
+ *   `enrolment_managed_by_klassci`. Une classe miroir de l'école : 403 `catalogue_managed_by_klassci`, un refus motivé.
+ *   Classe ou élève d'une autre école : 404, du même corps qu'un
  *   id absent. Un compte qui n'est pas un élève : 422. Vrai jeton (`asTenant`).
  */
 final class LAdminInscritUnEleveTest extends TestCase
@@ -177,13 +180,45 @@ final class LAdminInscritUnEleveTest extends TestCase
         $this->adhesion($classe, $eleve, 'actif');
 
         $inscription = $this->inscrire($gestionKlassci, $classe, $this->eleve($klassci));
-        $inscription->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
+        $inscription->assertForbidden()->assertJsonPath('reason', 'enrolment_managed_by_klassci');
         $this->assertMatchesOpenApiResponse($inscription, self::INSCRIRE, 'post');
-        $this->retirer($gestionKlassci, $classe, $eleve)->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
+        $this->retirer($gestionKlassci, $classe, $eleve)->assertForbidden()->assertJsonPath('reason', 'enrolment_managed_by_klassci');
 
         [$ecole, $gestion] = $this->ecole();
         $miroir = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => 4242, 'effectif' => 0]);
         $this->inscrire($gestion, $miroir, $this->eleve($ecole))->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
+
+        self::assertSame('actif', $this->ligne($classe, $eleve)?->statut);
+    }
+
+    /**
+     * Doublures DIVERGENTES : le droit d'inscription fermé dans une école dont le catalogue est ouvert. Si le refus
+     * venait du catalogue, l'inscription passerait ; il vient de l'autorité d'inscription.
+     */
+    public function test_inscription_fermee_et_catalogue_ouvert_l_admin_n_inscrit_pas(): void
+    {
+        [$ecole, $gestion] = $this->ecole();
+        $classe = $this->classe($ecole);
+        $inscrit = $this->eleve($ecole);
+        $this->adhesion($classe, $inscrit, 'actif');
+        $this->droitDInscription(false);
+
+        $this->inscrire($gestion, $classe, $this->eleve($ecole))->assertForbidden()->assertJsonPath('reason', 'enrolment_managed_by_klassci');
+        $this->retirer($gestion, $classe, $inscrit)->assertForbidden()->assertJsonPath('reason', 'enrolment_managed_by_klassci');
+
+        self::assertSame(1, DB::table('classe_etudiant')->where('classe_id', $classe->id)->count());
+        self::assertSame('actif', $this->ligne($classe, $inscrit)?->statut);
+    }
+
+    /** L'inverse : le droit d'inscription ouvert dans une école KLASSCI (catalogue fermé) laisse inscrire. */
+    public function test_inscription_ouverte_et_catalogue_ferme_l_admin_inscrit(): void
+    {
+        [$klassci, $gestion] = $this->ecole(InstitutionMode::Klassci);
+        $classe = $this->classe($klassci);
+        $eleve = $this->eleve($klassci);
+        $this->droitDInscription(true);
+
+        $this->inscrire($gestion, $classe, $eleve)->assertCreated();
 
         self::assertSame('actif', $this->ligne($classe, $eleve)?->statut);
     }
@@ -232,5 +267,18 @@ final class LAdminInscritUnEleveTest extends TestCase
             'classe_id' => $classe->id, 'user_id' => $eleve->id, 'institution_id' => $classe->institution_id,
             'statut' => $statut, 'date_inscription' => '2026-01-10', 'created_at' => now(), 'updated_at' => now(),
         ] + $plus);
+    }
+
+    private function droitDInscription(bool $ouvert): void
+    {
+        $this->app->instance(DroitDInscription::class, new class($ouvert) implements DroitDInscription
+        {
+            public function __construct(private readonly bool $ouvert) {}
+
+            public function ouvertPour(Institution $ecole): bool
+            {
+                return $this->ouvert;
+            }
+        });
     }
 }

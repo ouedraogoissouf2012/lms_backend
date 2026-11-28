@@ -39,6 +39,8 @@ return [
         'evaluation_submissions',
         'seances',
         'esbtp_attendance',
+        // #1671 : le calendrier de l'année (sa portée, `evenement_calendrier_classe`, n'a pas d'école propre).
+        'evenements_calendrier',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

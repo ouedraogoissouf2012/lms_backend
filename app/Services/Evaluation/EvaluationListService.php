@@ -37,6 +37,7 @@ final class EvaluationListService
         private readonly AnswerKeyAudience $answerKeyAudience,
         private readonly LearnerEvaluationScope $learnerScope,
         private readonly RosterAuthorityFactory $sources,
+        private readonly QuestionsDeLaCopie $questionsDeLaCopie,
     ) {}
 
     /**
@@ -161,6 +162,15 @@ final class EvaluationListService
         // modèle ; seul le premier le voit, et il faut le dire explicitement.
         if ($this->answerKeyAudience->maySee($user)) {
             $evaluation->questions->each->makeVisible(['correct_answers', 'explanation']);
+        }
+
+        // #1702 (D2) : l'élève compose sur SA copie : les questions posées, dans l'ordre figé à son
+        // démarrage. Sans copie (avant le démarrage), l'évaluation telle quelle, comme avant.
+        if ($user->isLearnerAudience()) {
+            $copie = EvaluationSubmission::query()->where('evaluation_id', $evaluation->id)->ownedBy($user)->orderByDesc('attempt')->first();
+            if ($copie instanceof EvaluationSubmission) {
+                $evaluation->setRelation('questions', $this->questionsDeLaCopie->de($copie, $evaluation));
+            }
         }
 
         return $this->catalogue()->presenter(collect([$evaluation]), $user)[0];

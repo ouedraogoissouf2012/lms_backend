@@ -102,9 +102,10 @@ final class CorrigesEtCopiesExposesTest extends TestCase
         });
     }
 
-    private function evaluationAvecCorrige(): Evaluation
+    /** @param  array<string, mixed>  $attributs */
+    private function evaluationAvecCorrige(array $attributs = []): Evaluation
     {
-        $evaluation = Evaluation::factory()->create([
+        $evaluation = Evaluation::factory()->create($attributs + [
             'institution_id' => $this->ecole->id,
             'klassci_classe_id' => self::CLASSE_KLASSCI,
             'is_published' => true,
@@ -309,12 +310,15 @@ final class CorrigesEtCopiesExposesTest extends TestCase
         );
     }
 
-    public function test_l_eleve_voit_le_corrige_de_sa_copie_une_fois_le_delai_ecoule(): void
+    public function test_l_eleve_voit_le_corrige_de_sa_copie_une_fois_l_evaluation_fermee(): void
     {
-        // Le refus symétrique. Carbon 3 rend un écart SIGNÉ : la comparaison
-        // `now()->diffInDays($soumisLe) >= 7` ne pouvait jamais être vraie, et
-        // l'élève n'a donc jamais vu sa correction.
-        $evaluation = $this->evaluationAvecCorrige();
+        // Le refus symétrique (#883 : l'élève ne voyait jamais sa correction).
+        // Depuis #1699 : notes publiées, et l'évaluation fermée pour tous. KLASSCI
+        // ne programme ici aucune fenêtre : la fin de la ligne fait foi.
+        $evaluation = $this->evaluationAvecCorrige([
+            'show_results' => true, 'date_evaluation' => now()->subDays(30), 'duree_minutes' => 60, 'deadline_at' => null,
+        ]);
+        $this->fakeKlassci();
         EvaluationSubmission::create([
             'evaluation_id' => $evaluation->id,
             'klassci_etudiant_id' => $this->eleve->klassci_id,
@@ -337,11 +341,15 @@ final class CorrigesEtCopiesExposesTest extends TestCase
         );
     }
 
-    public function test_l_eleve_ne_voit_pas_le_corrige_avant_le_delai(): void
+    public function test_l_eleve_ne_voit_pas_le_corrige_avant_la_fermeture(): void
     {
         // Contraste indispensable : sans lui, une correction toujours visible
-        // passerait le test precedent sans remplir son office.
-        $evaluation = $this->evaluationAvecCorrige();
+        // passerait le test precedent sans remplir son office. Notes publiées,
+        // mais des camarades composent encore.
+        $evaluation = $this->evaluationAvecCorrige([
+            'show_results' => true, 'date_evaluation' => now()->subMinutes(30), 'duree_minutes' => 60, 'deadline_at' => null,
+        ]);
+        $this->fakeKlassci();
         EvaluationSubmission::create([
             'evaluation_id' => $evaluation->id,
             'klassci_etudiant_id' => $this->eleve->klassci_id,
@@ -349,7 +357,7 @@ final class CorrigesEtCopiesExposesTest extends TestCase
             'attempt' => 1,
             'status' => 'corrige',
             'answers' => [],
-            'submitted_at' => now()->subDay(),
+            'submitted_at' => now()->subMinutes(10),
             'institution_id' => $this->ecole->id,
         ]);
         Sanctum::actingAs($this->eleve);

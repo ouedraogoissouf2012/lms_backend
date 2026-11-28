@@ -32,6 +32,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property array<string, mixed> $klassci_data Cache display filtré par whitelist (#477) via le cast
  *                                              {@see KlassciData} — toujours lu comme array.
  * @property Carbon|null $last_klassci_sync Cast `datetime` (déclaré dans la méthode casts()).
+ * @property Carbon|null $last_login_at Dernière connexion réussie (#1704), écrite par `DerniereConnexion` seule.
  * @property Carbon|null $deleted_at Soft delete (#566) — suppression LOGIQUE :
  *                                   dossier académique préservé, restauré à la re-sync KLASSCI.
  */
@@ -63,6 +64,7 @@ class User extends Authenticatable implements CanResetPasswordContract
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'last_klassci_sync' => 'datetime',
+            'last_login_at' => 'datetime',
             'klassci_token_encrypted' => 'encrypted',
             'klassci_data' => KlassciData::class,
         ];

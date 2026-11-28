@@ -63,6 +63,8 @@ enum Permission: string
     // #1682 : l'enseignant lit SES heures ; la gestion, le rapport des heures de l'école.
     case HeuresConsulter = 'heures.consulter';
     case HeuresRapport = 'heures.rapport';
+    // #1704 : régler les seuils de l'alerte de décrochage de l'école (son administration).
+    case SuiviReglages = 'suivi.reglages';
 
     // ─── L'élève
     case InscriptionRejoindre = 'inscription.rejoindre';

@@ -569,6 +569,16 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/lms/classes/{classe}/decrochage": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/lms/classes/{classe}/resultats": "*",
     "GET api/lms/codes-emargement": [
         "enseignant",
@@ -677,6 +687,12 @@
         "teacher",
         "coordinateur",
         "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/suivi/decrochage/reglages": [
         "admin",
         "administrateur",
         "superAdmin",
@@ -1041,6 +1057,16 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/v1/lms/classes/{classe}/decrochage": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/lms/classes/{classe}/resultats": "*",
     "GET api/v1/lms/codes-emargement": [
         "enseignant",
@@ -1149,6 +1175,12 @@
         "teacher",
         "coordinateur",
         "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/suivi/decrochage/reglages": [
         "admin",
         "administrateur",
         "superAdmin",
@@ -2665,6 +2697,12 @@
         "superAdmin",
         "supradmin"
     ],
+    "PUT api/lms/suivi/decrochage/reglages": [
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/proxy/cours/{id}/statut": [
         "enseignant",
         "teacher",
@@ -2783,6 +2821,12 @@
         "teacher",
         "coordinateur",
         "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/lms/suivi/decrochage/reglages": [
         "admin",
         "administrateur",
         "superAdmin",

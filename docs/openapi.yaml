@@ -5201,6 +5201,133 @@ components:
               items:
                 type: integer
 
+    # #1704 : l alerte des eleves qui decrochent.
+    ReglagesDuDecrochage:
+      type: object
+      additionalProperties: false
+      required:
+        - jours_sans_connexion
+        - remises_manquees
+        - part_chapitres_non_ouverts
+      properties:
+        jours_sans_connexion:
+          type: integer
+          minimum: 1
+          maximum: 90
+          description: "Defaut 7."
+        remises_manquees:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: "Defaut 2."
+        part_chapitres_non_ouverts:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: "En pourcentage. Defaut 50."
+    ReglagesDuDecrochageReponse:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ReglagesDuDecrochage'
+    RaisonDeDecrochage:
+      type: object
+      additionalProperties: false
+      description: "Une regle atteinte, avec sa valeur et son seuil. Les champs presents dependent de `regle`."
+      required:
+        - regle
+        - seuil
+      properties:
+        regle:
+          type: string
+          enum:
+            - sans_connexion
+            - remises_manquees
+            - chapitres_non_ouverts
+        seuil:
+          type: integer
+        jours:
+          type: integer
+          nullable: true
+          description: "`sans_connexion` : jours depuis la derniere connexion ; null, aucune connexion enregistree."
+        manquees:
+          type: integer
+          description: "`remises_manquees` : evaluations attendues sans copie remise."
+        attendues:
+          type: integer
+          description: "`remises_manquees` : evaluations attendues sur la fenetre de 30 jours."
+        non_ouverts:
+          type: integer
+          description: "`chapitres_non_ouverts` : chapitres jamais ouverts."
+        total:
+          type: integer
+          description: "`chapitres_non_ouverts` : chapitres comptes."
+        part:
+          type: integer
+          description: "`chapitres_non_ouverts` : part non ouverte, en pourcentage arrondi vers le bas."
+    EleveADecrocher:
+      type: object
+      additionalProperties: false
+      required:
+        - compte_id
+        - nom
+        - derniere_connexion
+        - raisons
+      properties:
+        compte_id:
+          type: integer
+        nom:
+          type: string
+        derniere_connexion:
+          type: string
+          format: date-time
+          nullable: true
+        raisons:
+          type: array
+          description: "Au moins une raison : un eleve sans raison n est pas liste."
+          items:
+            $ref: '#/components/schemas/RaisonDeDecrochage'
+    DecrochageDeClasse:
+      type: object
+      additionalProperties: false
+      required:
+        - classe
+        - reglages
+        - effectif
+        - a_suivre
+      properties:
+        classe:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - libelle
+          properties:
+            id:
+              type: integer
+              description: "Identifiant LOCAL de la classe."
+            libelle:
+              type: string
+        reglages:
+          $ref: '#/components/schemas/ReglagesDuDecrochage'
+        effectif:
+          type: integer
+          description: "Les eleves inscrits de la classe."
+        a_suivre:
+          type: array
+          items:
+            $ref: '#/components/schemas/EleveADecrocher'
+
     ErrorResponse:
       type: object
       properties:
@@ -10236,6 +10363,170 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KlassciIndisponible'
+
+  /lms/classes/{classe}/decrochage:
+    get:
+      tags:
+        - Suivi
+      operationId: getDecrochageDeClasse
+      summary: "Les eleves d une classe a suivre, et pourquoi (#1704)"
+      description: |
+        `classe` est l identifiant de l ESPACE SOURCE de l ecole, comme pour
+        `/lms/classes/{classe}/resultats` (local dans une ecole creee depuis le LMS, KLASSCI dans
+        une ecole KLASSCI, resolu sur le miroir local). Meme acces que ce bilan : le coordinateur
+        et l admin de l ecole, l enseignant designe formateur dans la classe (sinon 403
+        `class_not_taught`). Un eleve n y lit rien (garde `permission:classes.eleves`, le personnel).
+
+        **Trois regles simples, sans modele opaque.** Un eleve est a suivre des qu une regle
+        atteint son seuil ; chaque raison rend sa valeur et son seuil :
+        - `sans_connexion` : aucune connexion depuis au moins `jours_sans_connexion` jours
+          (`users.last_login_at`, ecrite par chaque connexion reussie). `jours: null` : aucune
+          connexion enregistree.
+        - `remises_manquees` : au moins `remises_manquees` evaluations ATTENDUES sans copie remise.
+          Attendue : publiee, en ligne, visible des eleves de la classe, terminee depuis au plus 30
+          jours. Remise : copie soumise ou corrigee, hors entrainement ; une copie verrouillee
+          (rendue hors delai) n en est pas une.
+        - `chapitres_non_ouverts` : au moins `part_chapitres_non_ouverts` % des chapitres des lecons
+          publiees de la classe depuis au moins 7 jours, jamais ouverts (aucun temps enregistre).
+
+        Les seuils sont ceux de l ecole (`/lms/suivi/decrochage/reglages`). Les eleves : les
+        inscrits actifs de la classe (miroir local dans une ecole KLASSCI, sans appel KLASSCI). Les
+        plus signales d abord, puis par nom.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          description: "Identifiant de l espace source : local dans une ecole creee depuis le LMS, KLASSCI dans une ecole KLASSCI."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les eleves a suivre de la classe."
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/DecrochageDeClasse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Classe non enseignee (`class_not_taught`), role sans acces (eleve), ou etablissement desactive."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable dans l etablissement (`class_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/suivi/decrochage/reglages:
+    get:
+      tags:
+        - Suivi
+      operationId: getReglagesDuDecrochage
+      summary: "Les seuils de l alerte de decrochage de l ecole (#1704)"
+      description: |
+        Les seuils de l ecole de l appelant, rendus avec leur defaut quand l ecole n en a pas regle
+        (ou qu une valeur stockee est hors bornes). Reserve a l administration de l ecole
+        (`permission:suivi.reglages`).
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les seuils en vigueur."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReglagesDuDecrochageReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role sans acces. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Suivi
+      operationId: putReglagesDuDecrochage
+      summary: "Regler les seuils de l alerte de decrochage (#1704)"
+      description: |
+        Remplace les trois seuils sous `settings.decrochage`, sans toucher aux autres reglages de
+        l ecole. Bornes : 1 a 90 jours, 1 a 20 remises, 1 a 100 %. Journalise
+        (`decrochage_settings_updated`, avant et apres).
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReglagesDuDecrochage'
+      responses:
+        '200':
+          description: "Les seuils enregistres."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReglagesDuDecrochageReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role sans acces. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Le compte n a pas d etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Seuil absent, non entier ou hors bornes (detail dans `errors`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /banque/categories:
     get:
@@ -17410,6 +17701,8 @@ security:
 tags:
   - name: "Authentication"
     description: "User authentication and session management"
+  - name: "Suivi"
+    description: "Suivi des eleves : l alerte de decrochage (#1704)"
   - name: "Proxy / KLASSCI"
     description: "Routes proxying to KLASSCI API with authentication"
   - name: "Evaluations"

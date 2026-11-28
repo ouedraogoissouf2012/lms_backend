@@ -4205,6 +4205,126 @@ components:
           type: string
           format: date-time
 
+    TuteurDuDossier:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - relation
+        - nom
+      properties:
+        id:
+          type: integer
+        relation:
+          type: string
+          enum: [pere, mere, tuteur, autre, null]
+          nullable: true
+          description: "La relation avec l eleve du lien ; nulle quand le tuteur est lu seul (modification)."
+        nom:
+          type: string
+        telephone:
+          type: string
+          nullable: true
+        courriel:
+          type: string
+          nullable: true
+        profession:
+          type: string
+          nullable: true
+        adresse:
+          type: string
+          nullable: true
+
+    TuteurReponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/TuteurDuDossier'
+
+    DossierDEleveReponse:
+      type: object
+      description: |
+        #1657. `dossier` est complet pour la gestion et l eleve lui-meme ; reduit a `matricule`, `nom`,
+        `prenoms` et `photo_url` pour un enseignant d une de ses classes ; nul tant qu une ecole autonome
+        ne l a pas cree.
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - eleve_id
+            - source
+            - dossier
+          properties:
+            eleve_id:
+              type: integer
+            source:
+              type: string
+              enum: [lms, klassci]
+            dossier:
+              type: object
+              nullable: true
+              additionalProperties: false
+              properties:
+                matricule:
+                  type: string
+                  nullable: true
+                nom:
+                  type: string
+                  nullable: true
+                prenoms:
+                  type: string
+                  nullable: true
+                genre:
+                  type: string
+                  enum: [F, M, null]
+                  nullable: true
+                date_naissance:
+                  type: string
+                  format: date
+                  nullable: true
+                lieu_naissance:
+                  type: string
+                  nullable: true
+                nationalite:
+                  type: string
+                  nullable: true
+                adresse:
+                  type: string
+                  nullable: true
+                ville:
+                  type: string
+                  nullable: true
+                commune:
+                  type: string
+                  nullable: true
+                statut:
+                  type: string
+                  enum: [actif, suspendu, diplome, parti, null]
+                  nullable: true
+                photo_url:
+                  type: string
+                  nullable: true
+                  description: "Nulle jusqu a la photo (PR 2 de #1657)."
+                tuteurs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TuteurDuDossier'
+
     ValidationFailed:
       type: object
       properties:
@@ -7660,6 +7780,431 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '422':
           description: "Classe, titre (150 au plus) ou message (2 000 au plus) absent ou invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/dossier:
+    get:
+      tags:
+        - Eleves
+      operationId: lireLeDossierDeLEleve
+      summary: "Lire le dossier d un eleve"
+      description: |
+        #1657. La gestion et l eleve lui-meme lisent tout. Un enseignant d une classe de l eleve ne lit
+        que `matricule`, `nom`, `prenoms` et `photo_url` (loi 2013-450). Tout autre compte : 403. Un eleve
+        d une autre ecole, un compte qui n est pas un eleve, ou un id absent : 404, du meme corps.
+
+        `source` : `lms` (ecole autonome ; `dossier` est nul tant qu il n existe pas) ou `klassci` (ce que
+        le LMS recoit de KLASSCI, nom et prenom ; les autres champs sont nuls, non fournis).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Le dossier, selon le lecteur"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierDEleveReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Ni la gestion, ni l eleve lui-meme, ni un enseignant d une de ses classes. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Eleves
+      operationId: ecrireLeDossierDeLEleve
+      summary: "Creer ou mettre a jour le dossier d un eleve (ecole autonome)"
+      description: |
+        #1657. Gestion d une ecole autonome. Cree le dossier (201) ou le met a jour (200) ; seuls les
+        champs recus changent. Le matricule est GENERE a la creation selon le gabarit de l ecole
+        (`{AAAA}-{NNNN}` par defaut), ou saisi : unique dans l ecole (422 sinon). `nom` et `prenoms`
+        vivent dans le dossier ; le nom du compte en est recalcule.
+
+        Doublon possible (memes nom, prenoms et date de naissance sans casse ni accents, ou meme
+        telephone) : 409 `doublon_possible` avec `candidats`, sauf `confirmer_doublon`. Ecole KLASSCI :
+        403 `catalogue_managed_by_klassci`. Aucun champ libre (loi 2013-450).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - nom
+                - prenoms
+              properties:
+                matricule:
+                  type: string
+                  maxLength: 40
+                nom:
+                  type: string
+                  maxLength: 100
+                prenoms:
+                  type: string
+                  maxLength: 150
+                genre:
+                  type: string
+                  enum: [F, M]
+                  nullable: true
+                date_naissance:
+                  type: string
+                  format: date
+                  nullable: true
+                lieu_naissance:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                nationalite:
+                  type: string
+                  description: "Code pays ISO 3166-1 alpha-2."
+                  nullable: true
+                adresse:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+                ville:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                commune:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                statut:
+                  type: string
+                  enum: [actif, suspendu, diplome, parti]
+                confirmer_doublon:
+                  type: boolean
+      responses:
+        '200':
+          description: "Dossier mis a jour"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierDEleveReponse'
+        '201':
+          description: "Dossier cree"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierDEleveReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "Un eleve semblable existe deja (`reason: doublon_possible`) : rien n est ecrit."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                  - candidats
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum: [doublon_possible]
+                  candidats:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - eleve_id
+                        - nom
+                        - prenoms
+                        - matricule
+                      properties:
+                        eleve_id:
+                          type: integer
+                        nom:
+                          type: string
+                        prenoms:
+                          type: string
+                        matricule:
+                          type: string
+        '422':
+          description: "Champ absent ou invalide ; matricule deja pris dans l ecole."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/tuteurs:
+    post:
+      tags:
+        - Eleves
+      operationId: lierUnTuteur
+      summary: "Lier un tuteur a un eleve (ecole autonome)"
+      description: |
+        #1657. Un tuteur NEUF (`nom` et coordonnees), ou EXISTANT dans l ecole (`tuteur_id`) : il se
+        partage alors entre freres et soeurs. Il faut le dossier de l eleve d abord (409
+        `dossier_absent`). Un tuteur d une autre ecole est introuvable (404). Aucun champ libre.
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - relation
+              properties:
+                relation:
+                  type: string
+                  enum: [pere, mere, tuteur, autre]
+                tuteur_id:
+                  type: integer
+                nom:
+                  type: string
+                  maxLength: 150
+                telephone:
+                  type: string
+                  maxLength: 30
+                  nullable: true
+                courriel:
+                  type: string
+                  format: email
+                  nullable: true
+                profession:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                adresse:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+      responses:
+        '201':
+          description: "Tuteur lie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TuteurReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve ou tuteur introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas encore de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Relation inconnue, nom absent pour un tuteur neuf, courriel invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/tuteurs/{tuteur}:
+    delete:
+      tags:
+        - Eleves
+      operationId: delierUnTuteur
+      summary: "Retirer un tuteur d un eleve"
+      description: |
+        #1657. Retire le LIEN ; un tuteur qui n a plus aucun eleve est retire aussi (donnee devenue
+        inutile, loi 2013-450).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          description: "Identifiant LOCAL du compte eleve."
+          schema:
+            type: integer
+        - name: tuteur
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Lien retire"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve, tuteur ou lien introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "L eleve n a pas de dossier (`reason: dossier_absent`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /tuteurs/{tuteur}:
+    put:
+      tags:
+        - Eleves
+      operationId: modifierUnTuteur
+      summary: "Modifier les coordonnees d un tuteur (ecole autonome)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: tuteur
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                nom:
+                  type: string
+                  maxLength: 150
+                telephone:
+                  type: string
+                  maxLength: 30
+                  nullable: true
+                courriel:
+                  type: string
+                  format: email
+                  nullable: true
+                profession:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                adresse:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+      responses:
+        '200':
+          description: "Tuteur modifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TuteurReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Tuteur introuvable dans l etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Champ invalide."
           content:
             application/json:
               schema:

@@ -115,7 +115,7 @@ final class EmissionDeDocument
     {
         $prefixe = sprintf('%s-%s-', $type->prefixe(), now()->format('Y'));
         $dernier = DocumentEmis::query()->withoutGlobalScopes()
-            ->where('institution_id', $ecole)
+            // ->where('institution_id', $ecole)
             ->where('numero', 'like', $prefixe.'%')
             ->max('numero');
 

@@ -38,7 +38,7 @@ final class ExportDesDonneesDeLEleveTest extends TestCase
     use ValidatesAgainstOpenApi;
 
     private const SECTIONS = [
-        'compte', 'classes', 'copies', 'presences', 'progression_lecons', 'progression_chapitres', 'quiz',
+        'compte', 'classes', 'classes_klassci', 'copies', 'presences', 'progression_lecons', 'progression_chapitres', 'quiz',
         'controles_de_connaissances', 'consentements', 'forum_sujets', 'forum_messages', 'notifications', 'fichiers',
     ];
 

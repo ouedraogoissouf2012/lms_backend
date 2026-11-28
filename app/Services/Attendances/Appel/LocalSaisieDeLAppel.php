@@ -61,6 +61,8 @@ final class LocalSaisieDeLAppel implements SaisieDeLAppel
                     'mark' => $ligne?->mark?->value,
                     'origin' => $ligne?->origin?->value,
                     'delegated_at' => $ligne?->delegated_at?->toIso8601String(),
+                    // front#719 : la connexion visio, à côté de la marque ; nulle sans visio.
+                    'presence_visio' => $ligne?->status,
                 ];
             }, $eleves),
         ];
@@ -69,7 +71,7 @@ final class LocalSaisieDeLAppel implements SaisieDeLAppel
     public function saisir(int $seanceId, User $acteur, array $marques): void
     {
         $seance = $this->seanceGeree($seanceId, $acteur);
-        if (Carbon::parse($seance->date_seance)->isAfter(now())) {
+        if (! $this->commencee($seance)) {
             throw new BusinessException('L\'appel s\'ouvre au début de la séance.', 409, null, self::NON_COMMENCEE);
         }
         $eleves = [];
@@ -123,6 +125,17 @@ final class LocalSaisieDeLAppel implements SaisieDeLAppel
             'origin' => $ligne->origin?->value,
             'delegated_by_id' => $ligne->delegated_by_id,
         ];
+    }
+
+    public function peutSaisir(Seance $seance, User $lecteur): bool
+    {
+        return $this->acteurs->canManage($seance, $lecteur) && $this->commencee($seance);
+    }
+
+    /** L'appel s'ouvre au début de la séance : avant, il n'y a rien à constater. */
+    private function commencee(Seance $seance): bool
+    {
+        return $seance->date_seance !== null && ! Carbon::parse($seance->date_seance)->isAfter(now());
     }
 
     /** @throws BusinessException 404 hors de l'école, 403 hors de l'auteur et de la gestion */

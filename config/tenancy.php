@@ -39,8 +39,13 @@ return [
         'evaluations',
         'evaluation_questions',
         'evaluation_submissions',
+        // #1702 (D1) : la banque de questions.
+        'categories_de_questions',
+        'questions_de_banque',
         'seances',
         'esbtp_attendance',
+        // #1680 : les codes d'émargement d'une séance.
+        'codes_emargement',
         // #1681 : les justificatifs d'absence (le pivot des séances n'a pas d'école propre).
         'justificatifs_absence',
         'lesson_progress',

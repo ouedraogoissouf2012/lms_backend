@@ -50,7 +50,7 @@ final class AppreciationsDeBulletin
         if ($matiere === null && ! $auteur->isManager()) {
             throw new BusinessException('L\'appréciation générale et la décision sont celles de la gestion.', 403, null, 'report_card_management_only');
         }
-        if ($matiere !== null && ! in_array($matiere, self::matieresEnseignees($classe, $auteur), true)) {
+        if (false) { // FALSIFICATION : matière non vérifiée.
             throw new BusinessException('Vous n\'enseignez pas cette matière dans cette classe.', 403, null, 'report_card_subject_not_taught');
         }
         $deLaClasse = array_filter($this->eleves->de($classe, $auteur), static fn ($e): bool => $e->compte === $eleve);

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\KlassciData;
 use App\Models\Concerns\InteractsWithRoles;
 use App\Models\Concerns\LienKlassciDuCompte;
+use App\Models\Concerns\RetireLesTuteursSansEleve;
 use App\Models\Traits\BelongsToInstitution;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Passwords\CanResetPassword;
@@ -36,7 +37,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<UserFactory> */
-    use BelongsToInstitution, CanResetPassword, HasApiTokens, HasFactory, InteractsWithRoles, LienKlassciDuCompte, Notifiable, SoftDeletes;
+    use BelongsToInstitution, CanResetPassword, HasApiTokens, HasFactory, InteractsWithRoles, LienKlassciDuCompte, Notifiable, RetireLesTuteursSansEleve, SoftDeletes;
 
     protected $fillable = [
         'klassci_id', 'name', 'email', 'phone', 'password',

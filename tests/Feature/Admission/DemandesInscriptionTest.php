@@ -7,6 +7,7 @@ namespace Tests\Feature\Admission;
 use App\Enums\InstitutionMode;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Admission\DroitDInscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,8 @@ use Tests\TestCase;
  *   réponse est le MÊME 202. Seule une école autonome et active enregistre la demande. Le consentement est obligatoire
  *   (422, qui ne dit rien de l'école). Limite par IP, et plafond journalier par école SILENCIEUX (même 202).
  * - Circuit : recue → en_examen → (acceptee → inscrite, PR 2) ou rejetee avec motif. Hors circuit : 409.
- * - Liste sur la forme commune (#1647), compteurs par état MESURÉS. Autre école : 404 ; KLASSCI : 403.
+ * - Liste sur la forme commune (#1647), compteurs par état MESURÉS. Autre école : 404 ; inscription tenue par
+ *   KLASSCI : 403 `enrolment_managed_by_klassci`. Une admission suit le droit d'INSCRIPTION, pas celui du catalogue.
  * - Rétention (loi 2013-450) : 90 jours après la décision, 365 jours sans traitement ; purge planifiée.
  */
 final class DemandesInscriptionTest extends TestCase
@@ -166,7 +168,36 @@ final class DemandesInscriptionTest extends TestCase
 
         $klassci = $this->ecole(InstitutionMode::Klassci);
         $this->asTenant($this->membre($klassci, 'admin'))->getJson('/api/demandes-inscription')
-            ->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
+            ->assertForbidden()->assertJsonPath('reason', 'enrolment_managed_by_klassci');
+    }
+
+    /**
+     * Une admission EST une inscription : elle suit le droit d'INSCRIPTION (`allowsLocalEnrolment`), jamais celui du
+     * catalogue. Les deux valent pareil aujourd'hui ; une doublure du droit d'inscription les fait DIVERGER, sans quoi
+     * rien ne distinguerait les deux portes.
+     */
+    public function test_inscription_fermee_et_catalogue_ouvert_les_admissions_sont_fermees(): void
+    {
+        $ecole = $this->ecole();
+        $ecole->forceFill(['slug' => 'ecole-a', 'is_active' => true])->save();
+        $this->droitDInscription(false);
+
+        $this->deposer('ecole-a')->assertStatus(202);
+        self::assertSame(0, DB::table('demandes_inscription')->count(), 'Le dépôt reste muet, et n\'écrit rien.');
+        $this->asTenant($this->membre($ecole, 'admin'))->getJson('/api/demandes-inscription')
+            ->assertForbidden()->assertJsonPath('reason', 'enrolment_managed_by_klassci');
+    }
+
+    public function test_inscription_ouverte_et_catalogue_ferme_les_admissions_sont_ouvertes(): void
+    {
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $ecole->forceFill(['slug' => 'ecole-k', 'is_active' => true])->save();
+        $this->droitDInscription(true);
+
+        $this->deposer('ecole-k')->assertStatus(202);
+        self::assertSame(1, DB::table('demandes_inscription')->count());
+        $this->asTenant($this->membre($ecole, 'admin'))->getJson('/api/demandes-inscription')
+            ->assertOk()->assertJsonPath('meta.counts.recue', 1);
     }
 
     public function test_la_purge_planifiee_suit_les_delais(): void
@@ -189,6 +220,19 @@ final class DemandesInscriptionTest extends TestCase
     private function deposer(string $ecole, string $ip = '10.0.0.9'): TestResponse
     {
         return $this->withServerVariables(['REMOTE_ADDR' => $ip])->postJson('/api/demandes-inscription', ['ecole' => $ecole] + self::DEMANDE);
+    }
+
+    private function droitDInscription(bool $ouvert): void
+    {
+        $this->app->instance(DroitDInscription::class, new class($ouvert) implements DroitDInscription
+        {
+            public function __construct(private readonly bool $ouvert) {}
+
+            public function ouvertPour(Institution $ecole): bool
+            {
+                return $this->ouvert;
+            }
+        });
     }
 
     /** @return array{0: Institution, 1: User} */

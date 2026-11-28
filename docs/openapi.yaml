@@ -5267,7 +5267,7 @@ paths:
       description: |
         #1666. Les DEUX volets : les disponibilites sont locales, rattachees a l'id LOCAL du compte, jamais a
         son id KLASSCI.
-        La gestion seule. La semaine est remplacee d'un bloc ; deux creneaux d'un meme jour ne se
+        L'enseignant pour lui-meme, et la gestion (qui relit et corrige). La semaine est remplacee d'un bloc ; deux creneaux d'un meme jour ne se
         chevauchent pas.
       security:
         - sanctum: []
@@ -5301,13 +5301,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant ne lit pas (un enseignant ne lit que lui-meme)."
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant n'atteint pas (un enseignant n'atteint que lui-meme ; un eleve, aucun) : meme corps qu'un id inconnu."
           content:
             application/json:
               schema:
@@ -5340,7 +5340,7 @@ paths:
       description: |
         #1666. Les DEUX volets : les disponibilites sont locales, rattachees a l'id LOCAL du compte, jamais a
         son id KLASSCI.
-        La gestion seule. Sans creneau, l'exception couvre la journee entiere.
+        L'enseignant pour lui-meme, et la gestion (qui relit et corrige). Sans creneau, l'exception couvre la journee entiere.
       security:
         - sanctum: []
       parameters:
@@ -5373,13 +5373,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant ne lit pas (un enseignant ne lit que lui-meme)."
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant n'atteint pas (un enseignant n'atteint que lui-meme ; un eleve, aucun) : meme corps qu'un id inconnu."
           content:
             application/json:
               schema:
@@ -5412,7 +5412,7 @@ paths:
       description: |
         #1666. Les DEUX volets : les disponibilites sont locales, rattachees a l'id LOCAL du compte, jamais a
         son id KLASSCI.
-        La gestion seule. Une exception d'un autre enseignant ne se retire pas par celui-ci (404).
+        L'enseignant pour lui-meme, et la gestion (qui relit et corrige). Une exception d'un autre enseignant ne se retire pas par celui-ci (404).
       security:
         - sanctum: []
       parameters:
@@ -5445,13 +5445,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant ne lit pas (un enseignant ne lit que lui-meme) ; ou exception introuvable pour cet enseignant."
+          description: "Enseignant introuvable dans l'etablissement, ou que l'appelant n'atteint pas (un enseignant n'atteint que lui-meme ; un eleve, aucun) : meme corps qu'un id inconnu ; ou exception introuvable pour cet enseignant."
           content:
             application/json:
               schema:

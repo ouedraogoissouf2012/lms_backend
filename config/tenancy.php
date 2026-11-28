@@ -59,6 +59,8 @@ return [
         'evaluations',
         'evaluation_questions',
         'evaluation_submissions',
+        // #1678 : les réclamations de notes.
+        'reclamations_de_notes',
         // #1702 (D1) : la banque de questions.
         'categories_de_questions',
         'questions_de_banque',

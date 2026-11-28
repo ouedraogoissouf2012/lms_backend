@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TypesDeReclamation;
 use App\Models\Traits\BelongsToInstitution;
 use Carbon\Carbon;
 use Database\Factories\NotificationFactory;
@@ -28,7 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Notification extends Model
 {
     /** @use HasFactory<NotificationFactory> */
-    use BelongsToInstitution, HasFactory;
+    use BelongsToInstitution, HasFactory, TypesDeReclamation;
 
     protected $fillable = [
         'user_id',
@@ -79,7 +80,7 @@ class Notification extends Model
         self::TYPE_LESSON_PUBLISHED, self::TYPE_FORUM_REPLY, self::TYPE_QUIZ_AVAILABLE, self::TYPE_GRADE_RECEIVED,
         self::TYPE_LESSON_UPDATED, self::TYPE_FORUM_SOLUTION, self::TYPE_QUIZ_DEADLINE, self::TYPE_VISIO_SCHEDULED,
         self::TYPE_VISIO_STARTING, self::TYPE_EVALUATION_APPROACHING, self::TYPE_ANNONCE,
-        self::TYPE_ABSENCE_JUSTIFICATION_DECIDED,
+        self::TYPE_ABSENCE_JUSTIFICATION_DECIDED, ...self::TYPES_DE_RECLAMATION,
     ];
 
     /**

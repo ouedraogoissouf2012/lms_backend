@@ -190,6 +190,19 @@ class EvaluationGradingService
     }
 
     /**
+     * #1678 : la note décidée par la gestion au terme d'une réclamation. Elle remplace la note qui
+     * compte (`note_sur_20`) ; la copie est à renvoyer à KLASSCI (`synced_to_klassci` faux), dont
+     * le renvoi reste le geste de l'enseignant. Par le modèle (`saveOrFail`) : l'audit, et
+     * l'historique des notes (#1698), la consignent.
+     */
+    public function fixerLaNote(EvaluationSubmission $copie, float $note): void
+    {
+        $copie->note_sur_20 = round($note, 2);
+        $copie->synced_to_klassci = false;
+        $copie->saveOrFail();
+    }
+
+    /**
      * #588 — note les dissertations, recalcule note_sur_20, passe en `corrige`.
      *
      * @param  array<int|string, float|int|string>  $manualPoints

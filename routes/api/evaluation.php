@@ -10,6 +10,7 @@ use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
 use App\Http\Controllers\API\Evaluation\EvaluationReleaseController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
+use App\Http\Controllers\API\Evaluation\ReclamationsDeNotesController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentListController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentSubmissionController;
@@ -42,6 +43,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 
     // Notes de l'étudiant groupées par matière
     Route::get('my-grades', [EvaluationStudentListController::class, 'myGrades']);
+
+    // #1678 : réclamer une note (l'élève) et lire ses réclamations (chacun selon son rôle).
+    Route::post('evaluations/{id}/reclamations', [ReclamationsDeNotesController::class, 'deposer'])->whereNumber('id');
+    Route::get('reclamations', [ReclamationsDeNotesController::class, 'lister']);
 });
 
 // Routes enseignants/coordinateurs uniquement
@@ -67,6 +72,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:evaluations.gerer
     // Synchronisation vers KLASSCI
     Route::post('evaluations/{id}/sync-klassci', [EvaluationKlassciSyncController::class, 'syncToKlassci']);
 
+    // #1678 : l'avis de l'enseignant, la décision de la gestion.
+    Route::post('evaluations/{id}/reclamations/{reclamation}/avis', [ReclamationsDeNotesController::class, 'avis'])->whereNumber(['id', 'reclamation']);
+    Route::post('evaluations/{id}/reclamations/{reclamation}/decision', [ReclamationsDeNotesController::class, 'trancher'])->whereNumber(['id', 'reclamation']);
     // #1702 (D1) : la banque de questions (l'enseignant écrit, le coordinateur et l'admin lisent).
     Route::get('banque/categories', [BanqueDeQuestionsController::class, 'categories']);
     Route::post('banque/categories', [BanqueDeQuestionsController::class, 'creerCategorie']);

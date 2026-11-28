@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\API\LMS\LMSClasseArchiveController;
 use App\Http\Controllers\API\LMS\LMSClasseCapaciteController;
+use App\Http\Controllers\API\LMS\LMSClasseEleveMutationController;
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
@@ -88,6 +90,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // localement est verifie plus bas, au point d ecriture, par une
         // capacite — la route ne lit aucun mode.
         Route::post('/classes', [LMSClasseWriteController::class, 'store']);
+        // La modifier (#1652) : une classe LOCALE de son ecole ; son code y est unique.
+        Route::patch('/classes/{classe}', [LMSClasseWriteController::class, 'update'])->whereNumber('classe');
         // Sa collection, une LECTURE, vit dans `routes/api/classes.php` (#924).
 
         // Creer une matiere SANS KLASSCI (#797, #848). Second des trois verrous
@@ -129,4 +133,16 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // respecte (#1115). Un geste NOMME, comme la Periode ; null ou 0 = sans limite.
         Route::put('/classes/{classe}/capacite', [LMSClasseCapaciteController::class, 'update'])
             ->whereNumber('classe');
+
+        // Archiver une classe, ou la desarchiver (#1652) : deux gestes NOMMES. Archiver ferme
+        // son code et refuse toute nouvelle inscription ; ses eleves et ses traces demeurent.
+        Route::post('/classes/{classe}/archiver', [LMSClasseArchiveController::class, 'archiver'])
+            ->whereNumber('classe');
+        Route::post('/classes/{classe}/desarchiver', [LMSClasseArchiveController::class, 'desarchiver'])
+            ->whereNumber('classe');
+
+        // Changer un eleve de classe dans son ecole (#1652) : en une transaction, l ancienne
+        // adhesion se ferme (inactif, datee, motif mutation) et la nouvelle s ouvre.
+        Route::post('/classes/{classe}/eleves/{eleve}/muter', [LMSClasseEleveMutationController::class, 'store'])
+            ->whereNumber(['classe', 'eleve']);
     });

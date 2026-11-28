@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\LMS\Seances;
 
 use App\Enums\InstitutionMode;
+use App\Enums\TypeDeSeance;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Seance;
@@ -105,7 +106,7 @@ final class SeancesEcoleIndependanteTest extends TestCase
             'total_seances' => 1,
             'date_debut' => '2026-11-10',
             'date_fin' => '2026-12-10',
-            'filtres' => ['teacher_id' => null, 'classe_id' => null],
+            'filtres' => ['teacher_id' => null, 'classe_id' => null, 'type' => null],
         ], $reponse->json('meta'));
     }
 
@@ -165,7 +166,7 @@ final class SeancesEcoleIndependanteTest extends TestCase
             ->getJson(self::A_VENIR.'?teacher_id='.$un->id.'&classe_id='.$a->id)
             ->assertOk()
             ->assertJsonPath('data.*.id', [$cible->id])
-            ->assertJsonPath('meta.filtres', ['teacher_id' => $un->id, 'classe_id' => $a->id]);
+            ->assertJsonPath('meta.filtres', ['teacher_id' => $un->id, 'classe_id' => $a->id, 'type' => null]);
     }
 
     // ───────────────────────── l'enseignant
@@ -516,7 +517,7 @@ final class SeancesEcoleIndependanteTest extends TestCase
     {
         $this->app->instance(LocalSeancesListReader::class, new class implements SeancesListReader
         {
-            public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId): array
+            public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId, ?TypeDeSeance $type = null): array
             {
                 throw self::panne();
             }
@@ -609,6 +610,8 @@ final class SeancesEcoleIndependanteTest extends TestCase
             'klassci_seance_id' => null,
             // Le titre de la ligne (`TitreDeLaSeanceTest` en fixe les deux volets).
             'titre' => $seance->titre,
+            // #1668 : le type de la ligne, ou null (`TypeDeSeanceTest`).
+            'type_seance' => $seance->type_seance?->value,
             'date_seance' => $debut->format('Y-m-d'),
             'date_debut' => $debut->toISOString(),
             'date_fin' => $fin->toISOString(),
@@ -639,6 +642,8 @@ final class SeancesEcoleIndependanteTest extends TestCase
         ] + $visio + [
             // #1121 : une séance à venir, lue par son auteur ou par la gestion.
             'can_be_edited' => true,
+            // front#719 : à venir, donc pas encore commencée : l'appel n'est pas ouvert.
+            'can_take_attendance' => false,
         ];
     }
 }

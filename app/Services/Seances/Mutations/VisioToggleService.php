@@ -211,6 +211,7 @@ final class VisioToggleService implements VisioToggleSource
                 // lequel de ses identifiants c'est ({@see SeanceDeLEmploiDuTemps}).
                 'matiere_nom' => $seanceData['matiere_nom'] ?? null,
                 'enseignant_nom' => $seanceData['enseignant_nom'] ?? null,
+                'type_seance' => $seanceData['type_seance'] ?? null, // #1668
             ]);
 
             if (isset($seanceData['classe_id'])) {

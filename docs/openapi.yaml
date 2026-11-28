@@ -4952,6 +4952,86 @@ components:
           type: string
           example: "Mot de passe défini."
 
+    MotDePasseChange:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+          example: "Mot de passe change."
+
+    MonMotDePasseRefuse:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - password_managed_by_klassci
+
+    ProfilModifie:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - name
+            - phone
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+              nullable: true
+
+    ProfilRefuse:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - profile_managed_by_klassci
+
     MotDePasseDefinitionRefusee:
       type: object
       additionalProperties: false
@@ -13990,6 +14070,151 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+    patch:
+      tags:
+        - Authentication
+      operationId: modifierSonProfil
+      summary: "Le compte connecte modifie son profil (nom affiche, telephone)"
+      description: |
+        #1667. Seuls les champs PRESENTS sont ecrits : un corps qui ne porte que `phone`
+        ne touche pas au nom ; `phone: null` l'efface. Le COURRIEL est refuse (422
+        `errors.email`) : c'est l'identifiant de connexion, son changement exige une
+        confirmation par lien (autre issue). La photo n'existe pas encore.
+
+        **Ecole creee depuis le LMS, et supradmin de plateforme.** Le profil local est
+        modifie, l'acte est trace a l'audit (`profile_updated_by_self`).
+
+        **Ecole creee depuis KLASSCI.** Le profil vient de KLASSCI et la synchronisation
+        ecraserait la saisie : 403 `profile_managed_by_klassci`, AVANT toute lecture du
+        corps. Rien n'est ecrit.
+
+        Limite nommee `profil-modifie` (20 par minute et par compte).
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                phone:
+                  type: string
+                  nullable: true
+                  maxLength: 40
+      responses:
+        '200':
+          description: "Profil mis a jour ; la reponse rend les deux champs relus."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfilModifie'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ecole KLASSCI (`profile_managed_by_klassci`) ; sans motif : etablissement desactive."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProfilRefuse'
+                  - $ref: '#/components/schemas/RefusDeLaResolution'
+        '422':
+          description: "Nom vide ou trop long (`errors.name`), telephone trop long (`errors.phone`), courriel present (`errors.email`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/me/password:
+    put:
+      tags:
+        - Authentication
+      operationId: changerSonMotDePasse
+      summary: "Le compte connecte change son mot de passe"
+      description: |
+        #1667. Le mot de passe actuel est verifie (422 `errors.current_password`) ; le
+        nouveau suit la politique en vigueur (8 caracteres au moins, confirme) et differe
+        de l'actuel (422 `errors.password`).
+
+        **Ecole creee depuis le LMS, et supradmin de plateforme (compte local).** Le mot
+        de passe est change ; TOUS les autres jetons du compte sont revoques (ses autres
+        sessions se ferment), le jeton de la requete SURVIT. L'acte est trace a l'audit
+        (`password_changed_by_self`), jamais le mot de passe.
+
+        **Ecole creee depuis KLASSCI.** Le mot de passe est celui de KLASSCI : 403
+        `password_managed_by_klassci`, AVANT toute lecture du corps. Rien n'est ecrit.
+
+        Le mot de passe ne figure jamais dans la reponse. Limite nommee
+        `mot-de-passe-change` (5 par minute et par compte).
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - current_password
+                - password
+                - password_confirmation
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                password:
+                  type: string
+                  minLength: 8
+                  format: password
+                password_confirmation:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: "Mot de passe change ; les autres sessions sont fermees."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MotDePasseChange'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ecole KLASSCI (`password_managed_by_klassci`) ; sans motif : etablissement desactive."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MonMotDePasseRefuse'
+                  - $ref: '#/components/schemas/RefusDeLaResolution'
+        '422':
+          description: "Mot de passe actuel absent ou faux (`errors.current_password`) ; nouveau absent, trop court, non confirme ou identique (`errors.password`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

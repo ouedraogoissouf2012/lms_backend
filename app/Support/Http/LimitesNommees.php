@@ -47,6 +47,9 @@ final class LimitesNommees
         'consentement-visio' => [10, 'compte'],
         // #1275 : l'administration définit un mot de passe, rarement ; une rafale est suspecte.
         'mot-de-passe-defini' => [10, 'compte'],
+        // #1667 : un compte change son mot de passe, rarement ; la vérification de l'actuel ne doit pas servir à le deviner.
+        'mot-de-passe-change' => [5, 'compte'],
+        'profil-modifie' => [20, 'compte'],
         // #1650 : une annonce part à toute une classe ; une rafale inonderait ses élèves.
         'annonce' => [10, 'compte'],
         // #1659 : la porte publique des demandes d'inscription, remplie à la main. Le plafond PAR ÉCOLE est ailleurs,

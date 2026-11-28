@@ -1300,6 +1300,7 @@
     "PATCH api/admin/institutions/{id}/toggle": [
         "supradmin"
     ],
+    "PATCH api/auth/me": "*",
     "PATCH api/banque/categories/{id}": [
         "enseignant",
         "teacher",
@@ -1358,6 +1359,7 @@
     "PATCH api/v1/admin/institutions/{id}/toggle": [
         "supradmin"
     ],
+    "PATCH api/v1/auth/me": "*",
     "PATCH api/v1/banque/categories/{id}": [
         "enseignant",
         "teacher",
@@ -2659,6 +2661,7 @@
     "PUT api/admin/institutions/{id}": [
         "supradmin"
     ],
+    "PUT api/auth/me/password": "*",
     "PUT api/banque/questions/{id}": [
         "enseignant",
         "teacher",
@@ -2782,6 +2785,7 @@
     "PUT api/v1/admin/institutions/{id}": [
         "supradmin"
     ],
+    "PUT api/v1/auth/me/password": "*",
     "PUT api/v1/banque/questions/{id}": [
         "enseignant",
         "teacher",

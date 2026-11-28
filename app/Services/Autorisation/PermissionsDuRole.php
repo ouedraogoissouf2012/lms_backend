@@ -68,7 +68,8 @@ final class PermissionsDuRole
             Role::Supradmin => Permission::cases(),
             Role::SuperAdmin => array_filter(Permission::cases(), static fn (Permission $p): bool => ! $p->estDeLaPlateforme()),
             // #1708 : l'admin d'école importe (la couche métier l'admettait déjà ; seule la route le refusait).
-            Role::Admin => [...self::PERSONNEL, ...self::GESTION, Permission::ComptesMotDePasse, Permission::ImportsImporter],
+            // #1705 : l'export des données d'un élève est un acte de responsable de traitement (admin, pas coordinateur).
+            Role::Admin => [...self::PERSONNEL, ...self::GESTION, Permission::ComptesMotDePasse, Permission::ImportsImporter, Permission::ElevesExporter],
             Role::Coordinateur => [
                 ...self::PERSONNEL,
                 ...self::GESTION,

@@ -522,6 +522,12 @@
     ],
     "GET api/documentation": "*",
     "GET api/eleves/{eleve}/dossier": "*",
+    "GET api/eleves/{eleve}/export": [
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/eleves/{eleve}/photo": "*",
     "GET api/evaluations": "*",
     "GET api/evaluations/student": "*",
@@ -1010,6 +1016,12 @@
         "supradmin"
     ],
     "GET api/v1/eleves/{eleve}/dossier": "*",
+    "GET api/v1/eleves/{eleve}/export": [
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/eleves/{eleve}/photo": "*",
     "GET api/v1/evaluations": "*",
     "GET api/v1/evaluations/student": "*",

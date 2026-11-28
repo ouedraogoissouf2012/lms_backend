@@ -52,6 +52,8 @@ final class LimitesNommees
         // #1659 : la porte publique des demandes d'inscription, remplie à la main. Le plafond PAR ÉCOLE est ailleurs,
         // silencieux (`config/admissions.php`) : un refus visible confirmerait que l'école existe.
         'demandes-inscription' => [5, 'ip'],
+        // #1705 : un export porte toutes les données d'une personne ; une rafale est suspecte.
+        'export-donnees' => [10, 'compte'],
     ];
 
     public static function enregistrer(): void

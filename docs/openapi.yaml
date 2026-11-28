@@ -4702,6 +4702,119 @@ components:
         data:
           $ref: '#/components/schemas/DemandeDInscription'
 
+    DonneesDUnEleve:
+      type: object
+      additionalProperties: false
+      description: "#1705. Une section par source ; chaque ligne porte les colonnes nommees de sa source."
+      required:
+        - compte
+        - dossier
+        - tuteurs
+        - photo
+        - classes
+        - classes_klassci
+        - copies
+        - presences
+        - progression_lecons
+        - progression_chapitres
+        - quiz
+        - controles_de_connaissances
+        - consentements
+        - forum_sujets
+        - forum_messages
+        - notifications
+        - fichiers
+      properties:
+        compte:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - nom
+            - email
+            - role_du_compte
+          properties:
+            id:
+              type: integer
+            nom:
+              type: string
+            email:
+              type: string
+            telephone:
+              type: string
+              nullable: true
+            role_du_compte:
+              type: string
+              nullable: true
+            identifiant_klassci:
+              type: integer
+              nullable: true
+            cree_le:
+              type: string
+              nullable: true
+            modifie_le:
+              type: string
+              nullable: true
+        dossier:
+          $ref: '#/components/schemas/LignesDExport'
+        tuteurs:
+          $ref: '#/components/schemas/LignesDExport'
+        photo:
+          type: array
+          maxItems: 1
+          description: "#1803. Les METADONNEES de la photo et la mention de sa remise a part : jamais le binaire ni le chemin de stockage. Vide sans photo."
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - type
+              - taille
+              - deposee_le
+              - remise
+            properties:
+              type:
+                type: string
+                nullable: true
+              taille:
+                type: integer
+              deposee_le:
+                type: string
+                format: date-time
+              remise:
+                type: string
+        classes:
+          $ref: '#/components/schemas/LignesDExport'
+        classes_klassci:
+          $ref: '#/components/schemas/LignesDExport'
+        copies:
+          $ref: '#/components/schemas/LignesDExport'
+        presences:
+          $ref: '#/components/schemas/LignesDExport'
+        progression_lecons:
+          $ref: '#/components/schemas/LignesDExport'
+        progression_chapitres:
+          $ref: '#/components/schemas/LignesDExport'
+        quiz:
+          $ref: '#/components/schemas/LignesDExport'
+        controles_de_connaissances:
+          $ref: '#/components/schemas/LignesDExport'
+        consentements:
+          $ref: '#/components/schemas/LignesDExport'
+        forum_sujets:
+          $ref: '#/components/schemas/LignesDExport'
+        forum_messages:
+          $ref: '#/components/schemas/LignesDExport'
+        notifications:
+          $ref: '#/components/schemas/LignesDExport'
+        fichiers:
+          $ref: '#/components/schemas/LignesDExport'
+
+    LignesDExport:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+
     ValidationFailed:
       type: object
       properties:
@@ -9806,6 +9919,80 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '422':
           description: "Motif absent ou trop long."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /eleves/{eleve}/export:
+    get:
+      tags:
+        - Donnees
+      operationId: exporterLesDonneesDUnEleve
+      summary: "Exporter toutes les donnees d un eleve (droit d acces)"
+      description: |
+        #1705, loi 2013-450. Par l administration de l ecole de l eleve (admin, superAdmin), dans les
+        deux volets. `eleve` est l id LOCAL du compte. Toutes les donnees que le LMS detient sur l eleve,
+        une section par source, rien d un autre eleve, aucun secret. Une note que l eleve ne voit pas
+        encore n en sort pas. Telechargement (`Content-Disposition: attachment`, `Cache-Control: no-store`),
+        journalise (`eleve.donnees_exportees`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [json, pdf]
+      responses:
+        '200':
+          description: "L export, en JSON ou en PDF selon `format`"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/DonneesDUnEleve'
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Hors de l administration de l ecole. Aussi : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Eleve introuvable dans l etablissement : autre ecole, ou compte qui n est pas un eleve (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Format absent ou inconnu."
           content:
             application/json:
               schema:

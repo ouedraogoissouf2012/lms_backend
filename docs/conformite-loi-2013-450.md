@@ -64,7 +64,20 @@ et jamais parce qu'une horloge a sonné.
 ## 4. Les droits des personnes
 
 - **Accès et export** : l'administrateur de l'établissement exporte, à la demande d'un élève, toutes les données que le
-  LMS détient sur lui, en JSON et en PDF. Chaque export est journalisé. *(À venir : #1705, PR 2.)*
+  LMS détient sur lui, en JSON ou en PDF (`GET /api/eleves/{eleve}/export?format=json|pdf`).
+  - L'export compte une section par source : le compte, le dossier de l'élève (identité, matricule), ses tuteurs, sa
+    photo, les classes, les copies, les présences, la progression, les quiz, les consentements, le forum, les
+    notifications et les métadonnées des fichiers.
+  - **La photo est remise à part** : l'export n'en donne que les métadonnées (type, taille, date du dépôt) et la
+    mention de sa remise, jamais le fichier ni son chemin de stockage. L'administrateur remet le fichier à l'élève avec
+    l'export.
+  - Il ne contient rien d'un autre élève, ni aucun secret.
+  - Une note que l'élève ne voit pas encore n'en sort pas.
+  - Chaque export est journalisé, avec son auteur et son format.
+  - **Hors de l'export, délibérément** :
+    - le contenu des fichiers, qui se télécharge par sa route ;
+    - le journal d'audit, qui relève de la sécurité et se lit, sur demande, auprès de l'administration ;
+    - les séances masquées, une préférence d'affichage.
 - **Effacement** : la suppression d'un compte est d'abord réversible. Le compte est définitivement détruit au terme du
   délai ci-dessus, avec les données qui le suivent.
 

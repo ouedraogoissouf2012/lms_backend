@@ -71,6 +71,9 @@ enum Permission: string
     case PresencesEmarger = 'presences.emarger';
     // #1823 : voir ses absences et déposer un justificatif.
     case AbsencesJustifier = 'absences.justifier';
+    // #1705 : exporter les données d'un élève, à sa demande (loi 2013-450). Un acte de responsable de traitement :
+    // l'ADMINISTRATION de l'école seule, jamais le coordinateur (même ensemble que l'ancien `role:admin,superAdmin`).
+    case ElevesExporter = 'eleves.exporter';
 
     /** Réservée au gestionnaire de la plateforme : jamais à un rôle d'école, ni à un accès individuel. */
     public function estDeLaPlateforme(): bool

@@ -21,12 +21,20 @@ final class SectionsDeLExport
     public function __construct(
         private readonly ConnectionInterface $db,
         private readonly SectionCopies $copies,
+        private readonly SectionTuteurs $tuteurs,
+        private readonly SectionPhoto $photo,
     ) {}
 
     /** @return list<SectionDExport> */
     public function toutes(): array
     {
         return [
+            // #1797 et #1803 : le dossier (sans le chemin de la photo), ses tuteurs, la photo en métadonnées.
+            $this->table('dossier', 'Dossier de l\'élève', 'dossiers_eleves', 'user_id',
+                ['matricule', 'nom', 'prenoms', 'genre', 'date_naissance', 'lieu_naissance', 'nationalite', 'adresse', 'ville',
+                    'commune', 'statut', 'created_at', 'updated_at']),
+            $this->tuteurs,
+            $this->photo,
             $this->table('classes', 'Inscriptions aux classes', 'classe_etudiant', 'user_id',
                 ['date_inscription', 'statut', 'starts_on', 'ends_on', 'financement_source', 'financement_montant', 'financement_reference', 'financement_statut'],
                 jointure: ['table' => 'classes', 'cle' => 'classe_id', 'colonnes' => ['classe' => 'libelle', 'code_classe' => 'code']]),

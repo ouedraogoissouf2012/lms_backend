@@ -4708,6 +4708,9 @@ components:
       description: "#1705. Une section par source ; chaque ligne porte les colonnes nommees de sa source."
       required:
         - compte
+        - dossier
+        - tuteurs
+        - photo
         - classes
         - classes_klassci
         - copies
@@ -4752,6 +4755,33 @@ components:
             modifie_le:
               type: string
               nullable: true
+        dossier:
+          $ref: '#/components/schemas/LignesDExport'
+        tuteurs:
+          $ref: '#/components/schemas/LignesDExport'
+        photo:
+          type: array
+          maxItems: 1
+          description: "#1803. Les METADONNEES de la photo et la mention de sa remise a part : jamais le binaire ni le chemin de stockage. Vide sans photo."
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - type
+              - taille
+              - deposee_le
+              - remise
+            properties:
+              type:
+                type: string
+                nullable: true
+              taille:
+                type: integer
+              deposee_le:
+                type: string
+                format: date-time
+              remise:
+                type: string
         classes:
           $ref: '#/components/schemas/LignesDExport'
         classes_klassci:

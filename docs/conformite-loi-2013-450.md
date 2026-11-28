@@ -65,8 +65,12 @@ et jamais parce qu'une horloge a sonné.
 
 - **Accès et export** : l'administrateur de l'établissement exporte, à la demande d'un élève, toutes les données que le
   LMS détient sur lui, en JSON ou en PDF (`GET /api/eleves/{eleve}/export?format=json|pdf`).
-  - L'export compte une section par source : le compte, les classes, les copies, les présences, la progression, les
-    quiz, les consentements, le forum, les notifications et les métadonnées des fichiers.
+  - L'export compte une section par source : le compte, le dossier de l'élève (identité, matricule), ses tuteurs, sa
+    photo, les classes, les copies, les présences, la progression, les quiz, les consentements, le forum, les
+    notifications et les métadonnées des fichiers.
+  - **La photo est remise à part** : l'export n'en donne que les métadonnées (type, taille, date du dépôt) et la
+    mention de sa remise, jamais le fichier ni son chemin de stockage. L'administrateur remet le fichier à l'élève avec
+    l'export.
   - Il ne contient rien d'un autre élève, ni aucun secret.
   - Une note que l'élève ne voit pas encore n'en sort pas.
   - Chaque export est journalisé, avec son auteur et son format.

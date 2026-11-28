@@ -10,6 +10,9 @@ use App\Services\Attendances\Appel\SaisieDeLAppel;
 use App\Services\Attendances\KlassciSeanceSansLigneLocale;
 use App\Services\Attendances\LocalSeanceSansLigneLocale;
 use App\Services\Attendances\SeanceSansLigneLocale;
+use App\Services\Attendances\Suivi\KlassciSuiviDesPresences;
+use App\Services\Attendances\Suivi\LocalSuiviDesPresences;
+use App\Services\Attendances\Suivi\SuiviDesPresences;
 use App\Services\Catalogue\InstitutionStructureReader;
 use App\Services\Catalogue\KlassciInstitutionStructureReader;
 use App\Services\Catalogue\LocalInstitutionStructureReader;
@@ -129,6 +132,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
         // #1649 : l'appel d'une séance ; une école KLASSCI le saisit dans KLASSCI.
         SaisieDeLAppel::class => [KlassciSaisieDeLAppel::class, LocalSaisieDeLAppel::class],
+        // #1683 : le suivi des présences ; une école KLASSCI tient ses présences dans KLASSCI.
+        SuiviDesPresences::class => [KlassciSuiviDesPresences::class, LocalSuiviDesPresences::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).
         CreationDeSeance::class => [KlassciCreationDeSeance::class, LocalSeanceCreator::class],
         // Les présences d'une séance KLASSCI sans ligne locale (#1098).

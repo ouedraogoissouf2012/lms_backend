@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\ValidatesAgainstOpenApi;
 use Tests\TestCase;
 
 /**
@@ -42,6 +43,7 @@ final class SuiviDesPresencesTest extends TestCase
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
     use RefreshDatabase;
+    use ValidatesAgainstOpenApi;
 
     private Institution $ecole;
 
@@ -159,6 +161,19 @@ final class SuiviDesPresencesTest extends TestCase
             ->selectRaw('id, '.PresenceRetenue::expression('mark', 'status').' as retenue')->pluck('retenue', 'id')->all();
 
         self::assertSame($cas, array_map('strval', $lues));
+    }
+
+    public function test_les_reponses_suivent_la_spec(): void
+    {
+        $liste = $this->asTenant($this->coordinateur)->getJson('/api/lms/presences?du=2026-12-01&au=2026-12-31')->assertOk();
+        $this->assertMatchesOpenApiResponse($liste, '/lms/presences', 'get');
+        $this->assertOpenApiSchemaRefuseSans($liste, '/lms/presences', 'get', 'data');
+        $synthese = $this->asTenant($this->coordinateur)->getJson('/api/lms/presences/synthese?du=2026-12-01&au=2026-12-31')->assertOk();
+        $this->assertMatchesOpenApiResponse($synthese, '/lms/presences/synthese', 'get');
+        $refus = $this->asTenant($this->membre($this->ecole, 'enseignant'))->getJson('/api/lms/presences?du=2026-12-01&au=2026-12-31')->assertForbidden();
+        $this->assertMatchesOpenApiResponse($refus, '/lms/presences', 'get');
+        $klassci = $this->asTenant($this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur'))->getJson('/api/lms/presences?du=2026-12-01&au=2026-12-31');
+        $this->assertMatchesOpenApiResponse($klassci->assertStatus(409), '/lms/presences', 'get');
     }
 
     /** @return array<string, array{string, string}> */

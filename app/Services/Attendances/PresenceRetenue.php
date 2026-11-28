@@ -63,4 +63,21 @@ final class PresenceRetenue
                 ->whereNull($sansMarque->qualifyColumn('mark'))
                 ->whereIn($sansMarque->qualifyColumn('status'), self::STATUTS_VENUS)));
     }
+
+    /**
+     * La même règle en EXPRESSION SQL, pour le suivi des présences (#1683) : la marque retenue d'une ligne, en
+     * `present`, `late`, `absent` ou `excused`. Pour une séance PASSÉE, rien qui dise une présence est une absence :
+     * l'expression rend `absent` là où {@see de()} rend `null` (et pour une ligne absente du LEFT JOIN).
+     *
+     * Les deux noms de colonne sont des identifiants écrits par l'appelant (jamais une saisie) ; les valeurs viennent
+     * de l'énumération et de la constante des statuts, sans aucune entrée extérieure.
+     */
+    public static function expression(string $colonneMarque, string $colonneStatut): string
+    {
+        $venus = implode(', ', array_map(static fn (string $s): string => "'{$s}'", self::STATUTS_VENUS));
+
+        return "(CASE WHEN {$colonneMarque} IS NOT NULL THEN {$colonneMarque}"
+            ." WHEN {$colonneStatut} IN ({$venus}) THEN '".AttendanceMark::Present->value."'"
+            ." ELSE '".AttendanceMark::Absent->value."' END)";
+    }
 }

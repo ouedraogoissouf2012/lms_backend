@@ -142,6 +142,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/users/{user}": [
         "coordinateur",
         "coordinator",
@@ -286,6 +294,14 @@
         "supradmin"
     ],
     "DELETE api/v1/training-sessions/{trainingSession}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -521,9 +537,29 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/lms/classes/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/lms/classes/local/{classeId}": "*",
     "GET api/lms/classes/{classeId}": "*",
     "GET api/lms/classes/{classeId}/etudiants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/classes/{classeId}/etudiants/export": [
         "enseignant",
         "teacher",
         "coordinateur",
@@ -725,6 +761,14 @@
     ],
     "GET api/test-throw-exception": "*",
     "GET api/training-sessions": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/training-sessions/{trainingSession}/sous-periodes": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -951,9 +995,29 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/v1/lms/classes/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/lms/classes/local/{classeId}": "*",
     "GET api/v1/lms/classes/{classeId}": "*",
     "GET api/v1/lms/classes/{classeId}/etudiants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/classes/{classeId}/etudiants/export": [
         "enseignant",
         "teacher",
         "coordinateur",
@@ -1161,6 +1225,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/v1/training-sessions/{trainingSession}/sous-periodes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/user": "*",
     "PATCH api/admin/institutions/{id}/mode": [
         "supradmin"
@@ -1212,6 +1284,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "PATCH api/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PATCH api/v1/admin/institutions/{id}/mode": [
         "supradmin"
     ],
@@ -1255,6 +1335,14 @@
         "supradmin"
     ],
     "PATCH api/v1/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1844,6 +1932,14 @@
         "supradmin"
     ],
     "POST api/training-sessions/{trainingSession}/publier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/training-sessions/{trainingSession}/sous-periodes": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -2441,6 +2537,14 @@
         "supradmin"
     ],
     "POST api/v1/training-sessions/{trainingSession}/publier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/training-sessions/{trainingSession}/sous-periodes": [
         "coordinateur",
         "coordinator",
         "admin",

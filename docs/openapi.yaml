@@ -618,6 +618,26 @@ components:
           $ref: '#/components/schemas/ClasseLocaleLigne'
 
     # #905 — une page de classes locales, chacune avec l etat de son code.
+    # #1806 - une sous-periode d une periode de formation.
+    SousPeriode:
+      type: object
+      properties:
+        id:
+          type: integer
+        training_session_id:
+          type: integer
+        libelle:
+          type: string
+        debut:
+          type: string
+          format: date
+        fin:
+          type: string
+          format: date
+        ordre:
+          type: integer
+          nullable: true
+
     ClassesLocalesPage:
       type: object
       properties:
@@ -5607,6 +5627,75 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /lms/classes/export:
+    get:
+      tags:
+        - Classes
+      summary: "Exporter la liste des classes de l ecole (CSV, PDF)"
+      description: |
+        #1656. Lue par le lecteur de `GET /proxy/classes` (KLASSCI ou local). Colonnes : libelle, code,
+        filiere, niveau, inscrits, places ; triee par libelle. Synchrone, bornee a 2 000 lignes.
+      security:
+        - sanctum: []
+      parameters:
+        - name: format
+          in: query
+          required: true
+          description: "`csv` (UTF-8 avec BOM, separateur `;`, formules neutralisees) ou `pdf`. Absent ou autre : 422."
+          schema:
+            type: string
+            enum: [csv, pdf]
+      responses:
+        '200':
+          description: "Le fichier, en piece jointe (`Content-Disposition: attachment`)"
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie, ou (ecole KLASSCI) compte sans jeton KLASSCI : le refus de la lecture des classes, en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant (garde `personnel`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Hors de la portee du lecteur (classe d une autre ecole, enseignant hors de sa classe), en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`format` absent ou inconnu ; ou `export_too_large` (plus de 2 000 lignes)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: |
+            Ecole creee depuis KLASSCI : KLASSCI indisponible (panne, circuit ouvert), ou reponse illisible.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
   /lms/classes/{classeId}:
     get:
       tags:
@@ -9573,6 +9662,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /lms/classes/{classeId}/etudiants/export:
+    get:
+      tags:
+        - Classes
+      summary: "Exporter la liste des eleves d une classe (CSV, PDF)"
+      description: |
+        #1656. Lue par EXACTEMENT le lecteur de `GET /lms/classes/{classeId}/etudiants` : meme garde,
+        meme portee, memes deux volets, meme document. Colonnes : nom, email, matricule, statut ; triee
+        par nom. Generation synchrone, bornee a 2 000 lignes.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: format
+          in: query
+          required: true
+          description: "`csv` (UTF-8 avec BOM, separateur `;`, formules neutralisees) ou `pdf`. Absent ou autre : 422."
+          schema:
+            type: string
+            enum: [csv, pdf]
+      responses:
+        '200':
+          description: "Le fichier, en piece jointe (`Content-Disposition: attachment`)"
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie, ou (ecole KLASSCI) compte sans jeton KLASSCI : le refus de la lecture des eleves, en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant (garde `personnel`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Hors de la portee du lecteur (classe d une autre ecole, enseignant hors de sa classe), en JSON"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`format` absent ou inconnu ; ou `export_too_large` (plus de 2 000 lignes)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: |
+            Ecole creee depuis KLASSCI : KLASSCI indisponible (panne, circuit ouvert), ou reponse illisible.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
   /lms/classes/{classeId}/etudiants:
     get:
       tags:
@@ -12231,7 +12396,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "`training_session_not_editable` : une periode close, annulee ou archivee ne se modifie plus."
+          description: |
+            `training_session_not_editable` : une periode close, annulee ou archivee ne se modifie plus.
+            `sub_periods_outside_period` (#1806) : une sous-periode sortirait des nouvelles dates.
           content:
             application/json:
               schema:
@@ -12295,6 +12462,294 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /training-sessions/{trainingSession}/sous-periodes:
+    get:
+      tags:
+        - Session de formation
+      summary: "Lister les sous-periodes d une periode"
+      description: |
+        #1806. Triees par date de debut.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Les sous-periodes"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SousPeriode'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode, ou sous-periode de cette periode, introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Session de formation
+      summary: "Decouper une periode : ajouter une sous-periode"
+      description: |
+        #1806. Dans les dates de la periode (une borne absente ne borne rien), sans chevauchement
+        entre soeurs, bornes incluses : verifie sous le verrou de la periode. `debut <= fin` est en
+        plus garanti par la base.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle, debut, fin]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                debut:
+                  type: string
+                  format: date
+                fin:
+                  type: string
+                  format: date
+                ordre:
+                  type: integer
+                  minimum: 0
+                  maximum: 1000
+                  nullable: true
+      responses:
+        '201':
+          description: "Sous-periode creee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/SousPeriode'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode, ou sous-periode de cette periode, introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`training_session_not_editable` : une periode annulee, close, archivee ou purgee ne se decoupe plus."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Champ manquant ou invalide, fin avant le debut, sous-periode hors des dates de la periode,
+            ou chevauchement d une soeur (bornes incluses) : sous `debut` ou `fin`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /training-sessions/{trainingSession}/sous-periodes/{sousPeriode}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une sous-periode (seuls les champs envoyes changent)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: sousPeriode
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                debut:
+                  type: string
+                  format: date
+                fin:
+                  type: string
+                  format: date
+                ordre:
+                  type: integer
+                  minimum: 0
+                  maximum: 1000
+                  nullable: true
+      responses:
+        '200':
+          description: "Sous-periode modifiee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/SousPeriode'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode, ou sous-periode de cette periode, introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`training_session_not_editable` : une periode annulee, close, archivee ou purgee ne se decoupe plus."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Champ manquant ou invalide, fin avant le debut, sous-periode hors des dates de la periode,
+            ou chevauchement d une soeur (bornes incluses) : sous `debut` ou `fin`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Supprimer une sous-periode"
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: sousPeriode
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Sous-periode supprimee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode, ou sous-periode de cette periode, introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`training_session_not_editable` : une periode annulee, close, archivee ou purgee ne se decoupe plus."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /training-sessions/{trainingSession}/en-cours:
     post:

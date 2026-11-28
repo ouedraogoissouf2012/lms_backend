@@ -7,6 +7,7 @@ use App\Http\Controllers\API\LMS\LMSClasseLocalDetailsController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSClassesDeLEtablissementController;
 use App\Http\Controllers\API\LMS\LMSClassesLocalesController;
+use App\Http\Controllers\API\LMS\LMSExportsController;
 use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +49,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('permission:classes.gerer')
         ->name('lms.classes.etablissement');
 
+    // #1656 : la liste des classes s'exporte (CSV, PDF). Déclarée AVANT la route paramétrée, pour la même
+    // raison que `local` et `etablissement` : `{classeId}` capturerait le segment `export`.
+    Route::get('/classes/export', [LMSExportsController::class, 'classes'])
+        ->middleware('permission:referentiel.consulter')
+        ->name('lms.classes.export');
+
     // Détails complets d'une classe
     Route::get('/classes/{classeId}', [LMSClassesController::class, 'classeDetails'])
         ->name('lms.classes.details');
@@ -58,6 +65,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
         ->middleware('permission:classes.eleves')
         ->name('lms.classes.etudiants');
+
+    // #1656 : la même liste, exportée (CSV, PDF) ; lue par le même lecteur, sous la même garde.
+    Route::get('/classes/{classeId}/etudiants/export', [LMSExportsController::class, 'eleves'])
+        ->whereNumber('classeId')
+        ->middleware('permission:classes.eleves')
+        ->name('lms.classes.etudiants.export');
 
     // #1676 : moyennes, rangs et réussite d'une classe, par l'id de l'ESPACE SOURCE, comme ses
     // voisines (`ClasseDeLEspaceSource`). L'accès

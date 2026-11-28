@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $ville
  * @property string|null $commune
  * @property StatutDuDossierEleve $statut
+ * @property string|null $photo_chemin
  */
 final class DossierEleve extends Model
 {
@@ -42,7 +43,7 @@ final class DossierEleve extends Model
 
     protected $fillable = [
         'institution_id', 'user_id', 'matricule', 'nom', 'prenoms', 'genre', 'date_naissance',
-        'lieu_naissance', 'nationalite', 'adresse', 'ville', 'commune', 'statut',
+        'lieu_naissance', 'nationalite', 'adresse', 'ville', 'commune', 'statut', 'photo_chemin',
     ];
 
     protected $casts = [

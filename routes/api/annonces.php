@@ -16,5 +16,5 @@ use Illuminate\Support\Facades\Route;
 | enseignant) est jugée par `AnnonceAUneClasse`. Limite nommée `annonce` :
 | une rafale inonderait les élèves.
 */
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin,superAdmin', 'throttle:annonce'])
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:annonces.publier', 'throttle:annonce'])
     ->post('annonces', [AnnonceController::class, 'store']);

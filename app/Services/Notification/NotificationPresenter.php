@@ -65,6 +65,8 @@ class NotificationPresenter
 
             Notification::TYPE_EVALUATION_APPROACHING => ($id = $idOf('evaluation_id')) !== null ? "/student/evaluations/{$id}" : null,
 
+            Notification::TYPE_ABSENCE_JUSTIFICATION_DECIDED => '/student/absences',
+
             default => null,
         };
     }
@@ -89,6 +91,7 @@ class NotificationPresenter
             Notification::TYPE_VISIO_SCHEDULED => 'mdi-video-outline',
             Notification::TYPE_VISIO_STARTING => 'mdi-video-check',
             Notification::TYPE_EVALUATION_APPROACHING => 'mdi-calendar-alert',
+            Notification::TYPE_ABSENCE_JUSTIFICATION_DECIDED => 'mdi-file-check',
             Notification::TYPE_ANNONCE => 'mdi-bullhorn',
             default => 'mdi-bell',
         };
@@ -108,6 +111,7 @@ class NotificationPresenter
             Notification::TYPE_VISIO_SCHEDULED => 'info',
             Notification::TYPE_VISIO_STARTING => 'warning',
             Notification::TYPE_EVALUATION_APPROACHING => 'warning',
+            Notification::TYPE_ABSENCE_JUSTIFICATION_DECIDED => 'info',
             Notification::TYPE_ANNONCE => 'info',
             default => 'secondary',
         };

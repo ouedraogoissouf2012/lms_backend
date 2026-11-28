@@ -77,10 +77,10 @@ final class CopiesFinales
             return true;
         }
 
-        $evaluation = $copie->evaluation;
-
-        return $evaluation instanceof Evaluation
-            && ! $this->grading->evaluationRequiresManualGrading($evaluation);
+        // #1702 (D2) : sur les questions POSÉES de la copie (l'évaluation et ses questions sont
+        // préchargées par `finales()` : aucune requête par copie).
+        return $copie->evaluation instanceof Evaluation
+            && ! $this->grading->copieRequiresManualGrading($copie);
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 use App\Http\Controllers\API\LMS\LMSAppelController;
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
+use App\Http\Controllers\API\LMS\LMSEmargementController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
@@ -40,17 +41,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(
 
     // Dashboard enseignant (enseignants et coordinateurs uniquement)
     Route::get('/teacher', [DashboardTeacherController::class, 'teacher'])
-        ->middleware('role:enseignant,coordinateur');
+        ->middleware('permission:enseignement.consulter');
 
-    // Statistiques globales (garde `gestion`)
+    // Statistiques globales (permission `pilotage.consulter`, #1665)
     Route::get('/stats', [DashboardAdminController::class, 'stats'])
-        ->middleware('gestion');
+        ->middleware('permission:pilotage.consulter');
 });
 
 // ============================================
 // TEACHER STATS - Statistiques enseignant
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->prefix('teacher')->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:enseignement.consulter'])->prefix('teacher')->group(function () {
     // Statistiques de l'enseignant connecté
     Route::get('/stats', [TeacherStatsController::class, 'getStats']);
 });
@@ -74,8 +75,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.enseignants.list');
 });
 
-// Routes de gestion (garde `gestion` : coordinateur, admin, superAdmin)
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->prefix('admin')->group(function () {
+// Routes de gestion (permission `pilotage.consulter`, #1665)
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:pilotage.consulter'])->prefix('admin')->group(function () {
     // Liste toutes les matières avec combinaisons complètes
     Route::get('/matieres', [LMSMatieresAdminController::class, 'adminMatieresList'])
         ->name('admin.matieres.list');
@@ -92,14 +93,14 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     Route::post('/seances', [LMSSeanceCrudController::class, 'store'])
         ->name('lms.seances.store')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
 
     // #1121 : modifier une séance (école autonome) ; refus motivé dans une école
     // KLASSCI. PUT et PATCH, la forme des leçons ; chaque champ est facultatif.
     Route::match(['put', 'patch'], '/seances/{seanceId}', [LMSSeanceCrudController::class, 'update'])
         ->name('lms.seances.update')
         ->whereNumber('seanceId')
-        ->middleware(['personnel']);
+        ->middleware(['permission:seances.gerer']);
 
     // Séances à venir (pré-création rooms)
     Route::get('/seances/upcoming', [LMSSeancesListController::class, 'upcomingSeances'])
@@ -108,7 +109,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Historique des séances (séances ayant eu une visio) - DOIT être AVANT {seanceId}
     Route::get('/seances/history', [LMSSeancesHistoryController::class, 'getSeancesHistory'])
         ->name('lms.seances.history')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
 
     // Présences détaillées d'une séance
     Route::get('/seances/{seanceId}/attendances', [LMSAttendancesController::class, 'getSeanceAttendances'])
@@ -116,29 +117,45 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         // Sécurité : liste les emails des participants -> réservé au staff (comme
         // la voisine /seances/history). Sans ce garde, un étudiant listait les
         // emails de toute séance (checkAccess ne bloque que l'enseignant non-owner).
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
 
     // #1649 : l'appel d'une séance (lire la classe et ses marques, saisir ou corriger). La source de l'école
     // (SaisieDeLAppel) est choisie au point de liaison ; le droit sur la séance, par la source.
     Route::get('/seances/{seanceId}/appel', [LMSAppelController::class, 'show'])
         ->whereNumber('seanceId')
         ->name('lms.seances.appel')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
     Route::put('/seances/{seanceId}/appel', [LMSAppelController::class, 'update'])
         ->whereNumber('seanceId')
         ->name('lms.seances.appel.update')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
+
+    // #1680 : l'émargement par code d'une séance en ligne. L'auteur ou la gestion génère, liste et révoque les
+    // codes ; l'élève signe. La source de l'école (EmargementParCode) est choisie au point de liaison.
+    Route::post('/codes-emargement', [LMSEmargementController::class, 'store'])
+        ->name('lms.codes-emargement.store')
+        ->middleware('permission:seances.gerer');
+    Route::get('/codes-emargement', [LMSEmargementController::class, 'index'])
+        ->name('lms.codes-emargement.index')
+        ->middleware('permission:seances.gerer');
+    Route::delete('/codes-emargement/{codeId}', [LMSEmargementController::class, 'destroy'])
+        ->whereNumber('codeId')
+        ->name('lms.codes-emargement.destroy')
+        ->middleware('permission:seances.gerer');
+    Route::post('/emargement', [LMSEmargementController::class, 'sign'])
+        ->name('lms.emargement')
+        ->middleware('permission:presences.emarger');
 
     // Suppression d'une séance (soft delete)
     Route::delete('/seances/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteSeance'])
         ->name('lms.seances.delete')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
 
     // La porte de l'espace local (#1154, ADR-1154-01) : l'id local seulement.
     Route::delete('/seances/local/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteLocalSeance'])
         ->name('lms.seances.delete-local')
         ->whereNumber('seanceId')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
 
     // Détails complets d'une séance (avec infos visio)
     Route::get('/seances/{seanceId}/details', [LMSSeanceDetailsController::class, 'seanceDetails'])
@@ -147,17 +164,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Valider l'accès d'un participant
     Route::post('/seances/{seanceId}/validate-participant', [LMSSeanceParticipantMutationController::class, 'validateParticipant'])
         ->name('lms.seances.validate-participant')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
 
     // Toggle visio pour séance (coordinateurs uniquement)
     Route::post('/seances/{seanceId}/toggle-visio', [LMSSeanceVisibilityMutationController::class, 'toggleVisioSeance'])
         ->name('lms.seances.toggle-visio')
-        ->middleware('gestion');
+        ->middleware('permission:presences.depuis_visio');
 
     // Synchroniser les attendances depuis une session vidéo
     Route::post('/attendances/from-video-session', [LMSAttendancesController::class, 'syncAttendancesFromVideoSession'])
         ->name('lms.attendances.from-video-session')
-        ->middleware('personnel');
+        ->middleware('permission:seances.gerer');
 
     // Historique des présences (accessible même si séances archivées)
     Route::get('/attendance/history', [LMSAttendancesController::class, 'getAttendanceHistory'])
@@ -166,12 +183,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Matières de l'enseignant connecté avec statistiques enrichies
     Route::get('/teacher/my-matieres', [LMSMatieresQueryController::class, 'myMatieres'])
         ->name('lms.teacher.my-matieres')
-        ->middleware('role:enseignant,coordinateur');
+        ->middleware('permission:enseignement.consulter');
 
     // Séances de l'enseignant connecté
     Route::get('/seances/my-teaching', [LMSSeancesListController::class, 'myTeachingSeances'])
         ->name('lms.seances.my-teaching')
-        ->middleware('role:enseignant,coordinateur');
+        ->middleware('permission:enseignement.consulter');
 
     // Séances de l'étudiant connecté
     Route::get('/seances/my-classes', [LMSSeancesListController::class, 'myClassesSeances'])
@@ -180,27 +197,27 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Actions visio enseignant
     Route::post('/seances/{seanceId}/activate-visio', [LMSVisioLifecycleController::class, 'activateVisio'])
         ->name('lms.seances.activate-visio')
-        ->middleware('role:enseignant,coordinateur');
+        ->middleware('permission:visio.animer');
 
     Route::post('/seances/{seanceId}/deactivate-visio', [LMSVisioLifecycleController::class, 'deactivateVisio'])
         ->name('lms.seances.deactivate-visio')
-        ->middleware('role:enseignant,coordinateur');
+        ->middleware('permission:visio.animer');
 
     Route::post('/seances/{seanceId}/start-visio', [LMSVisioLifecycleController::class, 'startVisio'])
         ->name('lms.seances.start-visio')
-        ->middleware('role:enseignant,coordinateur');
+        ->middleware('permission:visio.animer');
 
     Route::post('/seances/{seanceId}/end-visio', [LMSVisioLifecycleController::class, 'endVisio'])
         ->name('lms.seances.end-visio')
-        ->middleware('role:enseignant,coordinateur');
+        ->middleware('permission:visio.animer');
 
     Route::post('/seances/{seanceId}/recording/start', [LMSVisioRecordingController::class, 'start'])
         ->name('lms.seances.recording.start')
-        ->middleware('role:enseignant');
+        ->middleware('permission:visio.enregistrements');
 
     Route::post('/seances/{seanceId}/recording/stop', [LMSVisioRecordingController::class, 'stop'])
         ->name('lms.seances.recording.stop')
-        ->middleware('role:enseignant');
+        ->middleware('permission:visio.enregistrements');
 
     Route::get('/seances/{seanceId}/recording', [LMSVisioRecordingController::class, 'show'])
         ->name('lms.seances.recording.show');
@@ -248,18 +265,18 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // ne la protège. Le bouton qui l'ouvre est déjà réservé côté front
     // (VisioManager.vue) ; la route l'est désormais aussi.
     Route::get('/seances/{seanceId}/visio-participants', [LMSVisioParticipantController::class, 'getVisioParticipants'])
-        ->middleware('personnel')
+        ->middleware('permission:seances.gerer')
         ->name('lms.seances.visio-participants');
 
     // Masquer une séance (étudiant uniquement)
     Route::post('/seances/{seanceId}/hide', [LMSSeanceVisibilityMutationController::class, 'hideSeance'])
         ->name('lms.seances.hide')
-        ->middleware('role:etudiant');
+        ->middleware('permission:seances.masquer');
 
     // Réafficher une séance (étudiant uniquement)
     Route::post('/seances/{seanceId}/unhide', [LMSSeanceVisibilityMutationController::class, 'unhideSeance'])
         ->name('lms.seances.unhide')
-        ->middleware('role:etudiant');
+        ->middleware('permission:seances.masquer');
 
     // ============================================
     // NOTIFICATIONS

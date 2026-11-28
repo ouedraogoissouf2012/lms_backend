@@ -102,6 +102,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/lms/emplois-du-temps/{emploiId}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/lms/seances/local/{seanceId}": [
         "enseignant",
         "teacher",
@@ -254,6 +262,14 @@
     "DELETE api/v1/lms/codes-emargement/{codeId}": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/lms/emplois-du-temps/{emploiId}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -589,6 +605,30 @@
     "GET api/lms/codes-emargement": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/emplois-du-temps": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/emplois-du-temps/alertes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/emplois-du-temps/{emploiId}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1077,6 +1117,30 @@
     "GET api/v1/lms/codes-emargement": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/emplois-du-temps": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/emplois-du-temps/alertes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/emplois-du-temps/{emploiId}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1759,6 +1823,30 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/lms/emplois-du-temps": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/emplois-du-temps/{emploiId}/copier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/emplois-du-temps/{emploiId}/generer": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/lms/imports/preview": [
         "enseignant",
         "teacher",
@@ -2381,6 +2469,30 @@
         "superAdmin",
         "supradmin"
     ],
+    "POST api/v1/lms/emplois-du-temps": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/emplois-du-temps/{emploiId}/copier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/emplois-du-temps/{emploiId}/generer": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/v1/lms/imports/preview": [
         "enseignant",
         "teacher",
@@ -2721,6 +2833,22 @@
     "PUT api/forum/posts/{post}": "*",
     "PUT api/forum/topics/{topic}": "*",
     "PUT api/knowledge-checks/{id}": "*",
+    "PUT api/lms/emplois-du-temps/{emploiId}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/lms/emplois-du-temps/{emploiId}/lignes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",
@@ -2844,6 +2972,22 @@
     "PUT api/v1/forum/posts/{post}": "*",
     "PUT api/v1/forum/topics/{topic}": "*",
     "PUT api/v1/knowledge-checks/{id}": "*",
+    "PUT api/v1/lms/emplois-du-temps/{emploiId}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/lms/emplois-du-temps/{emploiId}/lignes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/v1/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",

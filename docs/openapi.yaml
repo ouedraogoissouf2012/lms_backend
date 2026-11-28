@@ -2114,6 +2114,46 @@ components:
           items:
             $ref: '#/components/schemas/SeanceCalendrier'
 
+    AppelDeLaSeance:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [seance_id, eleves]
+          properties:
+            seance_id:
+              type: integer
+            eleves:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [user_id, nom, mark, origin, delegated_at]
+                properties:
+                  user_id:
+                    type: integer
+                  nom:
+                    type: string
+                  mark:
+                    type: string
+                    nullable: true
+                    enum: [present, absent, late, excused, null]
+                  origin:
+                    type: string
+                    nullable: true
+                    enum: [visio, code, delegated, paper, null]
+                  delegated_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+
     TypeDeSeance:
       type: string
       nullable: true
@@ -4379,6 +4419,9 @@ components:
           enum:
             - enrolment_not_active
             - no_institution
+            - attendance_managed_by_klassci
+            - seance_not_started
+            - student_not_in_seance
             - klassci_account_refused
             - account_quota_exceeded
             - account_daily_cap_reached
@@ -5303,6 +5346,151 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/SeanceLocaleInvalide'
                   - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
+
+  /lms/seances/{seanceId}/appel:
+    get:
+      tags:
+        - Visio
+      operationId: lireLAppel
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
+      summary: "L'appel d'une seance : la classe et ses marques"
+      description: |
+        #1649. Les eleves ACTIFS de la classe de la seance, tries par nom, chacun
+        avec sa marque (`null` sans marque). Ecole creee depuis le LMS ; une
+        ecole KLASSCI saisit l'appel dans KLASSCI (409).
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "L'appel"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppelDeLaSeance'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'appel se saisit dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Visio
+      operationId: saisirLAppel
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Saisir ou corriger l'appel d'une seance"
+      description: |
+        #1649. L'auteur de la seance ou la gestion marque present, absent, en
+        retard ou excuse, pour les seuls eleves ACTIFS de la classe, des le DEBUT
+        de la seance. La marque porte son origine (`delegated`), qui l'a posee et
+        quand ; une transaction pour le lot. L'historique reste corrigeable, et
+        chaque correction est auditee (avant, apres). La marque l'emporte sur le
+        statut visio dans tout comptage de presence. Rend l'appel relu.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [marques]
+              properties:
+                marques:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [user_id, mark]
+                    properties:
+                      user_id:
+                        type: integer
+                        minimum: 1
+                      mark:
+                        type: string
+                        enum: [present, absent, late, excused]
+      responses:
+        '200':
+          description: "L'appel relu"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppelDeLaSeance'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Avant le debut de la seance (`seance_not_started`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide (`errors`), ou eleve hors des eleves actifs de la classe (`student_not_in_seance`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationFailed'
+                  - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /lms/seances/{seanceId}:
     put:

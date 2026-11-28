@@ -24,9 +24,9 @@ use Tests\TestCase;
  *
  * MIGRÉES (et donc verrouillées ici) — `syncToKlassci` :
  *  - 404 `{success, message}`                  (évaluation introuvable) — branche
- *    désormais INATTEIGNABLE : depuis que la route exige d'être propriétaire
- *    (SyncEvaluationNotesRequest), une évaluation inconnue est refusée en 403
- *    par `authorize()`, AVANT le contrôleur — comme `publish` et `submissions`.
+ *    du contrôleur désormais INATTEIGNABLE : la garde de la requête
+ *    (SyncEvaluationNotesRequest) rend 404 AVANT le contrôleur pour une
+ *    évaluation absente ou d'une autre école (#1782).
  *  - 422 `{success, message, reason}`          (aucune évaluation KLASSCI liée ;
  *    400 sans motif avant D72, E3)
  *  - 200 `{success, message, data}`            (notes synchronisées)
@@ -67,9 +67,9 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
     // ───────────────────────── syncToKlassci ─────────────────────────
 
     /**
-     * Une évaluation inconnue n'a pas de propriétaire : `authorize()` la refuse
-     * avant le contrôleur. 403 et non 404, comme sur `publish` — répondre 404
-     * ici dirait à l'appelant quelles évaluations existent ailleurs.
+     * #1782 : une évaluation inconnue est introuvable, refusée par la garde de la
+     * requête avant le contrôleur. 404, du même corps qu'une évaluation d'une
+     * autre école : rien ne dit à l'appelant ce qui existe ailleurs.
      */
     public function test_sync_to_klassci_unknown_evaluation_is_refused_before_the_controller(): void
     {
@@ -77,7 +77,7 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
 
         $response = $this->postJson('/api/evaluations/999999/sync-klassci');
 
-        $response->assertStatus(403)
+        $response->assertStatus(404)
             ->assertJsonPath('success', false);
     }
 

@@ -20,7 +20,7 @@ use App\Models\User;
  *
  * Same strategy as `ChecksForumAuthorization`:
  *   1. null check → deny
- *   2. supradmin role → allow (platform manager bypass, cf. EnsureRole.php L107)
+ *   2. supradmin role → allow (platform manager bypass, cf. PermissionsDuRole)
  *   3. institution_id mismatch → deny (tenant isolation)
  *   4. read-specific: is_public OR owner OR admin → allow
  *      moderate-specific: owner OR admin → allow (no is_public bypass)

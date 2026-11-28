@@ -56,16 +56,17 @@ final class LMSBulletinsController extends AuthenticatedController
     public function ecrireAppreciation(EcrireUneAppreciationRequest $request, int $classe): JsonResponse
     {
         $auteur = $this->authenticatedUser($request);
+        $eleve = $request->validated('eleve_id');
         $matiere = $request->validated('matiere_id');
         $texte = $request->validated('texte');
         $decision = $request->validated('decision');
 
-        return $this->repondre(function () use ($auteur, $classe, $request, $matiere, $texte, $decision): array {
+        return $this->repondre(function () use ($auteur, $classe, $request, $eleve, $matiere, $texte, $decision): array {
             $lue = $this->acces->classe($classe, $auteur);
             $this->acces->portee($lue, $auteur);
 
             return self::appreciation($this->appreciations->ecrire(
-                $lue, $request->periode(), $auteur, (int) $request->validated('eleve_id'),
+                $lue, $request->periode(), $auteur, is_numeric($eleve) ? (int) $eleve : 0,
                 is_numeric($matiere) ? (int) $matiere : null, is_string($texte) ? $texte : null, is_string($decision) ? $decision : null,
             ));
         });

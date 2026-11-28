@@ -25,12 +25,27 @@ trait LitLaPeriodeDuBulletin
 
     private function laPeriode(string $prefixe): PeriodeDuBulletin
     {
-        $lire = fn (string $cle): string => (string) $this->validated($prefixe.$cle);
+        return new PeriodeDuBulletin(trim($this->texteValide($prefixe.'libelle')), $this->jourValide($prefixe.'du'), $this->jourValide($prefixe.'au'));
+    }
 
-        return new PeriodeDuBulletin(
-            trim($lire('libelle')),
-            CarbonImmutable::createFromFormat('Y-m-d', $lire('du'))?->startOfDay() ?? CarbonImmutable::now(),
-            CarbonImmutable::createFromFormat('Y-m-d', $lire('au'))?->startOfDay() ?? CarbonImmutable::now(),
-        );
+    private function texteValide(string $cle): string
+    {
+        $valeur = $this->validated($cle);
+        if (! is_string($valeur)) {
+            throw new \LogicException("La période validée n'a pas de « {$cle} » textuel.");
+        }
+
+        return $valeur;
+    }
+
+    /** Une date validée `Y-m-d` ; jamais un repli sur aujourd'hui. */
+    private function jourValide(string $cle): CarbonImmutable
+    {
+        $jour = CarbonImmutable::createFromFormat('!Y-m-d', $this->texteValide($cle));
+        if (! $jour instanceof CarbonImmutable) {
+            throw new \LogicException("La période validée a un « {$cle} » illisible.");
+        }
+
+        return $jour;
     }
 }

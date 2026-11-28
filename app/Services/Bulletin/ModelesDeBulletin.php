@@ -49,11 +49,11 @@ final class ModelesDeBulletin
     private static function enTableau(?ModeleDeBulletin $modele): array
     {
         return [
-            'entete' => $modele?->entete ?? [],
-            'signataires' => $modele?->signataires ?? [],
-            'bareme' => $modele?->bareme ?? [],
-            'blocs' => $modele?->blocs ?? [],
-            'mentions' => array_merge(self::MENTIONS, $modele?->mentions ?? []),
+            'entete' => $modele->entete ?? [],
+            'signataires' => $modele->signataires ?? [],
+            'bareme' => $modele->bareme ?? [],
+            'blocs' => $modele->blocs ?? [],
+            'mentions' => array_merge(self::MENTIONS, $modele->mentions ?? []),
         ];
     }
 }

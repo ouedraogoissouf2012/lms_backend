@@ -26,6 +26,7 @@ final class IsStudentClasseTest extends TestCase
     private const CLASSES = [
         'app/Http/Requests/HideSeanceRequest.php' => [1, 'fermé : seul un élève masque une séance'],
         'app/Http/Requests/UnhideSeanceRequest.php' => [1, 'fermé : seul un élève démasque une séance'],
+        'app/Http/Requests/DeposerUneReclamationRequest.php' => [1, 'fermé : seul un élève réclame une note'],
         'app/Http/Requests/StartEvaluationRequest.php' => [1, 'fermé : seul un élève démarre une évaluation'],
         'app/Http/Requests/SubmitEvaluationRequest.php' => [1, 'fermé : seul un élève rend une copie'],
         'app/Services/Chapter/ChapterReadGate.php' => [1, 'fermé : hors élève, la leçon est introuvable'],

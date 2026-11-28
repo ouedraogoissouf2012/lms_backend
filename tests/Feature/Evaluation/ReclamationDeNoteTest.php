@@ -114,7 +114,8 @@ final class ReclamationDeNoteTest extends TestCase
         self::assertSame([
             'l enseignant tranche' => 403,
             // 403 sur lms aujourd'hui ; 404 quand #1782 (PR #1792) sera fusionnée.
-            'la gestion d une autre école' => 403,
+            // #1782 (#1792) : une évaluation hors de l'école est introuvable, jamais avouée par un 403.
+            'la gestion d une autre école' => 404,
         ], [
             'l enseignant tranche' => $this->decision($this->enseignant, $id, ['decision' => 'maintenue'])->status(),
             'la gestion d une autre école' => $this->decision($this->membre($this->ecole(), 'coordinateur'), $id, ['decision' => 'maintenue'])->status(),

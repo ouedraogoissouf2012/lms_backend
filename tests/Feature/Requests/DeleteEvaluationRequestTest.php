@@ -57,10 +57,11 @@ class DeleteEvaluationRequestTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_nonexistent_returns_403(): void
+    /** #1782 : une évaluation absente est introuvable (404), comme celle d'une autre école. */
+    public function test_nonexistent_returns_404(): void
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->withHeader('X-Institution', $this->institution->slug)->deleteJson('/api/evaluations/99999');
-        $response->assertStatus(403);
+        $response->assertStatus(404);
     }
 }

@@ -89,6 +89,7 @@ class NotificationPresenter
             Notification::TYPE_VISIO_SCHEDULED => 'mdi-video-outline',
             Notification::TYPE_VISIO_STARTING => 'mdi-video-check',
             Notification::TYPE_EVALUATION_APPROACHING => 'mdi-calendar-alert',
+            Notification::TYPE_ANNONCE => 'mdi-bullhorn',
             default => 'mdi-bell',
         };
     }
@@ -107,6 +108,7 @@ class NotificationPresenter
             Notification::TYPE_VISIO_SCHEDULED => 'info',
             Notification::TYPE_VISIO_STARTING => 'warning',
             Notification::TYPE_EVALUATION_APPROACHING => 'warning',
+            Notification::TYPE_ANNONCE => 'info',
             default => 'secondary',
         };
     }

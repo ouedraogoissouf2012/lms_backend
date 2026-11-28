@@ -29,14 +29,25 @@ final class DemandesInscriptionPolicy implements RetentionPolicy
         private readonly bool $decidees,
     ) {}
 
+    /** La durée vient du tableau unique des durées (#1705, `config/conservation.php`). */
     public static function decidees(): self
     {
-        return new self('demandes-decidees', 90, true);
+        return new self('demandes-decidees', self::jours('conservation.demandes_decidees_jours', 90), true);
     }
 
     public static function nonTraitees(): self
     {
-        return new self('demandes-non-traitees', 365, false);
+        return new self('demandes-non-traitees', self::jours('conservation.demandes_non_traitees_jours', 365), false);
+    }
+
+    /**
+     * Une durée du tableau. Absente ou invalide : la durée de repli, JAMAIS zéro (zéro purgerait toutes les demandes).
+     */
+    private static function jours(string $cle, int $repli): int
+    {
+        $jours = config($cle);
+
+        return is_numeric($jours) && (int) $jours > 0 ? (int) $jours : $repli;
     }
 
     public function key(): string

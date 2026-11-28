@@ -134,6 +134,17 @@ Schedule::command('admissions:purge --apply')
     ->withoutOverlapping()
     ->onOneServer();
 
+// #1705 — Comptes supprimés, à la durée du tableau des durées
+// (`config/conservation.php`). Un compte qui porte une preuve de consentement
+// est épargné, sa raison journalisée (#1827). La purge d'une ÉCOLE reste
+// manuelle (`purge:run institutions`), par décision : `purge:run` n'est jamais
+// planifiée.
+Schedule::command('comptes:purge --apply')
+    ->dailyAt('03:55')
+    ->name('purge-comptes-supprimes')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // #514 + #680 — Filets de sécurité. Un enregistrement peut se figer de deux
 // façons, et les deux conservent `active_lock_key`, donc BLOQUENT tout nouvel
 // enregistrement de la séance :

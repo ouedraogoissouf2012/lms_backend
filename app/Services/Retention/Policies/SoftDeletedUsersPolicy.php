@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Retention\Policies;
 
+use App\Models\Consent;
 use App\Models\User;
 use App\Services\Retention\Concerns\NamesTheRow;
 use App\Services\Retention\RetentionPolicy;
 use App\Services\Retention\RetentionRunner;
+use App\Support\Config\LecteurDEntiers;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +29,11 @@ final class SoftDeletedUsersPolicy implements RetentionPolicy
 {
     use NamesTheRow;
 
+    /** La raison d'épargner un compte qui porte une preuve de consentement (#1827). */
+    public const RAISON_PREUVE_DE_CONSENTEMENT = 'porte une preuve de consentement (#716), conservée jusqu\'à sa propre durée (#1827)';
+
+    public function __construct(private readonly LecteurDEntiers $entiers = new LecteurDEntiers) {}
+
     public function key(): string
     {
         return 'users';
@@ -37,9 +44,10 @@ final class SoftDeletedUsersPolicy implements RetentionPolicy
         return 'utilisateur(s) supprimé(s)';
     }
 
+    /** La durée vit au tableau des durées (`config/conservation.php`, #1705). */
     public function defaultGraceDays(): int
     {
-        return 30;
+        return $this->entiers->positif(config('conservation.comptes_supprimes_jours'), 30);
     }
 
     public function eligible(CarbonInterface $cutoff): Builder
@@ -66,12 +74,19 @@ final class SoftDeletedUsersPolicy implements RetentionPolicy
     }
 
     /**
-     * Aucun refus : un compte en corbeille au-delà du délai de grâce est purgeable
-     * sans condition. C'est la promesse RGPD de #566, pas une heuristique.
+     * Un compte en corbeille au-delà du délai de grâce est purgeable (#566), SAUF s'il porte une preuve de
+     * consentement, comme sujet ou comme acteur : `consents` est append-only et ses deux clés vers `users` sont en
+     * RESTRICT (#716). Le détruire lèverait, et arrêtait la purge de tous les comptes suivants (mesuré, #1827). Il est
+     * épargné, sa raison dite, jusqu'à ce que la preuve ait sa propre durée.
      */
     public function refuses(Model $item, CarbonInterface $cutoff): ?string
     {
-        return null;
+        $id = $item->getKey();
+        $porteUnePreuve = Consent::query()->withoutGlobalScopes()
+            ->where(static fn (Builder $q): Builder => $q->where('user_id', $id)->orWhere('actor_user_id', $id))
+            ->exists();
+
+        return $porteUnePreuve ? self::RAISON_PREUVE_DE_CONSENTEMENT : null;
     }
 
     public function purge(Model $item, CarbonInterface $cutoff): void

@@ -12068,7 +12068,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant, catalogue venant de KLASSCI, ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant ; ou inscriptions de l ecole tenues par KLASSCI (`enrolment_managed_by_klassci`, le droit d inscription, comme les demandes de #1817) ; ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`, un refus motive). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -12142,7 +12142,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant, catalogue venant de KLASSCI, ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant ; ou inscriptions de l ecole tenues par KLASSCI (`enrolment_managed_by_klassci`, le droit d inscription, comme les demandes de #1817) ; ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`, un refus motive). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:

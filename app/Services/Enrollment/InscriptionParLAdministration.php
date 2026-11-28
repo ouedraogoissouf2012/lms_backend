@@ -7,7 +7,8 @@ namespace App\Services\Enrollment;
 use App\Enums\Role;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
-use App\Services\Catalogue\PorteDuCatalogueLocal;
+use App\Models\User;
+use App\Services\Admission\PorteDesAdmissions;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Validation\ValidationException;
 
@@ -18,14 +19,16 @@ use Illuminate\Validation\ValidationException;
  *   409 tels quels), dans une transaction. Une ancienne adhésion est réactivée, jamais doublée.
  * - Retirer : l'adhésion active se ferme, motif `retrait` ({@see AdhesionDeLEcole::clore()}) ; le dossier, les notes et
  *   les présences demeurent.
- * - Droit : `PorteDuCatalogueLocal` (403 en école KLASSCI), puis classe et élève bornés à l'école (404, même corps).
+ * - Droit : celui des INSCRIPTIONS, {@see PorteDesAdmissions} (403 `enrolment_managed_by_klassci` en école KLASSCI,
+ *   comme les demandes de #1817), puis classe et élève bornés à l'école (404, même corps). Une classe miroir de
+ *   l'école : 403 `catalogue_managed_by_klassci`, un refus motivé ({@see AdhesionDeLEcole::classeLocale()}).
  */
 final class InscriptionParLAdministration
 {
     public const MOTIF_RETRAIT = 'retrait';
 
     public function __construct(
-        private readonly PorteDuCatalogueLocal $porte,
+        private readonly PorteDesAdmissions $porte,
         private readonly AdhesionDeLEcole $adhesions,
         private readonly AdmissionParLEcole $admission,
         private readonly DatabaseManager $db,
@@ -37,9 +40,9 @@ final class InscriptionParLAdministration
      * @throws BusinessException 403, 404, 409 (ceux de l'admission)
      * @throws ValidationException 422 si le compte n'est pas un élève
      */
-    public function inscrire(int $classeId, int $eleveId): array
+    public function inscrire(User $acteur, int $classeId, int $eleveId): array
     {
-        $ecole = $this->porte->etablissement();
+        $ecole = $this->porte->etablissementDe($acteur);
         $classe = $this->adhesions->classeLocale($ecole, $classeId);
         $eleve = $this->adhesions->eleve($ecole, $eleveId);
         if ($eleve->asRoleEnum() !== Role::Etudiant) {
@@ -56,9 +59,9 @@ final class InscriptionParLAdministration
      *
      * @throws BusinessException 403, 404, 409 `enrolment_not_active`
      */
-    public function retirer(int $classeId, int $eleveId): array
+    public function retirer(User $acteur, int $classeId, int $eleveId): array
     {
-        $ecole = $this->porte->etablissement();
+        $ecole = $this->porte->etablissementDe($acteur);
         $classe = $this->adhesions->classeLocale($ecole, $classeId);
         $eleve = $this->adhesions->eleve($ecole, $eleveId);
 

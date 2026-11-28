@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\BusinessException;
+use App\Http\Controllers\AuthenticatedController;
 use App\Http\Controllers\Concerns\RespondsWithJson;
-use App\Http\Controllers\Controller;
 use App\Http\Requests\InscrireUnEleveRequest;
 use App\Services\Enrollment\InscriptionParLAdministration;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * L'administration d'une école autonome inscrit un élève existant dans une classe, et l'en retire (#1619). Les règles
  * vivent dans {@see InscriptionParLAdministration}.
  */
-final class LMSClasseEleveController extends Controller
+final class LMSClasseEleveController extends AuthenticatedController
 {
     use RespondsWithJson;
 
@@ -24,7 +25,7 @@ final class LMSClasseEleveController extends Controller
     public function store(InscrireUnEleveRequest $request, int $classe): JsonResponse
     {
         try {
-            $inscription = $this->inscriptions->inscrire($classe, $request->eleve());
+            $inscription = $this->inscriptions->inscrire($this->authenticatedUser($request), $classe, $request->eleve());
         } catch (BusinessException $e) {
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
@@ -32,10 +33,10 @@ final class LMSClasseEleveController extends Controller
         return $this->successResponse($inscription, 'L\'élève est inscrit dans la classe.', 201);
     }
 
-    public function destroy(int $classe, int $eleve): JsonResponse
+    public function destroy(Request $request, int $classe, int $eleve): JsonResponse
     {
         try {
-            $retrait = $this->inscriptions->retirer($classe, $eleve);
+            $retrait = $this->inscriptions->retirer($this->authenticatedUser($request), $classe, $eleve);
         } catch (BusinessException $e) {
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }

@@ -48,7 +48,7 @@ final class LaClasseEtLaMatiereSeRattachentALaStructureTest extends TestCase
         $id = $this->asTenant($gestion)->postJson('/api/matieres', ['libelle' => 'Comptabilité', 'filiere_id' => $filiere])->assertCreated()->json('data.id');
         $this->asTenant($gestion)->patchJson("/api/matieres/{$id}", ['niveau_id' => $niveau])->assertOk();
 
-        $ligne = collect($this->asTenant($gestion)->getJson('/api/lms/matieres')->assertOk()->json('data.matieres'))->firstWhere('id', $id);
+        $ligne = collect($this->asTenant($gestion)->getJson('/api/admin/matieres')->assertOk()->json('data.matieres'))->firstWhere('id', $id);
         self::assertSame([['filiere' => ['id' => $filiere, 'nom' => 'Commerce', 'code' => 'COM'], 'niveau' => ['id' => $niveau, 'nom' => 'L1', 'code' => null]]], $ligne['combinaisons'] ?? null);
     }
 
@@ -87,7 +87,8 @@ final class LaClasseEtLaMatiereSeRattachentALaStructureTest extends TestCase
         $ligne = $this->asTenant($gestion)->getJson('/api/proxy/classes')->assertOk()->json('data.0');
 
         self::assertSame(['id' => $filiere, 'nom' => 'Commerce', 'code' => 'COM'], $ligne['filiere'] ?? null);
-        self::assertNull($ligne['niveau'] ?? 'absent');
+        self::assertTrue(is_array($ligne) && array_key_exists('niveau', $ligne), 'La clé niveau manque.');
+        self::assertNull($ligne['niveau']);
     }
 
     /** @return array{0: int|null, 1: int|null} */

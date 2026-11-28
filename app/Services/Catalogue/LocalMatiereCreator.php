@@ -55,7 +55,7 @@ final class LocalMatiereCreator
         $institution = $this->porte->etablissement();
         $structure = $this->structure->colonnes($institution, $donnees);
 
-        return CodeDeMatiere::ecrire(fn (): Matiere => tap((new Matiere)->forceFill($structure + [
+        return CodeDeMatiere::ecrire(fn (): Matiere => Matiere::create($structure + [
             'libelle' => $donnees['libelle'],
             'code' => CodeDeMatiere::normalise($donnees['code'] ?? null),
             'description' => $donnees['description'] ?? null,
@@ -67,6 +67,6 @@ final class LocalMatiereCreator
             // correspondances par `whereIn('klassci_id', …)` où elle n'a rien à
             // faire.
             'klassci_id' => null,
-        ]))->save());
+        ]));
     }
 }

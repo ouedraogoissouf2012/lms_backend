@@ -18,6 +18,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 trait PorteUneStructureLocale
 {
+    /**
+     * Assignables : les écrivains locaux les posent avec le reste (`Classe::create`, que la garde d'architecture
+     * reconnaît comme l'écrivain de la table). Ils ne viennent jamais du client tels quels : l'API parle
+     * `filiere_id` / `niveau_id`, que `RattachementALaStructure` traduit après avoir vérifié l'école.
+     */
+    public function initializePorteUneStructureLocale(): void
+    {
+        $this->mergeFillable(['filiere_locale_id', 'niveau_locale_id']);
+    }
+
     /** @return BelongsTo<Filiere, $this> */
     public function filiereLocale(): BelongsTo
     {

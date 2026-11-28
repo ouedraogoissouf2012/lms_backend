@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -15,6 +16,13 @@ use Illuminate\Support\Facades\Schema;
  *
  * RESTRICT : un élément employé ne se supprime pas. Le service le dit avant (409 `field_in_use` /
  * `level_in_use`) ; la base le garantit.
+ *
+ * ## Sous SQLite, sans clé étrangère
+ *
+ * Ajouter une clé étrangère à une table existante force SQLite à la RECONSTRUIRE, et la reconstruction perd la
+ * colonne générée `code_local` et son unique (`2026_11_27_100000`) : deux matières au même code passaient. MESURÉ
+ * en CI (UneMatiereSeModifieTest rouge sur les seules jambes SQLite). Sous SQLite, les colonnes sont donc posées
+ * sans contrainte ; MySQL, la base de production, porte la clé. Le service vérifie l'école et l'emploi dans les deux.
  */
 return new class extends Migration
 {
@@ -27,9 +35,14 @@ return new class extends Migration
                 continue;
             }
 
-            Schema::table($table, function (Blueprint $t): void {
-                $t->foreignId('filiere_locale_id')->nullable()->constrained('filieres')->restrictOnDelete();
-                $t->foreignId('niveau_locale_id')->nullable()->constrained('niveaux_etudes')->restrictOnDelete();
+            $contraintes = DB::getDriverName() !== 'sqlite';
+            Schema::table($table, function (Blueprint $t) use ($contraintes): void {
+                foreach (['filiere_locale_id' => 'filieres', 'niveau_locale_id' => 'niveaux_etudes'] as $colonne => $cible) {
+                    $champ = $t->foreignId($colonne)->nullable();
+                    if ($contraintes) {
+                        $champ->constrained($cible)->restrictOnDelete();
+                    }
+                }
             });
         }
     }
@@ -41,9 +54,11 @@ return new class extends Migration
                 continue;
             }
 
-            Schema::table($table, function (Blueprint $t): void {
-                $t->dropConstrainedForeignId('filiere_locale_id');
-                $t->dropConstrainedForeignId('niveau_locale_id');
+            $contraintes = DB::getDriverName() !== 'sqlite';
+            Schema::table($table, function (Blueprint $t) use ($contraintes): void {
+                foreach (['filiere_locale_id', 'niveau_locale_id'] as $colonne) {
+                    $contraintes ? $t->dropConstrainedForeignId($colonne) : $t->dropColumn($colonne);
+                }
             });
         }
     }

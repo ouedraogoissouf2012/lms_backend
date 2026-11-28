@@ -79,6 +79,14 @@
         "supradmin"
     ],
     "DELETE api/files/{file}": "*",
+    "DELETE api/filieres/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/forum/posts/{post}": "*",
     "DELETE api/forum/topics/{topic}": "*",
     "DELETE api/knowledge-checks/{id}": "*",
@@ -115,6 +123,14 @@
     "DELETE api/lms/seances/{seanceId}": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/niveaux-etudes/{id}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -238,6 +254,14 @@
         "supradmin"
     ],
     "DELETE api/v1/files/{file}": "*",
+    "DELETE api/v1/filieres/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/v1/forum/posts/{post}": "*",
     "DELETE api/v1/forum/topics/{topic}": "*",
     "DELETE api/v1/knowledge-checks/{id}": "*",
@@ -274,6 +298,14 @@
     "DELETE api/v1/lms/seances/{seanceId}": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/niveaux-etudes/{id}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1336,7 +1368,23 @@
         "superAdmin",
         "supradmin"
     ],
+    "PATCH api/filieres/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PATCH api/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/niveaux-etudes/{id}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1394,7 +1442,23 @@
         "superAdmin",
         "supradmin"
     ],
+    "PATCH api/v1/filieres/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PATCH api/v1/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/niveaux-etudes/{id}": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1636,6 +1700,14 @@
         "supradmin"
     ],
     "POST api/files/upload": "*",
+    "POST api/filieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/forum/posts/{post}/solution": "*",
     "POST api/forum/topics": "*",
     "POST api/forum/topics/{topic}/close": [
@@ -1904,6 +1976,14 @@
         "etudiant",
         "student",
         "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/niveaux-etudes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
         "superAdmin",
         "supradmin"
     ],
@@ -2258,6 +2338,14 @@
         "supradmin"
     ],
     "POST api/v1/files/upload": "*",
+    "POST api/v1/filieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/v1/forum/posts/{post}/solution": "*",
     "POST api/v1/forum/topics": "*",
     "POST api/v1/forum/topics/{topic}/close": [
@@ -2526,6 +2614,14 @@
         "etudiant",
         "student",
         "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/niveaux-etudes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
         "superAdmin",
         "supradmin"
     ],

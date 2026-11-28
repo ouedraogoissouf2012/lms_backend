@@ -11,6 +11,7 @@ use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\LMSSousPeriodeController;
+use App\Http\Controllers\API\LMS\LMSStructureController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
 use App\Http\Controllers\API\LMS\TrainingSessionEditionController;
 use App\Http\Controllers\API\LMS\TrainingSessionTransitionController;
@@ -101,6 +102,15 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:formations.gerer'
         Route::post('/matieres', [LMSMatiereWriteController::class, 'store']);
         // La modifier (#1653) : une matiere LOCALE de son ecole ; son code y est unique.
         Route::patch('/matieres/{matiere}', [LMSMatiereWriteController::class, 'update'])->whereNumber('matiere');
+
+        // Les filieres et les niveaux d etudes d une ecole qui tient son catalogue (#1648). L element est fixe
+        // par la route, jamais par le client ; les LECTURES restent /proxy/structure, /proxy/filieres et
+        // /proxy/niveaux-etudes (meme route, autre source).
+        foreach (['filieres' => 'filiere', 'niveaux-etudes' => 'niveau'] as $chemin => $element) {
+            Route::post("/{$chemin}", [LMSStructureController::class, 'store'])->defaults('element', $element);
+            Route::patch("/{$chemin}/{id}", [LMSStructureController::class, 'update'])->defaults('element', $element)->whereNumber('id');
+            Route::delete("/{$chemin}/{id}", [LMSStructureController::class, 'destroy'])->defaults('element', $element)->whereNumber('id');
+        }
 
         // Composer le programme d une classe (#848) : rattacher une matiere, et
         // y designer un formateur. Ecrit `classe_matiere`, le pivot LOCAL que

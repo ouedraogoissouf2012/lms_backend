@@ -4,27 +4,46 @@ declare(strict_types=1);
 
 namespace App\Services\Catalogue;
 
+use App\Enums\ElementDeStructure;
+use App\Http\Presenters\ElementDeStructureEnVue;
+
 /**
- * La structure d'une école créée depuis le LMS : aucune filière ni aucun niveau
- * d'études n'y existe, aucun modèle local ne les porte. Des listes VIDES, qui
- * disent ce qui est, plutôt qu'un 503 qui accuserait une panne (lot 3c).
+ * La structure d'une école qui tient son catalogue : ses filières et ses niveaux d'études LOCAUX (#1648),
+ * vides tant qu'elle n'en a créé aucun (lot 3c : des listes vides disent ce qui est, plutôt qu'un 503).
  *
- * La clé des niveaux est `niveaux_etudes`, celle de la documentation KLASSCI
- * (`docs/INTEGRATION_KLASSCI.md`) : la même forme dans les deux types d'école.
+ * La forme est celle du volet KLASSCI : `{id, nom, code}` (et `ordre` pour un niveau), la clé des niveaux
+ * `niveaux_etudes` (`docs/INTEGRATION_KLASSCI.md`). Les trois lectures (`/proxy/structure`,
+ * `/proxy/filieres`, `/proxy/niveaux-etudes`) passent ici : avant #1648, les deux dernières appelaient
+ * KLASSCI même dans une école qui n'en a pas.
  */
 final class LocalInstitutionStructureReader implements InstitutionStructureReader
 {
-    /**
-     * @return array{success: true, data: array{filieres: list<never>, niveaux_etudes: list<never>}}
-     */
+    public function __construct(private readonly StructureDeLEcole $structure) {}
+
     public function structure(): array
     {
         return [
             'success' => true,
             'data' => [
-                'filieres' => [],
-                'niveaux_etudes' => [],
+                'filieres' => $this->liste(ElementDeStructure::Filiere),
+                'niveaux_etudes' => $this->liste(ElementDeStructure::Niveau),
             ],
         ];
+    }
+
+    public function filieres(): array
+    {
+        return ['success' => true, 'data' => $this->liste(ElementDeStructure::Filiere)];
+    }
+
+    public function niveauxEtudes(): array
+    {
+        return ['success' => true, 'data' => $this->liste(ElementDeStructure::Niveau)];
+    }
+
+    /** @return list<array{id: int, nom: string, code: string|null, ordre?: int|null}> */
+    private function liste(ElementDeStructure $element): array
+    {
+        return ElementDeStructureEnVue::liste($this->structure->lister($element));
     }
 }

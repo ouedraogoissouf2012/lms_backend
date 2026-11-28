@@ -164,6 +164,35 @@ final class ReglesDePassageTest extends TestCase
         $this->asTenant($klassci)->getJson('/api/regles-de-passage')->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
     }
 
+    /**
+     * Une classe MIROIR de l'école (venue de KLASSCI) n'a rien de secret : c'est un refus motivé (403
+     * `catalogue_managed_by_klassci`), comme tous les refus KLASSCI du dépôt, et non « introuvable ». Le 404 reste
+     * à une classe d'une autre école ou inconnue. Sur les cinq routes qui lisent une classe locale ; rien n'est écrit.
+     */
+    public function test_une_classe_miroir_de_l_ecole_est_un_refus_motive(): void
+    {
+        $this->classeNotee();
+        $miroir = Classe::factory()->create(['institution_id' => $this->ecole->id, 'klassci_id' => 4242, 'effectif' => 0]);
+        $eleve = array_values($this->eleves)[0];
+        $introuvable = $this->asTenant($this->admin)->getJson('/api/classes/999999/passages')->assertNotFound()->json();
+
+        $appels = [
+            ['getJson', "/api/classes/{$miroir->id}/regles-de-passage", []],
+            ['putJson', "/api/classes/{$miroir->id}/regles-de-passage", ['moyenne_passage' => 12]],
+            ['deleteJson', "/api/classes/{$miroir->id}/regles-de-passage", []],
+            ['getJson', "/api/classes/{$miroir->id}/passages", []],
+            ['putJson', "/api/classes/{$miroir->id}/passages/{$eleve->id}", ['decision' => 'passe', 'motif' => 'Bon trimestre']],
+        ];
+        foreach ($appels as [$verbe, $chemin, $corps]) {
+            $reponse = $this->asTenant($this->admin)->{$verbe}($chemin, $corps);
+            $reponse->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci');
+            self::assertNotSame($introuvable, $reponse->json(), "$verbe $chemin : un refus motivé, pas « introuvable »");
+        }
+
+        self::assertSame(0, DB::table('regles_de_passage')->where('classe_id', $miroir->id)->count());
+        self::assertSame(0, DB::table('decisions_de_passage')->where('classe_id', $miroir->id)->count());
+    }
+
     /** @param  array<string, mixed>  $corps */
     private function corriger(User $eleve, array $corps): TestResponse
     {

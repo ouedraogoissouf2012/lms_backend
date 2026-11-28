@@ -5048,6 +5048,95 @@ components:
           type: string
           nullable: true
           maxLength: 2000
+    PeriodeDuBulletin:
+      type: object
+      description: "#1677 : un intervalle de dates nomme (une sous-periode S1, S2 s y traduira)."
+      required: [libelle, du, au]
+      properties:
+        libelle:
+          type: string
+          maxLength: 100
+        du:
+          type: string
+          format: date
+        au:
+          type: string
+          format: date
+    ModeleDeBulletin:
+      type: object
+      description: "#1677 : le modele de bulletin d une ecole."
+      required: [entete, signataires, bareme, blocs]
+      properties:
+        entete:
+          type: array
+          items:
+            type: string
+        signataires:
+          type: array
+          items:
+            type: object
+            required: [fonction, nom]
+            properties:
+              fonction:
+                type: string
+              nom:
+                type: string
+        bareme:
+          type: array
+          items:
+            type: object
+            required: [min, max, libelle]
+            properties:
+              min:
+                type: number
+              max:
+                type: number
+              libelle:
+                type: string
+        blocs:
+          type: array
+          items:
+            type: object
+            required: [libelle, matiere_ids]
+            properties:
+              libelle:
+                type: string
+              matiere_ids:
+                type: array
+                items:
+                  type: integer
+        mentions:
+          type: object
+          properties:
+            rang:
+              type: boolean
+            moyenne_classe:
+              type: boolean
+            assiduite:
+              type: boolean
+    AppreciationDeBulletin:
+      type: object
+      description: "#1677 : une appreciation, pour un eleve et une periode."
+      required: [id, eleve_id, matiere_id, periode, texte, decision, auteur_id]
+      properties:
+        id:
+          type: integer
+        eleve_id:
+          type: integer
+        matiere_id:
+          type: integer
+          nullable: true
+        periode:
+          $ref: '#/components/schemas/PeriodeDuBulletin'
+        texte:
+          type: string
+          nullable: true
+        decision:
+          type: string
+          nullable: true
+        auteur_id:
+          type: integer
+          nullable: true
     BilanDeClasse:
       type: object
       description: "#1676 : moyennes, rangs et reussite d une classe. L eleve ne recoit que `eleves` (sa ligne), sans `statistiques` ni `couverture`."
@@ -10649,6 +10738,234 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/bulletins/modele:
+    get:
+      tags:
+        - Evaluations
+      operationId: lireLeModeleDeBulletin
+      summary: "Le modele de bulletin de l ecole (#1677)"
+      description: "En-tete, signataires, bareme des appreciations, blocs de matieres et mentions. Sans modele, des valeurs neutres (toutes les mentions affichees)."
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le modele."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ModeleDeBulletin'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), droit manquant (`report_card_management_only`, `report_card_subject_not_taught`, `class_not_taught`), ecole KLASSCI (`report_cards_managed_by_klassci`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Evaluations
+      operationId: enregistrerLeModeleDeBulletin
+      summary: "Enregistrer le modele de bulletin (#1677)"
+      description: "La gestion (admin, coordinateur) seule. Un par ecole."
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModeleDeBulletin'
+      responses:
+        '200':
+          description: "Le modele enregistre."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ModeleDeBulletin'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), droit manquant (`report_card_management_only`, `report_card_subject_not_taught`, `class_not_taught`), ecole KLASSCI (`report_cards_managed_by_klassci`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /lms/classes/{classe}/appreciations:
+    get:
+      tags:
+        - Evaluations
+      operationId: lireLesAppreciations
+      summary: "Les appreciations d une classe pour une periode (#1677)"
+      description: "La gestion lit toute la classe ; l enseignant de la classe, ses matieres. La periode est un intervalle de dates nomme."
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          description: "Identifiant de l espace source, comme le bilan de la classe."
+          schema:
+            type: integer
+        - name: libelle
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: du
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: "Les appreciations."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AppreciationDeBulletin'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), droit manquant (`report_card_management_only`, `report_card_subject_not_taught`, `class_not_taught`), ecole KLASSCI (`report_cards_managed_by_klassci`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable dans l etablissement (`class_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Periode invalide (`errors`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Evaluations
+      operationId: ecrireUneAppreciation
+      summary: "Ecrire une appreciation (#1677)"
+      description: "L appreciation d une matiere par son enseignant dans la classe ; la generale et la decision du conseil (`matiere_id` nul) par la gestion. Ecrire remplace la precedente de la meme case."
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          description: "Identifiant de l espace source, comme le bilan de la classe."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [periode, eleve_id]
+              properties:
+                periode:
+                  $ref: '#/components/schemas/PeriodeDuBulletin'
+                eleve_id:
+                  type: integer
+                matiere_id:
+                  type: integer
+                  nullable: true
+                  description: "La matiere (son enseignant) ; nul pour l appreciation generale et la decision (la gestion)."
+                texte:
+                  type: string
+                  nullable: true
+                  maxLength: 2000
+                decision:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+      responses:
+        '200':
+          description: "L appreciation ecrite."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/AppreciationDeBulletin'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), droit manquant (`report_card_management_only`, `report_card_subject_not_taught`, `class_not_taught`), ecole KLASSCI (`report_cards_managed_by_klassci`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable dans l etablissement (`class_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), ou eleve hors de la classe (`student_not_in_class`)."
           content:
             application/json:
               schema:

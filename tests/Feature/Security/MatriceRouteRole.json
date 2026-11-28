@@ -529,6 +529,16 @@
     "GET api/lessons/{lessonId}/chapter-progress": "*",
     "GET api/lessons/{lessonId}/chapters": "*",
     "GET api/lms/attendance/history": "*",
+    "GET api/lms/bulletins/modele": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/lms/classes/etablissement": [
         "coordinateur",
         "coordinator",
@@ -560,6 +570,16 @@
         "supradmin"
     ],
     "GET api/lms/classes/{classeId}/etudiants/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/classes/{classe}/appreciations": [
         "enseignant",
         "teacher",
         "coordinateur",
@@ -1001,6 +1021,16 @@
     "GET api/v1/lessons/{lessonId}/chapter-progress": "*",
     "GET api/v1/lessons/{lessonId}/chapters": "*",
     "GET api/v1/lms/attendance/history": "*",
+    "GET api/v1/lms/bulletins/modele": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/lms/classes/etablissement": [
         "coordinateur",
         "coordinator",
@@ -1032,6 +1062,16 @@
         "supradmin"
     ],
     "GET api/v1/lms/classes/{classeId}/etudiants/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/classes/{classe}/appreciations": [
         "enseignant",
         "teacher",
         "coordinateur",
@@ -2655,6 +2695,26 @@
     "PUT api/forum/posts/{post}": "*",
     "PUT api/forum/topics/{topic}": "*",
     "PUT api/knowledge-checks/{id}": "*",
+    "PUT api/lms/bulletins/modele": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/lms/classes/{classe}/appreciations": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",
@@ -2778,6 +2838,26 @@
     "PUT api/v1/forum/posts/{post}": "*",
     "PUT api/v1/forum/topics/{topic}": "*",
     "PUT api/v1/knowledge-checks/{id}": "*",
+    "PUT api/v1/lms/bulletins/modele": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/lms/classes/{classe}/appreciations": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/v1/lms/seances/{seanceId}/appel": [
         "enseignant",
         "teacher",

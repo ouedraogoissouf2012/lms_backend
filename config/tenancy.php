@@ -59,6 +59,9 @@ return [
         'evaluations',
         'evaluation_questions',
         'evaluation_submissions',
+        // #1677 (B1) : le modèle de bulletin d'une école, les appréciations.
+        'modeles_de_bulletin',
+        'appreciations_de_bulletin',
         // #1702 (D1) : la banque de questions.
         'categories_de_questions',
         'questions_de_banque',

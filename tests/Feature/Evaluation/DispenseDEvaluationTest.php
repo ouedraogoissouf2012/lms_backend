@@ -124,7 +124,8 @@ final class DispenseDEvaluationTest extends TestCase
             'enseignant propriétaire' => [200, 200],
             'autre enseignant' => [403, 403],
             'élève de la classe' => [403, 403],
-            'coordinateur d une autre école' => [403, 403],
+            // #1782 (#1792) : une évaluation hors de l'école est introuvable, jamais avouée par un 403.
+            'coordinateur d une autre école' => [404, 404],
         ], $statuts);
         self::assertSame(0, DispenseDEvaluation::query()->withoutGlobalScope('institution')->count());
     }

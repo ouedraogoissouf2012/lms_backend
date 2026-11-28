@@ -8488,7 +8488,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -8541,7 +8541,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -8594,7 +8594,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -8643,7 +8643,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -8714,7 +8714,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:

@@ -76,16 +76,23 @@ final class NotificationQueryService
      *
      * @return LengthAwarePaginator<int, Notification>
      */
-    public function paginate(User $user, int $perPage, bool $unreadOnly, int $page): LengthAwarePaginator
+    public function paginate(User $user, int $perPage, bool $unreadOnly, int $page, ?string $type = null): LengthAwarePaginator
     {
-        $cacheKey = "notifications_user_{$user->id}_unread_".($unreadOnly ? '1' : '0')."_page_{$page}";
+        // La clé porte TOUT ce qui change la page rendue : le filtre `type` (front#690) et `per_page`. Sans
+        // `per_page`, deux tailles de page partageaient la même entrée (défaut corrigé avec le filtre).
+        $cacheKey = "notifications_user_{$user->id}_unread_".($unreadOnly ? '1' : '0')
+            .'_type_'.($type ?? 'tous')."_per_{$perPage}_page_{$page}";
 
         /** @var LengthAwarePaginator<int, Notification> */
-        return $this->cache->remember($cacheKey, self::CACHE_TTL_LIST, function () use ($user, $perPage, $unreadOnly) {
+        return $this->cache->remember($cacheKey, self::CACHE_TTL_LIST, function () use ($user, $perPage, $unreadOnly, $type) {
             $query = Notification::where('user_id', $user->id);
 
             if ($unreadOnly) {
                 $query->whereNull('read_at');
+            }
+
+            if ($type !== null) {
+                $query->where('type', $type);
             }
 
             return $query->orderBy('created_at', 'desc')->paginate($perPage);

@@ -26,7 +26,7 @@ final class KlassciSuiviDesPresences implements SuiviDesPresences
 
     public function tenuDansLeLms(): bool
     {
-        return false;
+        return true;
     }
 
     private static function refus(): BusinessException

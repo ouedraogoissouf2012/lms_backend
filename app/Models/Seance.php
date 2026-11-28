@@ -54,6 +54,7 @@ class Seance extends Model implements MirroredFromKlassci
         'visio_active',
         'visio_started_at',
         'visio_ended_at',
+        'emploi_du_temps_ligne_id',
         'visio_participants_count',
         'created_by',
         'updated_by',

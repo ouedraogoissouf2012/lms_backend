@@ -39,6 +39,8 @@ return [
         'evaluation_submissions',
         'seances',
         'esbtp_attendance',
+        // #1669 : les emplois du temps (leurs lignes n'ont pas d'école propre).
+        'emplois_du_temps',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

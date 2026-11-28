@@ -71,7 +71,7 @@ final class GrilleHebdomadaireTest extends TestCase
 
     public function test_un_emploi_du_temps_se_date_dans_la_periode_de_sa_classe(): void
     {
-        $this->creer(['du' => '2026-12-07', 'au' => '2026-12-13'])->assertCreated()->assertJsonPath('data.actif', true);
+        $this->creer(['du' => '2026-12-07', 'au' => '2026-12-13'])->assertCreated()->assertJsonPath('data.en_vigueur', true);
 
         $this->creer(['du' => '2027-07-01', 'au' => '2027-07-31'])->assertUnprocessable()->assertJsonPath('reason', 'emploi_du_temps_hors_periode');
     }
@@ -148,8 +148,9 @@ final class GrilleHebdomadaireTest extends TestCase
         ])->assertOk();
 
         $reponse->assertJsonPath('data.retirees', 1);
-        self::assertFalse(Seance::query()->withoutGlobalScopes()->where('date_seance', '2026-12-07 08:00:00')->exists(), 'La séance future non tenue est retirée.');
-        self::assertTrue(Seance::query()->withoutGlobalScopes()->whereKey($mercredi->id)->exists(), 'Une séance qui a des présences reste.');
+        // Les séances se suppriment en douceur : le scope des supprimées est gardé, seul celui de l'école est levé.
+        self::assertFalse(Seance::query()->withoutGlobalScope('institution')->where('date_seance', '2026-12-07 08:00:00')->exists(), 'La séance future non tenue est retirée.');
+        self::assertTrue(Seance::query()->withoutGlobalScope('institution')->whereKey($mercredi->id)->exists(), 'Une séance qui a des présences reste.');
     }
 
     public function test_les_alertes(): void
@@ -246,8 +247,12 @@ final class GrilleHebdomadaireTest extends TestCase
             'institution_id' => $this->ecole->id,
             'program_id' => Program::factory()->create(['institution_id' => $this->ecole->id])->id,
             'status' => TrainingSessionStatus::Publiee,
+            // Les cinq dates d'une période restent ordonnées (contrainte en base).
+            'enrollment_opens_at' => '2026-08-01',
+            'enrollment_closes_at' => '2026-08-31',
             'starts_on' => '2026-09-01',
             'ends_on' => '2027-06-30',
+            'certificate_available_at' => '2027-07-15',
         ]);
         $classe = $this->classe($this->ecole, $libelle);
         $classe->forceFill(['training_session_id' => $periode->id])->save();

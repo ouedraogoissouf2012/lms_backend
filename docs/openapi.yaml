@@ -4474,6 +4474,310 @@ components:
               items:
                 type: integer
 
+    EmploiDuTemps:
+      type: object
+      additionalProperties: false
+      required: [id, classe_id, titre, du, au, en_vigueur, lignes]
+      properties:
+        id:
+          type: integer
+        classe_id:
+          type: integer
+        titre:
+          type: string
+        du:
+          type: string
+          format: date
+        au:
+          type: string
+          format: date
+        en_vigueur:
+          type: boolean
+        lignes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LigneDEmploiDuTemps'
+
+    LigneDEmploiDuTemps:
+      type: object
+      additionalProperties: false
+      required: [id, jour, debut, fin, matiere_id, enseignant_id, type_seance, libelle]
+      properties:
+        id:
+          type: integer
+        jour:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: "ISO : 1 = lundi ... 7 = dimanche."
+        debut:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        fin:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        matiere_id:
+          type: integer
+          nullable: true
+          description: "`null` pour une pause."
+        enseignant_id:
+          type: integer
+          nullable: true
+        type_seance:
+          type: string
+          nullable: true
+          enum: [cm, td, tp, projet, travail_personnel, examen, null]
+        libelle:
+          type: string
+          nullable: true
+          description: "Le nom d'une pause ; `null` pour un cours."
+
+    UnEmploiDuTemps:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/EmploiDuTemps'
+
+    ListeDEmploisDuTemps:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmploiDuTemps'
+
+    EmploiDuTempsSupprime:
+      type: object
+      additionalProperties: false
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    GrilleEnregistree:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          additionalProperties: false
+          required: [id, classe_id, titre, du, au, en_vigueur, lignes, retirees]
+          properties:
+            id:
+              type: integer
+            classe_id:
+              type: integer
+            titre:
+              type: string
+            du:
+              type: string
+              format: date
+            au:
+              type: string
+              format: date
+            en_vigueur:
+              type: boolean
+            lignes:
+              type: array
+              items:
+                $ref: '#/components/schemas/LigneDEmploiDuTemps'
+            retirees:
+              type: integer
+              minimum: 0
+              description: "Les seances futures et non tenues retirees par ce changement."
+
+    RapportDeGeneration:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          additionalProperties: false
+          required: [creees, ignorees]
+          properties:
+            creees:
+              type: integer
+              minimum: 0
+            ignorees:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [date, ligne_id, motif, conflits]
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  ligne_id:
+                    type: integer
+                  motif:
+                    type: string
+                    enum: [deja_generee, conflit, sans_enseignant]
+                  conflits:
+                    type: array
+                    description: "Les seances en conflit (motif `conflit`), sinon vide."
+                    items:
+                      type: integer
+
+    AlertesDEmploisDuTemps:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          additionalProperties: false
+          required: [sans_emploi_du_temps, expires]
+          properties:
+            sans_emploi_du_temps:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [classe_id, libelle]
+                properties:
+                  classe_id:
+                    type: integer
+                  libelle:
+                    type: string
+                    nullable: true
+            expires:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [id, classe_id, titre, au]
+                properties:
+                  id:
+                    type: integer
+                  classe_id:
+                    type: integer
+                  titre:
+                    type: string
+                  au:
+                    type: string
+                    format: date
+
+    CreerEmploiDuTemps:
+      type: object
+      additionalProperties: false
+      required: [classe_id, titre, du, au]
+      properties:
+        classe_id:
+          type: integer
+          minimum: 1
+        titre:
+          type: string
+          maxLength: 150
+        du:
+          type: string
+          format: date
+        au:
+          type: string
+          format: date
+          description: "Au plus tot `du`."
+        en_vigueur:
+          type: boolean
+          default: true
+
+    ModifierEmploiDuTemps:
+      type: object
+      additionalProperties: false
+      required: [titre, du, au]
+      properties:
+        titre:
+          type: string
+          maxLength: 150
+        du:
+          type: string
+          format: date
+        au:
+          type: string
+          format: date
+        en_vigueur:
+          type: boolean
+          default: true
+
+    LignesDEmploiDuTemps:
+      type: object
+      additionalProperties: false
+      required: [lignes]
+      properties:
+        lignes:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [jour, debut, fin]
+            description: "Un cours (`matiere_id`) ou une pause (`libelle`) : l'un des deux est requis."
+            properties:
+              jour:
+                type: integer
+                minimum: 1
+                maximum: 7
+              debut:
+                type: string
+                pattern: '^\d{2}:\d{2}$'
+              fin:
+                type: string
+                pattern: '^\d{2}:\d{2}$'
+                description: "Apres `debut`."
+              matiere_id:
+                type: integer
+                nullable: true
+              enseignant_id:
+                type: integer
+                nullable: true
+                description: "Par defaut, l'enseignant du programme de la classe."
+              type_seance:
+                type: string
+                nullable: true
+                enum: [cm, td, tp, projet, travail_personnel, examen, null]
+              libelle:
+                type: string
+                nullable: true
+                maxLength: 100
+
+    CopierEmploiDuTemps:
+      type: object
+      additionalProperties: false
+      required: [classe_id, du, au]
+      properties:
+        classe_id:
+          type: integer
+          minimum: 1
+        du:
+          type: string
+          format: date
+        au:
+          type: string
+          format: date
+        titre:
+          type: string
+          nullable: true
+          maxLength: 150
+
     ErrorResponse:
       type: object
       properties:
@@ -4783,6 +5087,567 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: "Trop de demandes depuis cette adresse IP"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/emplois-du-temps:
+    get:
+      tags:
+        - Emplois du temps
+      operationId: listerEmploisDuTemps
+      summary: "Les emplois du temps de l'ecole"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        Du plus recent au plus ancien, chacun avec sa semaine type.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe_id
+          in: query
+          required: false
+          description: "Ne lister que les emplois du temps de cette classe."
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Les emplois du temps."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListeDEmploisDuTemps'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Emplois du temps
+      operationId: creerEmploiDuTemps
+      summary: "Creer l'emploi du temps d'une classe"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        Les dates `du` et `au` restent dans la periode de la classe ; la grille est vide.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreerEmploiDuTemps'
+      responses:
+        '201':
+          description: "L'emploi du temps cree."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnEmploiDuTemps'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Emploi du temps (ou classe) introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ) ; `emploi_du_temps_hors_periode` : les dates sortent de la periode de la classe."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/emplois-du-temps/alertes:
+    get:
+      tags:
+        - Emplois du temps
+      operationId: alertesEmploisDuTemps
+      summary: "Les alertes des emplois du temps"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        Les classes sans emploi du temps en vigueur aujourd'hui, et les emplois du temps en vigueur
+        dont la plage est passee.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les alertes."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertesDEmploisDuTemps'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/emplois-du-temps/{emploiId}:
+    get:
+      tags:
+        - Emplois du temps
+      operationId: lireEmploiDuTemps
+      summary: "Un emploi du temps et sa semaine type"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: emploiId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "L'emploi du temps."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnEmploiDuTemps'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Emploi du temps (ou classe) introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Emplois du temps
+      operationId: modifierEmploiDuTemps
+      summary: "Modifier le titre, la plage ou l'etat d'un emploi du temps"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        La classe ne change pas (`classe_id` est refuse).
+      security:
+        - sanctum: []
+      parameters:
+        - name: emploiId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifierEmploiDuTemps'
+      responses:
+        '200':
+          description: "L'emploi du temps modifie."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnEmploiDuTemps'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Emploi du temps (ou classe) introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ) ; `emploi_du_temps_hors_periode` : les dates sortent de la periode de la classe."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Emplois du temps
+      operationId: supprimerEmploiDuTemps
+      summary: "Supprimer un emploi du temps"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        Ses lignes disparaissent ; les seances deja generees restent, sans lien.
+      security:
+        - sanctum: []
+      parameters:
+        - name: emploiId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Supprime."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploiDuTempsSupprime'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Emploi du temps (ou classe) introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/emplois-du-temps/{emploiId}/lignes:
+    put:
+      tags:
+        - Emplois du temps
+      operationId: remplacerLaGrille
+      summary: "Remplacer la semaine type"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        La grille est remplacee d'un bloc. Une ligne de cours porte une matiere du programme de la
+        classe et son enseignant (par defaut celui du programme) ; une pause porte un libelle. Une ligne
+        inchangee garde ses seances ; une ligne changee ou retiree voit ses seances FUTURES et non tenues
+        retirees (jamais une seance commencee, a visio demarree ou avec des presences) : `retirees`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: emploiId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LignesDEmploiDuTemps'
+      responses:
+        '200':
+          description: "La grille enregistree."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrilleEnregistree'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Emploi du temps (ou classe) introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ) ; `matiere_hors_programme` : une matiere n'est pas au programme de la classe ; `grille_en_conflit` : deux lignes se chevauchent le meme jour ; `enseignant_hors_ecole` : l'enseignant n'appartient pas a l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/emplois-du-temps/{emploiId}/generer:
+    post:
+      tags:
+        - Emplois du temps
+      operationId: genererLesSeances
+      summary: "Generer les seances datees de la grille"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        De max(`du`, aujourd'hui) a `au`, une seance par ligne de cours et par jour qui lui
+        correspond ; elle appartient a l'enseignant de la ligne. Idempotent. Chaque seance passe par la regle
+        des conflits d'horaire : en conflit, elle est IGNOREE et rapportee, jamais forcee. Motifs :
+        `deja_generee`, `conflit` (avec les seances en conflit), `sans_enseignant`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: emploiId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Le rapport de generation."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportDeGeneration'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Emploi du temps (ou classe) introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/emplois-du-temps/{emploiId}/copier:
+    post:
+      tags:
+        - Emplois du temps
+      operationId: copierEmploiDuTemps
+      summary: "Copier une grille vers une autre classe ou une autre plage"
+      description: |
+        #1669. Ecole creee depuis le LMS seulement ; la gestion (coordinateur, administrateur de l'ecole).
+        Une ecole KLASSCI compose dans KLASSCI : 403 `catalogue_managed_by_klassci`.
+        Un nouvel emploi du temps de la classe cible, date dans SA periode ; chaque matiere doit
+        etre au programme de la cible, et l'enseignant redevient celui du programme de la cible.
+      security:
+        - sanctum: []
+      parameters:
+        - name: emploiId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopierEmploiDuTemps'
+      responses:
+        '201':
+          description: "La copie."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnEmploiDuTemps'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni coordinateur ni administrateur de l'ecole (gestion) ; `catalogue_managed_by_klassci` : une ecole KLASSCI compose ses emplois du temps dans KLASSCI ; sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Emploi du temps (ou classe) introuvable dans l'etablissement de l'appelant."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`no_institution` : compte sans etablissement resolu."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Donnees invalides (detail par champ) ; `emploi_du_temps_hors_periode` : les dates sortent de la periode de la classe. Donnees invalides (detail par champ) ; `matiere_hors_programme` : une matiere n'est pas au programme de la classe ; `grille_en_conflit` : deux lignes se chevauchent le meme jour ; `enseignant_hors_ecole` : l'enseignant n'appartient pas a l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur interne."
           content:
             application/json:
               schema:
@@ -13600,3 +14465,5 @@ tags:
     description: "User notifications"
   - name: "Files"
     description: "File upload and download"
+  - name: "Emplois du temps"
+    description: "La grille hebdomadaire d une classe (#1669)"

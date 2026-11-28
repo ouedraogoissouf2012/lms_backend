@@ -25,7 +25,6 @@ return [
     'app/Jobs/ProcessSeanceRecordingReady.php::handle' => 41,
     'app/Services/AdminAnalytics/ActivityTrendsService.php::aggregate' => 50,
     'app/Services/AdminAnalytics/SystemMetricsService.php::aggregate' => 52,
-    'app/Services/Attendances/SeanceAttendancesQueryService.php::getAttendances' => 45,
     'app/Services/Attendances/VideoSessionAttendancesSyncer.php::sync' => 59,
     'app/Services/Chapter/ChapterCrudService.php::create' => 46,
     'app/Services/Chapter/ChapterProgressService.php::markAsCompleted' => 44,

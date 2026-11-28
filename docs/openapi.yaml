@@ -2262,6 +2262,103 @@ components:
             deja_signe:
               type: boolean
 
+    HeuresDuMois:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [mois, depuis, seances, totaux]
+          properties:
+            mois:
+              type: string
+            depuis:
+              type: string
+              format: date
+              nullable: true
+            seances:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [seance_id, titre, date_seance, statut, minutes]
+                properties:
+                  seance_id:
+                    type: integer
+                  titre:
+                    type: string
+                    nullable: true
+                  date_seance:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  statut:
+                    type: string
+                    enum: [comptee, visio_non_demarree, auteur_inconnu, demarree_par_un_autre, visio_non_terminee]
+                  minutes:
+                    type: integer
+                    minimum: 0
+            totaux:
+              type: object
+              additionalProperties: false
+              required: [minutes, comptees, non_comptees]
+              properties:
+                minutes:
+                  type: integer
+                comptees:
+                  type: integer
+                non_comptees:
+                  type: integer
+
+    HeuresDesEnseignants:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [du, au, depuis, enseignants]
+          properties:
+            du:
+              type: string
+              format: date
+            au:
+              type: string
+              format: date
+            depuis:
+              type: string
+              format: date
+              nullable: true
+            enseignants:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [enseignant_id, nom, seances, comptees, minutes]
+                properties:
+                  enseignant_id:
+                    type: integer
+                  nom:
+                    type: string
+                    nullable: true
+                  seances:
+                    type: integer
+                  comptees:
+                    type: integer
+                  minutes:
+                    type: integer
+
     TypeDeSeance:
       type: string
       nullable: true
@@ -8696,6 +8793,156 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/mes-heures:
+    get:
+      tags:
+        - Visio
+      operationId: mesHeures
+      parameters:
+        - name: mois
+          in: query
+          required: true
+          description: "Le mois, AAAA-MM."
+          schema:
+            type: string
+            pattern: '^[0-9]{4}-[0-9]{2}$'
+      summary: "Les heures de l'enseignant sur un mois"
+      description: |
+        #1682. Ses seances PASSEES du mois, chacune avec son statut et ses
+        minutes, et les totaux. Une seance compte sa duree PREVUE (fin prevue -
+        debut, ou 2 h supposees) si sa visio a ete demarree par SON enseignant
+        et s'est terminee (a la main ou automatiquement) ; sinon 0. `depuis` :
+        la date de la premiere visio dont le demarreur est connu ; une seance
+        demarree avant ce releve compte 0 (`auteur_inconnu`).
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les heures du mois"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeuresDuMois'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors des enseignants ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les heures des enseignants se tiennent dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Mois absent ou invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/heures-enseignants:
+    get:
+      tags:
+        - Visio
+      operationId: heuresDesEnseignants
+      parameters:
+        - name: du
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: true
+          description: "Au plus un an apres `du`."
+          schema:
+            type: string
+            format: date
+        - name: enseignant_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: classe_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: matiere_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: format
+          in: query
+          required: false
+          description: "`csv` : l'export (separateur `;`, virgule decimale, BOM UTF-8)."
+          schema:
+            type: string
+            enum: [csv]
+      summary: "Les heures des enseignants, pour la gestion"
+      description: |
+        #1682. Par enseignant (l'auteur de la seance), sur les seances PASSEES de
+        la plage : seances, seances comptees, minutes, par la meme regle que
+        `GET /lms/mes-heures`. En CSV : `enseignant_id;nom;seances;
+        comptees;heures` (heures a deux decimales).
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le rapport (JSON), ou son export (CSV)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeuresDesEnseignants'
+            text/csv:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : les heures des enseignants se tiennent dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Plage ou filtres invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /lms/seances/{seanceId}/start-visio:
     post:

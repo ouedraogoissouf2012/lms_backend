@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use App\Services\SeancesListQueryService;
@@ -24,11 +25,14 @@ use App\Services\SeancesListQueryService;
 interface SeancesListReader
 {
     /**
+     * `$type` (#1668) : ne garder que les séances de ce type ; une séance sans type n'y
+     * passe jamais.
+     *
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, mixed>}
      *
      * @throws MissingKlassciTokenException Source KLASSCI, compte sans jeton.
      */
-    public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId): array;
+    public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId, ?TypeDeSeance $type = null): array;
 
     /**
      * @return array<int, array<string, mixed>>

@@ -20,6 +20,7 @@ use App\Services\TenantManager;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
 use Tests\TestCase;
@@ -160,9 +161,43 @@ final class SuiviDesPresencesTest extends TestCase
         self::assertSame($cas, array_map('strval', $lues));
     }
 
-    public function test_un_enseignant_ne_lit_pas_le_suivi(): void
+    /** @return array<string, array{string, string}> */
+    public static function horsGestion(): array
     {
-        $this->asTenant($this->membre($this->ecole, 'enseignant'))->getJson('/api/lms/presences?du=2026-12-01&au=2026-12-31')->assertForbidden();
+        return [
+            'enseignant, liste' => ['enseignant', '/api/lms/presences'],
+            'enseignant, synthese' => ['enseignant', '/api/lms/presences/synthese'],
+            'eleve, liste' => ['etudiant', '/api/lms/presences'],
+            'eleve, synthese' => ['etudiant', '/api/lms/presences/synthese'],
+        ];
+    }
+
+    #[DataProvider('horsGestion')]
+    public function test_hors_gestion_le_suivi_est_refuse(string $role, string $chemin): void
+    {
+        $this->asTenant($this->membre($this->ecole, $role))->getJson($chemin.'?du=2026-12-01&au=2026-12-31')->assertForbidden();
+    }
+
+    /** @return array<string, array{string}> */
+    public static function routes(): array
+    {
+        return ['liste' => ['/api/lms/presences'], 'synthese' => ['/api/lms/presences/synthese']];
+    }
+
+    /** L'administrateur de l'école est de la gestion, comme le coordinateur : il lit le suivi. */
+    #[DataProvider('routes')]
+    public function test_l_administrateur_de_l_ecole_lit_le_suivi(string $chemin): void
+    {
+        $this->asTenant($this->membre($this->ecole, 'superAdmin'))->getJson($chemin.'?du=2026-12-01&au=2026-12-31')->assertOk();
+    }
+
+    /** La période vaut une année au plus après `du` : la borne est admise, le jour suivant refusé. */
+    #[DataProvider('routes')]
+    public function test_la_periode_est_plafonnee_a_un_an(string $chemin): void
+    {
+        $this->asTenant($this->coordinateur)->getJson($chemin.'?du=2026-01-01&au=2027-01-01')->assertOk();
+        $this->asTenant($this->coordinateur)->getJson($chemin.'?du=2026-01-01&au=2027-01-02')
+            ->assertUnprocessable()->assertJsonValidationErrors('au');
     }
 
     public function test_une_ecole_klassci_tient_ses_presences_dans_klassci(): void

@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS;
 
-use App\Enums\EtatCodeInscription;
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Http\Controllers\Controller;
+use App\Http\Presenters\ClasseLocaleEnListe;
 use App\Http\Requests\ListerClassesLocalesRequest;
 use App\Models\Classe;
-use App\Services\Catalogue\CapaciteDeClasse;
 use App\Services\Catalogue\ClassesLocalesQuery;
 use Illuminate\Http\JsonResponse;
 
@@ -34,13 +33,13 @@ final class LMSClassesLocalesController extends Controller
     public function index(ListerClassesLocalesRequest $request): JsonResponse
     {
         try {
-            $page = $this->classes->lister($request->parPage());
+            $page = $this->classes->lister($request->parPage(), $request->statut(), $request->places());
         } catch (BusinessException $e) {
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse(
-            array_map(fn (Classe $classe): array => $this->enVue($classe), $page->items()),
+            array_map(fn (Classe $classe): array => ClasseLocaleEnListe::de($classe), $page->items()),
             '',
             200,
             [
@@ -50,30 +49,5 @@ final class LMSClassesLocalesController extends Controller
                 'total' => $page->total(),
             ],
         );
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function enVue(Classe $classe): array
-    {
-        return [
-            'id' => $classe->getKey(),
-            'libelle' => $classe->libelle,
-            'code' => $classe->code,
-            'training_session_id' => $classe->training_session_id,
-            'effectif' => CapaciteDeClasse::lue($classe),
-            'code_inscription' => $this->codeInscription($classe),
-        ];
-    }
-
-    /**
-     * @return array{etat: string, valeur: ?string}
-     */
-    private function codeInscription(Classe $classe): array
-    {
-        $etat = EtatCodeInscription::depuis($classe->code_inscription, $classe->code_inscription_revoque_le);
-
-        return ['etat' => $etat->value, 'valeur' => $etat->valeurVisible($classe->code_inscription)];
     }
 }

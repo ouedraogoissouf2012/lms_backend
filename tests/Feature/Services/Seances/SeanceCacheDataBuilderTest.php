@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
@@ -57,6 +58,27 @@ final class SeanceCacheDataBuilderTest extends TestCase
         self::assertSame('Terminale A', $data['classe_nom']);
         self::assertInstanceOf(Carbon::class, $data['date_seance']);
         self::assertSame('2026-08-01 09:30:00', $data['date_seance']->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * #1668 : `type_cours` de la charge KLASSCI (clé relevée en production, D1411). Seules
+     * CM, TD et TP sont reprises ; toute autre valeur, « course » comprise, donne null.
+     */
+    public function test_build_reprend_le_type_cours_connu_et_jamais_un_autre(): void
+    {
+        $avecTd = (new SeanceCacheDataBuilder)->build(
+            ['id' => 1, 'type_cours' => 'TD', 'programmation' => ['date' => '2026-08-01']],
+            ['id' => 10, 'nom' => 'Physique'],
+            $this->owner(),
+        );
+        $avecCourse = (new SeanceCacheDataBuilder)->build(
+            ['id' => 2, 'type_cours' => 'course', 'programmation' => ['date' => '2026-08-01']],
+            ['id' => 10, 'nom' => 'Physique'],
+            $this->owner(),
+        );
+
+        self::assertSame(TypeDeSeance::Td, $avecTd['type_seance']);
+        self::assertNull($avecCourse['type_seance']);
     }
 
     public function test_build_falls_back_to_libelle_when_nom_absent(): void

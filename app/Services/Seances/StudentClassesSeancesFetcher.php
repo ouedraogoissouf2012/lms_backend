@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
@@ -203,6 +204,7 @@ final class StudentClassesSeancesFetcher
             // Heures réalignées sur la date de la séance ; fin rendue par KLASSCI.
             'programmation' => SeanceProgrammationNormalizer::blocKlassci($prog),
             'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
+            'type_seance' => TypeDeSeance::depuisKlassci($seance['type_cours'] ?? null)?->value, // #1668
             'matiere' => [
                 'id' => $matiereId,
                 'nom' => $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? 'N/A',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Models\Seance;
 use App\Models\User;
 use Carbon\Carbon;
@@ -29,7 +30,7 @@ final class LocalSeancesListReader implements SeancesListReader
         private readonly SeancesLocalesVisibles $visibles,
     ) {}
 
-    public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId): array
+    public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId, ?TypeDeSeance $type = null): array
     {
         $dateDebut = Carbon::now()->format('Y-m-d');
         $dateFin = Carbon::now()->addDays($days)->format('Y-m-d');
@@ -46,6 +47,9 @@ final class LocalSeancesListReader implements SeancesListReader
             if ($classeId !== null) {
                 $visibles->where('classe_id', $classeId);
             }
+            if ($type !== null) {
+                $visibles->where('type_seance', $type->value);
+            }
             // Depuis minuit : la séance terminée ce matin n'est plus « à venir » (FenetreVisio).
             $seances = FenetreVisio::sansLesPassees($this->lire($user, $visibles, $dateDebut, $dateFin, $institution), Carbon::now());
         }
@@ -59,6 +63,7 @@ final class LocalSeancesListReader implements SeancesListReader
                 'filtres' => [
                     'teacher_id' => $teacherId,
                     'classe_id' => $classeId,
+                    'type' => $type?->value,
                 ],
             ],
         ];

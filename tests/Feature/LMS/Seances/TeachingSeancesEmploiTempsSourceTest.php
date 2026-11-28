@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\LMS\Seances;
 
+use App\Enums\TypeDeSeance;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\KlassciProxyService;
@@ -114,6 +115,15 @@ final class TeachingSeancesEmploiTempsSourceTest extends TestCase
     }
 
     /**
+     * #1668 : le type de la séance KLASSCI est lu dans `type_cours` ; seules CM, TD et TP
+     * sont reprises ({@see TypeDeSeance::depuisKlassci()}).
+     */
+    public function test_the_klassci_type_cours_is_exposed_as_type_seance(): void
+    {
+        self::assertSame('td', $this->fetch()->first()['type_seance']);
+    }
+
+    /**
      * Contrainte 2, vue de bout en bout : une séance d'une matière que
      * l'enseignant ne porte pas ne ressort jamais de la liste.
      *
@@ -190,6 +200,8 @@ final class TeachingSeancesEmploiTempsSourceTest extends TestCase
             'classe' => ['id' => 101, 'nom' => 'B2 COM'],
             'matiere' => ['id' => $matiereId, 'nom' => 'Anglais'],
             'salle' => ['id' => 7, 'nom' => 'Salle B12', 'capacite' => 40],
+            // Clé relevée en production le 2026-11-25 (D1411, #1668), à la racine.
+            'type_cours' => 'TD',
             'programmation' => [
                 'date_seance' => '2026-06-26',
                 'date_cours' => '2026-06-26',

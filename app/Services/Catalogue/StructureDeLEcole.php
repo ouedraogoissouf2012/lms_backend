@@ -10,6 +10,7 @@ use App\Exceptions\CodeDeStructureDejaEmploye;
 use App\Models\Filiere;
 use App\Models\NiveauEtude;
 use Closure;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 
@@ -26,7 +27,10 @@ use Illuminate\Database\UniqueConstraintViolationException;
  */
 final class StructureDeLEcole
 {
-    public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
+    public function __construct(
+        private readonly PorteDuCatalogueLocal $porte,
+        private readonly ConnectionInterface $db,
+    ) {}
 
     /**
      * @param  array{libelle: string, code?: ?string, ordre?: ?int}  $donnees
@@ -67,7 +71,21 @@ final class StructureDeLEcole
     /** @throws BusinessException 403, 404 */
     public function supprimer(ElementDeStructure $element, int $id): void
     {
-        $this->trouver($element, $this->porte->etablissement(), $id)->delete();
+        $ligne = $this->trouver($element, $this->porte->etablissement(), $id);
+        $colonne = $element === ElementDeStructure::Filiere ? 'filiere_locale_id' : 'niveau_locale_id';
+
+        // #1648 B : un élément employé par une classe ou une matière ne se supprime pas (la base le refuse aussi).
+        foreach (['classes', 'matieres'] as $table) {
+            if ($this->db->table($table)->where($colonne, $ligne->id)->exists()) {
+                throw new BusinessException(
+                    'Cet élément est employé par une classe ou une matière : détachez-les d\'abord.',
+                    409,
+                    reason: $element === ElementDeStructure::Filiere ? 'field_in_use' : 'level_in_use',
+                );
+            }
+        }
+
+        $ligne->delete();
     }
 
     /**

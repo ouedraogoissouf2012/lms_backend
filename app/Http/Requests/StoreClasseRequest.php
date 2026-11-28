@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\PorteLaStructureLocale;
 use App\Services\Catalogue\CapaciteDeClasse;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -21,6 +22,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class StoreClasseRequest extends FormRequest
 {
+    use PorteLaStructureLocale;
+
     public function authorize(): bool
     {
         return true;
@@ -41,11 +44,12 @@ final class StoreClasseRequest extends FormRequest
             // L'existence et l'état de la Période sont vérifiés au point d'écriture,
             // dans l'établissement (#1208) : un `exists` ici ne lirait pas l'école.
             'training_session_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            ...$this->reglesDeLaStructure(),
         ];
     }
 
     /**
-     * @return array{libelle: string, code: string|null, description: string|null, effectif: int, training_session_id: int|null}
+     * @return array{libelle: string, code: string|null, description: string|null, effectif: int, training_session_id: int|null, filiere_id?: int|null, niveau_id?: int|null}
      */
     public function donnees(): array
     {
@@ -55,6 +59,7 @@ final class StoreClasseRequest extends FormRequest
             'description' => $this->has('description') ? (string) $this->string('description') : null,
             'effectif' => $this->integer('effectif', 0),
             'training_session_id' => $this->filled('training_session_id') ? $this->integer('training_session_id') : null,
+            ...$this->structure(),
         ];
     }
 }

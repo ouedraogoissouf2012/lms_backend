@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Http\Presenters\ElementDeStructureEnVue;
 use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
@@ -32,16 +33,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  *
  * ## Ce que le catalogue local ne porte pas
  *
- * Ni heures, ni séances par matière, ni filière, ni niveau, ni couleur :
+ * Ni heures, ni séances par matière, ni couleur :
  * - `heures_total` et `nb_seances_programmees` valent `null`, « inconnu »,
  *   jamais 0 (une séance locale ne porte que le NOM de sa matière) ;
  * - `nb_evaluations` compte toutes les évaluations de l'établissement dans la
  *   matière, en une requête groupée ({@see EvaluationsDeLaPage::compteParMatiere()},
  *   D72, E4c) ;
- * - `combinaisons` est vide : aucune filière ni aucun niveau local ;
+ * - `combinaisons` : la filière et le niveau LOCAUX de la matière (#1648 B), en une
+ *   combinaison ; vide sans rattachement ;
  * - `couleur` est la couleur par défaut de l'écran, un réglage d'affichage.
  *
- * Les filtres `filiere_id` et `niveau_id` sont sans objet : rien ne les porte.
+ * Les filtres `filiere_id` et `niveau_id` ne sont pas appliqués ici : l'écran filtre
+ * sur les `combinaisons`.
  *
  * Bornage EXPLICITE partout : le scope global est fail-open sans tenant.
  *
@@ -109,7 +112,9 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
             'nb_evaluations' => $evaluations[$matiere->id] ?? 0,
             'nb_seances_programmees' => null,
             'nb_lecons' => $lecons[$matiere->id] ?? 0,
-            'combinaisons' => [],
+            // #1648 B : la filière et le niveau LOCAUX, dans la forme d'une combinaison KLASSCI (ce que filtre
+            // l'écran Matières) ; aucune sans rattachement.
+            'combinaisons' => self::combinaisons($matiere),
             // #1653 : les valeurs BRUTES, pour l'écran qui modifie. Sur une matière LOCALE
             // seulement : un miroir de KLASSCI ne se modifie pas ici, et l'absence de la clé
             // le dit. Les champs affichés ci-dessus ne changent pas (`code` garde son N/A).
@@ -146,6 +151,7 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
     private function atteintes(User $user, int $institution): Builder
     {
         return MatieresAtteintes::par(Matiere::query()->where('institution_id', $institution), $user, $institution)
+            ->with(['filiereLocale', 'niveauLocale'])
             ->orderBy('libelle')
             ->orderBy('id');
     }
@@ -183,5 +189,14 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
         }
 
         return $comptes;
+    }
+
+    /** @return list<array{filiere: array{id: int, nom: string, code: string|null}|null, niveau: array{id: int, nom: string, code: string|null}|null}> */
+    private static function combinaisons(Matiere $matiere): array
+    {
+        $filiere = ElementDeStructureEnVue::resume($matiere->filiereLocale);
+        $niveau = ElementDeStructureEnVue::resume($matiere->niveauLocale);
+
+        return $filiere === null && $niveau === null ? [] : [['filiere' => $filiere, 'niveau' => $niveau]];
     }
 }

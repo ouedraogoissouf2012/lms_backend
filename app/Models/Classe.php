@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Classe extends Model implements MirroredFromKlassci
 {
     /** @use HasFactory<ClasseFactory> */
-    use BelongsToInstitution, Concerns\ClasseArchivable, HasFactory, ResolvesMirroredIdentifier;
+    use BelongsToInstitution, Concerns\ClasseArchivable, Concerns\PorteUneStructureLocale, HasFactory, ResolvesMirroredIdentifier;
 
     protected $fillable = [
         'klassci_id',

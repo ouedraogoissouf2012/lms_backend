@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\PorteLaStructureLocale;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -18,6 +19,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class UpdateMatiereRequest extends FormRequest
 {
+    use PorteLaStructureLocale;
+
     public function authorize(): bool
     {
         return true;
@@ -34,13 +37,14 @@ final class UpdateMatiereRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'coefficient' => ['sometimes', 'integer', 'min:1', 'max:20'],
             'credit' => ['sometimes', 'integer', 'min:1', 'max:60'],
+            ...$this->reglesDeLaStructure(),
         ];
     }
 
     /**
      * Les seuls champs envoyés, typés.
      *
-     * @return array{libelle?: string, code?: string|null, description?: string|null, coefficient?: int, credit?: int}
+     * @return array{libelle?: string, code?: string|null, description?: string|null, coefficient?: int, credit?: int, filiere_id?: int|null, niveau_id?: int|null}
      */
     public function modifications(): array
     {
@@ -60,6 +64,6 @@ final class UpdateMatiereRequest extends FormRequest
             }
         }
 
-        return $modifications;
+        return $modifications + $this->structure();
     }
 }

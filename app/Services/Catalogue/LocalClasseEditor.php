@@ -25,10 +25,13 @@ final class LocalClasseEditor
 {
     private const REFUS_MIROIR = 'Cette classe vient de KLASSCI : elle se modifie dans KLASSCI.';
 
-    public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
+    public function __construct(
+        private readonly PorteDuCatalogueLocal $porte,
+        private readonly RattachementALaStructure $structure,
+    ) {}
 
     /**
-     * @param  array{libelle?: string, code?: string|null, description?: string|null}  $modifications
+     * @param  array{libelle?: string, code?: string|null, description?: string|null, filiere_id?: int|null, niveau_id?: int|null}  $modifications
      *
      * @throws BusinessException 403 école KLASSCI ou classe miroir, 404 hors de l'école.
      * @throws CodeDeClasseDejaEmploye 422 sur `code`, déjà employé dans l'établissement.
@@ -48,12 +51,15 @@ final class LocalClasseEditor
             throw new BusinessException(self::REFUS_MIROIR, 403, reason: PorteDuCatalogueLocal::REASON);
         }
 
+        $structure = $this->structure->colonnes((int) $classe->institution_id, $modifications);
+        unset($modifications['filiere_id'], $modifications['niveau_id']);
+
         if (array_key_exists('code', $modifications)) {
             $modifications['code'] = CodeDeClasse::normalise($modifications['code']);
         }
 
-        return CodeDeClasse::ecrire(function () use ($classe, $modifications): Classe {
-            $classe->fill($modifications)->save();
+        return CodeDeClasse::ecrire(function () use ($classe, $modifications, $structure): Classe {
+            $classe->fill($modifications)->forceFill($structure)->save();
 
             return $classe;
         });

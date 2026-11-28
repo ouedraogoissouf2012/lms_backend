@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Classe;
 
+use App\Http\Presenters\ElementDeStructureEnVue;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\TrainingSession;
@@ -26,9 +27,10 @@ use App\Models\User;
  *   basculée, c'est ce qui accorde la liste d'administration et la fiche (dette
  *   de la bascule, ADR-EI-01).
  * - `name` et `libelle` : le libellé. Le front lit l'un ou l'autre selon l'écran.
- * - `filiere`, `niveau` : `null`. L'école créée depuis le LMS n'en a aucun ;
- *   les classes d'une école basculée gardent leurs `filiere_id` et `niveau_id`
- *   KLASSCI, qui ne sont pas relus : ils parlent l'espace de KLASSCI.
+ * - `filiere`, `niveau` : le rattachement LOCAL (#1648 B, `filiere_locale_id`,
+ *   `niveau_locale_id`), `{id, nom, code}` ou `null`. Les `filiere_id` et
+ *   `niveau_id` KLASSCI d'une école basculée ne sont pas relus : ils parlent
+ *   l'espace de KLASSCI.
  * - `is_active` : la Période de la classe, publiée et pas terminée
  *   ({@see TrainingSession::estActive()}, D124) ; `null` sans Période, ou quand
  *   la Période est supprimée.
@@ -36,10 +38,8 @@ use App\Models\User;
  *   l'établissement. `places_totales` : `null`, aucune capacité n'est tenue.
  * - `nb_matieres` : le programme, en matières de l'établissement.
  *
- * Les filtres `filiere_id`, `niveau_id` et `annee_id` sont sans effet ici :
- * aucune filière, aucun niveau, aucune année n'est lu en local. Dans une école
- * basculée, le front peut encore proposer des filières de KLASSCI ; leurs ids ne
- * désignent rien dans les tables locales.
+ * Les filtres `filiere_id`, `niveau_id` et `annee_id` ne sont pas appliqués par
+ * ce lecteur : il rend toutes les classes de l'école, chacune avec son rattachement.
  *
  * Bornage EXPLICITE partout : le scope global est fail-open sans tenant.
  *
@@ -60,7 +60,7 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
         }
 
         $classes = ClassesAtteintes::par(Classe::query()->where('institution_id', $institution), $user, $institution)
-            ->with(['trainingSession' => static function ($periode) use ($institution): void {
+            ->with(['filiereLocale', 'niveauLocale', 'trainingSession' => static function ($periode) use ($institution): void {
                 $periode->where('institution_id', $institution);
             }])
             ->withCount([
@@ -85,7 +85,7 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
      * La période (#1785) se lit sur la relation déjà chargée, bornée à l'école : aucune requête par classe ; sans
      * période, ou période supprimée ou d'une autre école, `null` (comme `is_active`).
      *
-     * @return array{id: int, name: string, libelle: string, code: string|null, filiere: null, niveau: null, is_active: bool|null, periode: array{id: int, libelle: string|null}|null, places_occupees: int, places_totales: null, nb_matieres: int}
+     * @return array{id: int, name: string, libelle: string, code: string|null, filiere: array{id: int, nom: string, code: string|null}|null, niveau: array{id: int, nom: string, code: string|null}|null, is_active: bool|null, periode: array{id: int, libelle: string|null}|null, places_occupees: int, places_totales: null, nb_matieres: int}
      */
     private function ligne(Classe $classe): array
     {
@@ -97,8 +97,9 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
             'name' => $classe->libelle,
             'libelle' => $classe->libelle,
             'code' => $classe->code,
-            'filiere' => null,
-            'niveau' => null,
+            // #1648 B : la filière et le niveau LOCAUX, dans la forme du volet KLASSCI ; `null` sans rattachement.
+            'filiere' => ElementDeStructureEnVue::resume($classe->filiereLocale),
+            'niveau' => ElementDeStructureEnVue::resume($classe->niveauLocale),
             'is_active' => $periode instanceof TrainingSession ? $periode->estActive() : null,
             'periode' => $periode instanceof TrainingSession ? ['id' => $periode->id, 'libelle' => $periode->libelle] : null,
             'places_occupees' => is_numeric($compte['places_occupees'] ?? null) ? (int) $compte['places_occupees'] : 0,

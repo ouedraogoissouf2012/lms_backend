@@ -630,6 +630,22 @@
         "supradmin"
     ],
     "GET api/lms/notifications/preferences/{userId}": "*",
+    "GET api/lms/presences": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/presences/synthese": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/lms/seances/history": [
         "enseignant",
         "teacher",
@@ -1102,6 +1118,22 @@
         "supradmin"
     ],
     "GET api/v1/lms/notifications/preferences/{userId}": "*",
+    "GET api/v1/lms/presences": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/presences/synthese": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/lms/seances/history": [
         "enseignant",
         "teacher",

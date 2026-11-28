@@ -10,6 +10,7 @@ use App\Exceptions\KlassciRoleInconnuException;
 use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Auth\CapacitesDuCompte;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -49,18 +50,16 @@ class AuthResponsePresenter
      *
      * @param  Institution|null  $institution  L'école du compte, chargée par
      *                                         l'appelant : aucune I/O ici.
-     * @param  bool  $peutInscrireLocalement  Capacite resolue par l'appelant.
-     *                                        Le presentateur ne decide rien
-     *                                        (cf. docblock de classe).
-     * @param  bool  $peutGererCatalogueLocal  Idem, la capacite catalogue (#1184).
+     * @param  CapacitesDuCompte|null  $capacites  Resolues par l'appelant
+     *                                             (`LesCapacitesDuCompte`) : le
+     *                                             presentateur ne decide rien.
      * @param  int|null  $idDansLAnnuaire  Résolu par l'appelant (`IdDansLAnnuaire`, #1536).
      */
     public function successfulLocal(
         User $user,
         string $sanctumToken,
         ?Institution $institution,
-        bool $peutInscrireLocalement = false,
-        bool $peutGererCatalogueLocal = false,
+        ?CapacitesDuCompte $capacites = null,
         ?int $idDansLAnnuaire = null,
     ): JsonResponse {
         return response()->json([
@@ -76,13 +75,10 @@ class AuthResponsePresenter
                 'is_supradmin' => $user->asRoleEnum() === Role::Supradmin,
                 'institution' => $institution?->slug,
                 'institution_name' => $institution?->name,
-                // Une CAPACITE, jamais le mode : le client demande ce qu'il a
+                // Des CAPACITES, jamais le mode : le client demande ce qu'il a
                 // le droit de faire, il n'a pas a connaitre la nature de
-                // l'etablissement (#805).
-                'peut_inscrire_localement' => $peutInscrireLocalement,
-                // #1184 : la capacite CATALOGUE (classes, matieres, sessions de
-                // formation), distincte de l'inscription des apprenants.
-                'peut_gerer_catalogue_local' => $peutGererCatalogueLocal,
+                // l'etablissement (#805, #1184, #1683).
+                ...($capacites ?? CapacitesDuCompte::aucune())->versMeta(),
             ],
         ]);
     }
@@ -101,8 +97,7 @@ class AuthResponsePresenter
         array $klassciUser,
         array $klassciMeta,
         array $tenant,
-        bool $peutInscrireLocalement = false,
-        bool $peutGererCatalogueLocal = false,
+        ?CapacitesDuCompte $capacites = null,
         ?int $idDansLAnnuaire = null,
     ): JsonResponse {
         $adminData = is_array($klassciUser['admin_data'] ?? null) ? $klassciUser['admin_data'] : null;
@@ -134,8 +129,7 @@ class AuthResponsePresenter
                 'institution' => $tenant['code'],
                 'institution_name' => $institutionName,
                 'annee_universitaire_courante' => $klassciMeta['annee_universitaire_courante'] ?? null,
-                'peut_inscrire_localement' => $peutInscrireLocalement,
-                'peut_gerer_catalogue_local' => $peutGererCatalogueLocal,
+                ...($capacites ?? CapacitesDuCompte::aucune())->versMeta(),
             ],
         ]);
     }

@@ -19,6 +19,9 @@ use App\Services\Attendances\Justification\LocalJustificationDAbsence;
 use App\Services\Attendances\KlassciSeanceSansLigneLocale;
 use App\Services\Attendances\LocalSeanceSansLigneLocale;
 use App\Services\Attendances\SeanceSansLigneLocale;
+use App\Services\Attendances\Suivi\KlassciSuiviDesPresences;
+use App\Services\Attendances\Suivi\LocalSuiviDesPresences;
+use App\Services\Attendances\Suivi\SuiviDesPresences;
 use App\Services\Catalogue\InstitutionStructureReader;
 use App\Services\Catalogue\KlassciInstitutionStructureReader;
 use App\Services\Catalogue\LocalInstitutionStructureReader;
@@ -144,6 +147,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         JustificationDAbsence::class => [KlassciJustificationDAbsence::class, LocalJustificationDAbsence::class],
         // #1682 : les heures des enseignants ; une école KLASSCI les tient dans KLASSCI.
         HeuresDeLEnseignant::class => [KlassciHeuresDeLEnseignant::class, LocalHeuresDeLEnseignant::class],
+        // #1683 : le suivi des présences ; une école KLASSCI tient ses présences dans KLASSCI.
+        SuiviDesPresences::class => [KlassciSuiviDesPresences::class, LocalSuiviDesPresences::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).
         CreationDeSeance::class => [KlassciCreationDeSeance::class, LocalSeanceCreator::class],
         // Les présences d'une séance KLASSCI sans ligne locale (#1098).

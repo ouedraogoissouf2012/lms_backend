@@ -2568,6 +2568,128 @@ components:
                 nullable: true
                 enum: [en_attente, validee, rejetee, null]
 
+    PresencesDeLEcole:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [presences, page, derniere_page, total]
+          properties:
+            presences:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [seance_id, date_seance, classe_id, matiere_id, eleve_id, eleve_nom, marque]
+                properties:
+                  seance_id:
+                    type: integer
+                  date_seance:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  classe_id:
+                    type: integer
+                  matiere_id:
+                    type: integer
+                    nullable: true
+                  eleve_id:
+                    type: integer
+                  eleve_nom:
+                    type: string
+                    nullable: true
+                  marque:
+                    type: string
+                    enum: [present, late, absent, excused]
+            page:
+              type: integer
+            derniere_page:
+              type: integer
+            total:
+              type: integer
+
+    SyntheseDesPresences:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [du, au, seuil, eleves, classes, sous_le_seuil]
+          properties:
+            du:
+              type: string
+              format: date
+            au:
+              type: string
+              format: date
+            seuil:
+              type: integer
+            eleves:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [eleve_id, nom, classe_id, presences, retards, absences_justifiees, absences, taux]
+                properties:
+                  eleve_id:
+                    type: integer
+                  nom:
+                    type: string
+                    nullable: true
+                  classe_id:
+                    type: integer
+                  presences:
+                    type: integer
+                  retards:
+                    type: integer
+                  absences_justifiees:
+                    type: integer
+                  absences:
+                    type: integer
+                  taux:
+                    type: integer
+                    nullable: true
+            classes:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [classe_id, libelle, presences, retards, absences_justifiees, absences, taux]
+                properties:
+                  classe_id:
+                    type: integer
+                  libelle:
+                    type: string
+                    nullable: true
+                  presences:
+                    type: integer
+                  retards:
+                    type: integer
+                  absences_justifiees:
+                    type: integer
+                  absences:
+                    type: integer
+                  taux:
+                    type: integer
+                    nullable: true
+            sous_le_seuil:
+              type: array
+              items:
+                type: integer
+
     SeanceCalendrier:
       type: object
       description: |
@@ -5280,6 +5402,26 @@ components:
                     (`/proxy/enseignants`) emet pour ce compte. Le client y reconnait sa
                     propre fiche sans connaitre le mode de l'ecole (#805). null pour un
                     compte qui n'est pas enseignant, ou que l'annuaire ecarte.
+        meta:
+          type: object
+          description: |
+            Les CAPACITES de l'ecole du compte, jamais son mode (#805) : chacune est
+            demandee a l'autorite ou a la source de son domaine. Sans etablissement,
+            toutes valent false. Le role reste juge par chaque route.
+          required: [peut_inscrire_localement, peut_gerer_catalogue_local, peut_suivre_les_presences]
+          properties:
+            peut_inscrire_localement:
+              type: boolean
+              description: "L'ecole inscrit ses apprenants dans le LMS (#805)."
+            peut_gerer_catalogue_local:
+              type: boolean
+              description: "L'ecole tient son catalogue (classes, matieres, sessions) dans le LMS (#1184)."
+            peut_suivre_les_presences:
+              type: boolean
+              description: |
+                L'ecole tient ses presences dans le LMS : `GET /lms/presences` et
+                `GET /lms/presences/synthese` lui repondent (#1683, front#689). false
+                en ecole KLASSCI, ou ces routes rendent 409 `attendance_managed_by_klassci`.
 
     User:
       type: object
@@ -6879,6 +7021,194 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/presences:
+    get:
+      tags:
+        - Visio
+      operationId: listerPresences
+      parameters:
+        - name: du
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: true
+          description: "Au plus un an apres `du`."
+          schema:
+            type: string
+            format: date
+        - name: classe_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: matiere_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: eleve_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: marque
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [present, late, absent, excused]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Les presences de l ecole"
+      description: |
+        #1683. Paginee (50), par date de seance puis eleve.
+        Une presence est une paire (seance PASSEE et active de l'ecole, eleve
+        ACTIF de sa classe aujourd'hui). Sa marque est la marque de l'appel,
+        sinon la visio (connecte ou deconnecte : present) ; sans rien qui dise
+        une presence, l'eleve est absent.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les presences de l ecole"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresencesDeLEcole'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : elle tient ses presences dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Plage ou filtres invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /lms/presences/synthese:
+    get:
+      tags:
+        - Visio
+      operationId: syntheseDesPresences
+      parameters:
+        - name: du
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: au
+          in: query
+          required: true
+          description: "Au plus un an apres `du`."
+          schema:
+            type: string
+            format: date
+        - name: classe_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: matiere_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: eleve_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: seuil
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 75
+      summary: "La synthese des presences"
+      description: |
+        #1683. Par eleve et par classe : presences (present + retard), retards,
+        absences justifiees, absences, et le taux = presences / (presences +
+        absences), les absences justifiees hors du denominateur (`null` sans
+        seance attendue). `sous_le_seuil` : les eleves dont le taux est sous
+        le seuil.
+        Une presence est une paire (seance PASSEE et active de l'ecole, eleve
+        ACTIF de sa classe aujourd'hui). Sa marque est la marque de l'appel,
+        sinon la visio (connecte ou deconnecte : present) ; sans rien qui dise
+        une presence, l'eleve est absent.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "La synthese des presences"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyntheseDesPresences'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Hors de la gestion de l'ecole ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : elle tient ses presences dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Plage ou filtres invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

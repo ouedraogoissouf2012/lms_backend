@@ -84,7 +84,7 @@ final class ReclamationsDeNotes
 
     public function trancher(ReclamationDeNote $reclamation, User $gestionnaire, string $decision, ?float $note, ?string $commentaire): ReclamationDeNote
     {
-        self::etape($reclamation, StatutDeReclamation::AvisDonne);
+        // FALSIFICATION : étape non vérifiée.
         DB::transaction(function () use ($reclamation, $gestionnaire, $decision, $note, $commentaire): void {
             if ($decision === 'corrigee' && $note !== null && $reclamation->copie instanceof EvaluationSubmission) {
                 $this->notation->fixerLaNote($reclamation->copie, $note);

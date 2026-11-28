@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Enums\InstitutionMode;
+use App\Models\ActivationToken;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -86,7 +87,9 @@ final class MotDePasseOublieTest extends TestCase
 
         $this->demander($ecole, 'connu@ecole.test')->assertOk();
 
-        self::assertSame(0, DB::table('password_reset_tokens')->count());
+        // #1306 : la table du broker Laravel est retirée ; le seul jeton de réinitialisation est
+        // celui d'activation (#808), et aucun n'est créé ici.
+        self::assertSame(0, DB::table((new ActivationToken)->getTable())->count());
     }
 
     private function ecole(InstitutionMode $mode): Institution

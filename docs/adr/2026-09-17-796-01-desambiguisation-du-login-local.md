@@ -41,7 +41,7 @@ C'est la première option proposée par #796, et le code la réfute : le login p
 
 ### Pourquoi pas « identifiant + institution »
 
-C'est la seconde option. Elle exigerait que `POST /login` porte `X-Institution`, ce qu'il ne réclame pas — contrairement à `/forgot-password` et `/reset-password`, qui agissent DANS un établissement déjà connu. Au login, le tenant n'est pas encore résolu, et le supradmin n'appartient à aucune institution. Ce serait un changement de contrat front compris, pour un défaut qui se corrige sans.
+C'est la seconde option. Elle exigerait que `POST /login` porte `X-Institution`, ce qu'il ne réclame pas — contrairement à `/forgot-password` et `/reset-password`, qui agissent DANS un établissement déjà connu. *(Correction du 2026-11-24 : `/reset-password` est retirée par #1306 ; seule `/forgot-password` porte l'en-tête.)* Au login, le tenant n'est pas encore résolu, et le supradmin n'appartient à aucune institution. Ce serait un changement de contrat front compris, pour un défaut qui se corrige sans.
 
 ### Pourquoi le mot de passe est le bon départageur
 

@@ -68,6 +68,13 @@ class Notification extends Model
 
     public const TYPE_EVALUATION_APPROACHING = 'evaluation_approaching';
 
+    /** #1678 : une réclamation de note déposée (à l'enseignant), à trancher (à la gestion), tranchée (à l'élève). */
+    public const TYPE_RECLAMATION_DEPOSEE = 'reclamation_deposee';
+
+    public const TYPE_RECLAMATION_A_TRANCHER = 'reclamation_a_trancher';
+
+    public const TYPE_RECLAMATION_TRANCHEE = 'reclamation_tranchee';
+
     /**
      * Relation: Utilisateur destinataire
      *

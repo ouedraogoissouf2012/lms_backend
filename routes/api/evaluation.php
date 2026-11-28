@@ -8,6 +8,7 @@ use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 // split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
+use App\Http\Controllers\API\Evaluation\ReclamationsDeNotesController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentListController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentSubmissionController;
@@ -40,6 +41,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 
     // Notes de l'étudiant groupées par matière
     Route::get('my-grades', [EvaluationStudentListController::class, 'myGrades']);
+
+    // #1678 : réclamer une note (l'élève) et lire ses réclamations (chacun selon son rôle).
+    Route::post('evaluations/{id}/reclamations', [ReclamationsDeNotesController::class, 'deposer'])->whereNumber('id');
+    Route::get('reclamations', [ReclamationsDeNotesController::class, 'lister']);
 });
 
 // Routes enseignants/coordinateurs uniquement
@@ -61,6 +66,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function
 
     // Synchronisation vers KLASSCI
     Route::post('evaluations/{id}/sync-klassci', [EvaluationKlassciSyncController::class, 'syncToKlassci']);
+
+    // #1678 : l'avis de l'enseignant, la décision de la gestion.
+    Route::post('evaluations/{id}/reclamations/{reclamation}/avis', [ReclamationsDeNotesController::class, 'avis'])->whereNumber(['id', 'reclamation']);
+    Route::post('evaluations/{id}/reclamations/{reclamation}/decision', [ReclamationsDeNotesController::class, 'trancher'])->whereNumber(['id', 'reclamation']);
 });
 
 // Routes du personnel (garde `personnel`) pour les résultats d'évaluations

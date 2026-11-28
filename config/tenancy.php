@@ -37,6 +37,8 @@ return [
         'evaluations',
         'evaluation_questions',
         'evaluation_submissions',
+        // #1678 : les réclamations de notes.
+        'reclamations_de_notes',
         'seances',
         'esbtp_attendance',
         'lesson_progress',

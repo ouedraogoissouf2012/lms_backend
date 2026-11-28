@@ -4336,6 +4336,79 @@ components:
     # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
     # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
     # le code machine est `reason` (ADR-906-01, ADR-919-01).
+    ReclamationDeNote:
+      type: object
+      description: "#1678 : la reclamation d une note."
+      required: [id, evaluation_id, copie_id, eleve, motif, statut, note_contestee, avis, decision, klassci, depose_le]
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        evaluation_titre:
+          type: string
+          nullable: true
+        copie_id:
+          type: integer
+        eleve:
+          type: object
+          properties:
+            compte_id:
+              type: integer
+            nom:
+              type: string
+              nullable: true
+        motif:
+          type: string
+        statut:
+          type: string
+          enum: [deposee, avis_donne, tranchee]
+        note_contestee:
+          type: number
+          nullable: true
+        avis:
+          type: object
+          nullable: true
+          properties:
+            avis:
+              type: string
+              enum: [maintenir, corriger]
+            commentaire:
+              type: string
+              nullable: true
+            note_proposee:
+              type: number
+              nullable: true
+            le:
+              type: string
+              format: date-time
+              nullable: true
+        decision:
+          type: object
+          nullable: true
+          properties:
+            decision:
+              type: string
+              enum: [maintenue, corrigee]
+            commentaire:
+              type: string
+              nullable: true
+            note_decidee:
+              type: number
+              nullable: true
+            le:
+              type: string
+              format: date-time
+              nullable: true
+        klassci:
+          type: string
+          nullable: true
+          enum: [a_renvoyer, a_jour, null]
+          description: "Une note corrigee d une evaluation liee a KLASSCI : `a_renvoyer` tant que KLASSCI ne l a pas recue (un echec ou un refus de KLASSCI la laisse ainsi), puis `a_jour`. Nul sinon."
+        depose_le:
+          type: string
+          format: date-time
+          nullable: true
     BilanDeClasse:
       type: object
       description: "#1676 : moyennes, rangs et reussite d une classe. L eleve ne recoit que `eleves` (sa ligne), sans `statistiques` ni `couverture`."
@@ -7629,6 +7702,316 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KlassciIndisponible'
+
+  /evaluations/{id}/reclamations:
+    post:
+      tags:
+        - Evaluations
+      operationId: deposerUneReclamation
+      summary: "Reclamer la note de sa copie (#1678)"
+      description: |
+        L eleve conteste la note de SA copie finale, a la note visible, dans le delai de l ecole
+        (`settings.delai_reclamation_jours`, 7 par defaut) compte depuis la note finale. L enseignant
+        de l evaluation est notifie. Une seule reclamation ouverte par copie.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motif]
+              properties:
+                motif:
+                  type: string
+                  minLength: 5
+                  maxLength: 2000
+      responses:
+        '201':
+          description: "La reclamation deposee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReclamationDeNote'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Role sans ce droit (voir la description), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evaluation, copie ou reclamation introuvable pour l appelant (absente, d un autre eleve ou d une autre ecole)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Une reclamation de cette note est deja en cours (`grade_claim_already_open`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Motif invalide (`errors`), ou delai passe (`grade_claim_too_late`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /evaluations/{id}/reclamations/{reclamation}/avis:
+    post:
+      tags:
+        - Evaluations
+      operationId: donnerUnAvisSurUneReclamation
+      summary: "L avis de l enseignant sur une reclamation (#1678)"
+      description: |
+        L auteur de l evaluation, ou l admin de l ecole (jamais le coordinateur, qui tranche), maintient
+        ou propose de corriger la note. La gestion est notifiee.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: reclamation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [avis]
+              properties:
+                avis:
+                  type: string
+                  enum: [maintenir, corriger]
+                commentaire:
+                  type: string
+                  nullable: true
+                  maxLength: 2000
+                note_proposee:
+                  type: number
+                  nullable: true
+                  minimum: 0
+                  maximum: 20
+                  description: "Requise pour `corriger`."
+      responses:
+        '200':
+          description: "L avis donne."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReclamationDeNote'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Role sans ce droit (voir la description), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evaluation, copie ou reclamation introuvable pour l appelant (absente, d un autre eleve ou d une autre ecole)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "La reclamation n est pas a cette etape (`grade_claim_wrong_step`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /evaluations/{id}/reclamations/{reclamation}/decision:
+    post:
+      tags:
+        - Evaluations
+      operationId: trancherUneReclamation
+      summary: "La gestion tranche une reclamation (#1678)"
+      description: |
+        L admin ou le coordinateur de l ecole maintient la note, ou la corrige : la note qui compte
+        change (moyennes, rang et carnet suivent) et, pour une evaluation liee a KLASSCI, la copie est
+        a renvoyer (`klassci: a_renvoyer` tant que KLASSCI ne l a pas recue, meme apres un echec ou un
+        refus). L eleve est notifie.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: reclamation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [maintenue, corrigee]
+                note_decidee:
+                  type: number
+                  nullable: true
+                  minimum: 0
+                  maximum: 20
+                  description: "Requise pour `corrigee`."
+                commentaire:
+                  type: string
+                  nullable: true
+                  maxLength: 2000
+      responses:
+        '200':
+          description: "La reclamation tranchee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReclamationDeNote'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Role sans ce droit (voir la description), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Evaluation, copie ou reclamation introuvable pour l appelant (absente, d un autre eleve ou d une autre ecole)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "La reclamation n est pas a cette etape (`grade_claim_wrong_step`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /reclamations:
+    get:
+      tags:
+        - Evaluations
+      operationId: listerLesReclamations
+      summary: "Les reclamations de notes, et leurs compteurs (#1678)"
+      description: |
+        L eleve lit les siennes ; l enseignant, celles de ses evaluations ; la gestion, toute l ecole.
+      security:
+        - sanctum: []
+      parameters:
+        - name: statut
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [deposee, avis_donne, tranchee]
+      responses:
+        '200':
+          description: "Les compteurs et les reclamations, les plus recentes d abord."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    required: [compteurs, reclamations]
+                    properties:
+                      compteurs:
+                        type: object
+                        required: [en_attente_enseignant, a_trancher, corrigees_30j, maintenues_30j, a_renvoyer_a_klassci]
+                        properties:
+                          en_attente_enseignant:
+                            type: integer
+                          a_trancher:
+                            type: integer
+                          corrigees_30j:
+                            type: integer
+                          maintenues_30j:
+                            type: integer
+                          a_renvoyer_a_klassci:
+                            type: integer
+                      reclamations:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ReclamationDeNote'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /classes:
     post:

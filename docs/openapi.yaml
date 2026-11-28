@@ -618,6 +618,22 @@ components:
           $ref: '#/components/schemas/ClasseLocaleLigne'
 
     # #905 — une page de classes locales, chacune avec l etat de son code.
+    # #1648 - une filiere ou un niveau d etudes local, dans la forme du volet KLASSCI.
+    ElementDeStructure:
+      type: object
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+        code:
+          type: string
+          nullable: true
+        ordre:
+          type: integer
+          nullable: true
+          description: "Niveaux seulement"
+
     # #1806 - une sous-periode d une periode de formation.
     SousPeriode:
       type: object
@@ -14291,6 +14307,370 @@ paths:
           $ref: '#/components/responses/EtablissementDesactive'
 
   # ============ PROXY ROUTES (KLASSCI) ============
+  /filieres:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer une filiere (ecole qui tient son catalogue)"
+      description: |
+        #1648. La lecture reste `GET /proxy/filieres` et `GET /proxy/structure`.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Unique dans l ecole, a la casse et aux espaces pres ; vide : sans code"
+      responses:
+        '201':
+          description: "Cree"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementDeStructure'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, valeur invalide, ou code deja employe (`field_code_already_used`, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /filieres/{id}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une filiere (seuls les champs envoyes changent)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Unique dans l ecole, a la casse et aux espaces pres ; vide : sans code"
+      responses:
+        '200':
+          description: "Modifie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementDeStructure'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Une filiere introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, valeur invalide, ou code deja employe (`field_code_already_used`, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Supprimer une filiere"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Supprime"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Une filiere introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /niveaux-etudes:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer un niveau d etudes (ecole qui tient son catalogue)"
+      description: |
+        #1648. La lecture reste `GET /proxy/niveaux-etudes` et `GET /proxy/structure`.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Unique dans l ecole, a la casse et aux espaces pres ; vide : sans code"
+                ordre:
+                  type: integer
+                  minimum: 0
+                  maximum: 1000
+                  nullable: true
+                  description: "Trie la liste (L1 < L2) ; nul : apres, par libelle"
+      responses:
+        '201':
+          description: "Cree"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementDeStructure'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, valeur invalide, ou code deja employe (`level_code_already_used`, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /niveaux-etudes/{id}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier un niveau d etudes (seuls les champs envoyes changent)"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 191
+                code:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: "Unique dans l ecole, a la casse et aux espaces pres ; vide : sans code"
+                ordre:
+                  type: integer
+                  minimum: 0
+                  maximum: 1000
+                  nullable: true
+                  description: "Trie la liste (L1 < L2) ; nul : apres, par libelle"
+      responses:
+        '200':
+          description: "Modifie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ElementDeStructure'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Un niveau d etudes introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`libelle` absent ou vide, valeur invalide, ou code deja employe (`level_code_already_used`, sous `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Supprimer un niveau d etudes"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Supprime"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Un niveau d etudes introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /proxy/structure:
     get:
       tags:
@@ -14917,6 +15297,11 @@ paths:
       tags:
         - Proxy / KLASSCI
       summary: "Get branches/programs"
+      description: |
+        Meme route, autre source (ADR-EI-01, #1648) : dans une ecole KLASSCI, relaye KLASSCI ;
+        dans une ecole qui tient son catalogue, ses elements LOCAUX, `{id, nom, code}` (et
+        `ordre` pour un niveau), tries. Avant #1648, cette route appelait KLASSCI meme dans une
+        ecole qui n en a pas : une panne.
       security:
         - sanctum: []
       responses:
@@ -14936,6 +15321,11 @@ paths:
       tags:
         - Proxy / KLASSCI
       summary: "Get study levels"
+      description: |
+        Meme route, autre source (ADR-EI-01, #1648) : dans une ecole KLASSCI, relaye KLASSCI ;
+        dans une ecole qui tient son catalogue, ses elements LOCAUX, `{id, nom, code}` (et
+        `ordre` pour un niveau), tries. Avant #1648, cette route appelait KLASSCI meme dans une
+        ecole qui n en a pas : une panne.
       security:
         - sanctum: []
       responses:

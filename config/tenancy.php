@@ -54,6 +54,9 @@ return [
         // #1661 : le catalogue des pièces à fournir (institution_id NOT NULL).
         'pieces_a_fournir',
         'creneaux',
+        // #1648 — filières et niveaux d'une école qui tient son catalogue ; tables neuves, NOT NULL.
+        'filieres',
+        'niveaux_etudes',
         // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
         'sous_periodes',
         'classes',

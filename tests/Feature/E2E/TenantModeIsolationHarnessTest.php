@@ -145,15 +145,21 @@ final class TenantModeIsolationHarnessTest extends TestCase
      * « arrêtée par l'authentification ou le débit », qui rendraient eux aussi
      * zéro requête.
      *
-     * La sonde passait par `/proxy/structure`. Depuis le lot 3c, cette route a
-     * une source locale dans une école autonome : elle n'atteint plus le
-     * résolveur, et ne prouverait plus rien de lui. La sonde passe donc par
-     * `/proxy/filieres`, qui l'atteint encore. Quand une tranche lui donnera à
-     * son tour une source locale, la sonde devra changer de route encore.
+     * La sonde passait par `/proxy/structure`, puis (lot 3c) par `/proxy/filieres`.
+     * Depuis #1648, cette route a elle aussi une source locale dans une école
+     * autonome, et c'était la DERNIÈRE route du proxy à atteindre le résolveur avec
+     * les identifiants de l'école : aucune route ne le sonde plus de bout en bout.
+     * Le résolveur lui-même (aucune cible héritée du serveur, aucune requête
+     * sortante) est éprouvé directement par `TenantWithoutKlassciUrlIsAbsorbingTest`.
+     *
+     * La sonde d'atteinte devient : la route a été SERVIE par la source locale (200,
+     * liste vide alors que le faux KLASSCI rendrait une filière), donc ni
+     * l'authentification ni le débit ne l'ont arrêtée ; et l'invariant durable tient,
+     * zéro requête sortante malgré la cible et le jeton globaux posés en `setUp`.
      */
     public function test_une_ecole_autonome_n_emet_rien(): void
     {
-        Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
+        Http::fake(['*' => Http::response(['success' => true, 'data' => [['id' => 99]]], 200)]);
 
         $autonome = Institution::factory()->standalone()->create(['slug' => 'ecole-autonome']);
 
@@ -161,8 +167,8 @@ final class TenantModeIsolationHarnessTest extends TestCase
 
         Http::assertNothingSent();
 
-        self::assertSame(503, $reponse->getStatusCode(), 'Sonde d\'atteinte de la garde, pas l\'invariant.');
-        self::assertSame('30', $reponse->headers->get('Retry-After'));
+        self::assertSame(200, $reponse->getStatusCode(), 'Sonde d\'atteinte : servie par la source locale.');
+        self::assertSame([], $reponse->json('data'), 'La liste vient de l\'école, jamais d\'une réponse KLASSCI.');
     }
 
     private function ecole(string $mode, string $slug): Institution

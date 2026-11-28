@@ -165,12 +165,13 @@ final class ProxyOrganisationController extends Controller
     }
 
     /**
-     * GET /api/proxy/filieres — Filières.
+     * GET /api/proxy/filieres — Filières. Même route, autre source (ADR-EI-01, #1648) : avant, KLASSCI était
+     * appelé même dans une école qui n'en a pas.
      */
-    public function filieres(): JsonResponse
+    public function filieres(InstitutionStructureReader $structure): JsonResponse
     {
         try {
-            $data = $this->klassciService->getFilieres();
+            $data = $structure->filieres();
 
             return response()->json($data);
         } catch (\Exception $e) {
@@ -179,12 +180,12 @@ final class ProxyOrganisationController extends Controller
     }
 
     /**
-     * GET /api/proxy/niveaux-etudes — Niveaux d'études.
+     * GET /api/proxy/niveaux-etudes — Niveaux d'études. Même route, autre source (ADR-EI-01, #1648).
      */
-    public function niveauxEtudes(): JsonResponse
+    public function niveauxEtudes(InstitutionStructureReader $structure): JsonResponse
     {
         try {
-            $data = $this->klassciService->getNiveauxEtudes();
+            $data = $structure->niveauxEtudes();
 
             return response()->json($data);
         } catch (\Exception $e) {

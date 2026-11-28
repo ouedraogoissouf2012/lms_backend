@@ -10,6 +10,9 @@ use App\Services\Attendances\Appel\SaisieDeLAppel;
 use App\Services\Attendances\Emargement\EmargementParCode;
 use App\Services\Attendances\Emargement\KlassciEmargementParCode;
 use App\Services\Attendances\Emargement\LocalEmargementParCode;
+use App\Services\Attendances\Heures\HeuresDeLEnseignant;
+use App\Services\Attendances\Heures\KlassciHeuresDeLEnseignant;
+use App\Services\Attendances\Heures\LocalHeuresDeLEnseignant;
 use App\Services\Attendances\Justification\JustificationDAbsence;
 use App\Services\Attendances\Justification\KlassciJustificationDAbsence;
 use App\Services\Attendances\Justification\LocalJustificationDAbsence;
@@ -142,6 +145,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         EmargementParCode::class => [KlassciEmargementParCode::class, LocalEmargementParCode::class],
         // #1681 : la justification des absences ; une école KLASSCI justifie dans KLASSCI.
         JustificationDAbsence::class => [KlassciJustificationDAbsence::class, LocalJustificationDAbsence::class],
+        // #1682 : les heures des enseignants ; une école KLASSCI les tient dans KLASSCI.
+        HeuresDeLEnseignant::class => [KlassciHeuresDeLEnseignant::class, LocalHeuresDeLEnseignant::class],
         // #1683 : le suivi des présences ; une école KLASSCI tient ses présences dans KLASSCI.
         SuiviDesPresences::class => [KlassciSuiviDesPresences::class, LocalSuiviDesPresences::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).

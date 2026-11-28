@@ -27,10 +27,13 @@ final class LocalMatiereEditor
 {
     private const REFUS_MIROIR = 'Cette matière vient de KLASSCI : elle se modifie dans KLASSCI.';
 
-    public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
+    public function __construct(
+        private readonly PorteDuCatalogueLocal $porte,
+        private readonly RattachementALaStructure $structure,
+    ) {}
 
     /**
-     * @param  array{libelle?: string, code?: string|null, description?: string|null, coefficient?: int, credit?: int}  $modifications
+     * @param  array{libelle?: string, code?: string|null, description?: string|null, coefficient?: int, credit?: int, filiere_id?: int|null, niveau_id?: int|null}  $modifications
      *
      * @throws BusinessException 403 école KLASSCI ou matière miroir, 404 hors de l'école.
      * @throws CodeDeMatiereDejaEmploye 422 sur `code`, déjà employé dans l'établissement.
@@ -50,12 +53,15 @@ final class LocalMatiereEditor
             throw new BusinessException(self::REFUS_MIROIR, 403, reason: PorteDuCatalogueLocal::REASON);
         }
 
+        $structure = $this->structure->colonnes((int) $matiere->institution_id, $modifications);
+        unset($modifications['filiere_id'], $modifications['niveau_id']);
+
         if (array_key_exists('code', $modifications)) {
             $modifications['code'] = CodeDeMatiere::normalise($modifications['code']);
         }
 
-        return CodeDeMatiere::ecrire(function () use ($matiere, $modifications): Matiere {
-            $matiere->fill($modifications)->save();
+        return CodeDeMatiere::ecrire(function () use ($matiere, $modifications, $structure): Matiere {
+            $matiere->fill($modifications)->forceFill($structure)->save();
 
             return $matiere;
         });

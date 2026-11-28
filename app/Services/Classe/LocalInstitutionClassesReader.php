@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Classe;
 
+use App\Http\Presenters\ElementDeStructureEnVue;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\TrainingSession;
@@ -60,7 +61,7 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
         }
 
         $classes = ClassesAtteintes::par(Classe::query()->where('institution_id', $institution), $user, $institution)
-            ->with(['trainingSession' => static function ($periode) use ($institution): void {
+            ->with(['filiereLocale', 'niveauLocale', 'trainingSession' => static function ($periode) use ($institution): void {
                 $periode->where('institution_id', $institution);
             }])
             ->withCount([
@@ -82,7 +83,7 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
     }
 
     /**
-     * @return array{id: int, name: string, libelle: string, code: string|null, filiere: null, niveau: null, is_active: bool|null, places_occupees: int, places_totales: null, nb_matieres: int}
+     * @return array{id: int, name: string, libelle: string, code: string|null, filiere: array{id: int, nom: string, code: string|null}|null, niveau: array{id: int, nom: string, code: string|null}|null, is_active: bool|null, places_occupees: int, places_totales: null, nb_matieres: int}
      */
     private function ligne(Classe $classe): array
     {
@@ -94,8 +95,9 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
             'name' => $classe->libelle,
             'libelle' => $classe->libelle,
             'code' => $classe->code,
-            'filiere' => null,
-            'niveau' => null,
+            // #1648 B : la filière et le niveau LOCAUX, dans la forme du volet KLASSCI ; `null` sans rattachement.
+            'filiere' => ElementDeStructureEnVue::resume($classe->filiereLocale),
+            'niveau' => ElementDeStructureEnVue::resume($classe->niveauLocale),
             'is_active' => $periode instanceof TrainingSession ? $periode->estActive() : null,
             'places_occupees' => is_numeric($compte['places_occupees'] ?? null) ? (int) $compte['places_occupees'] : 0,
             'places_totales' => null,

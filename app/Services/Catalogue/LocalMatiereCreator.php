@@ -40,6 +40,7 @@ final class LocalMatiereCreator
 {
     public function __construct(
         private readonly PorteDuCatalogueLocal $porte,
+        private readonly RattachementALaStructure $structure,
     ) {}
 
     /**
@@ -52,8 +53,9 @@ final class LocalMatiereCreator
     public function creer(array $donnees): Matiere
     {
         $institution = $this->porte->etablissement();
+        $structure = $this->structure->colonnes($institution, $donnees);
 
-        return CodeDeMatiere::ecrire(fn (): Matiere => Matiere::create([
+        return CodeDeMatiere::ecrire(fn (): Matiere => tap((new Matiere)->forceFill($structure + [
             'libelle' => $donnees['libelle'],
             'code' => CodeDeMatiere::normalise($donnees['code'] ?? null),
             'description' => $donnees['description'] ?? null,
@@ -65,6 +67,6 @@ final class LocalMatiereCreator
             // correspondances par `whereIn('klassci_id', …)` où elle n'a rien à
             // faire.
             'klassci_id' => null,
-        ]));
+        ]))->save());
     }
 }

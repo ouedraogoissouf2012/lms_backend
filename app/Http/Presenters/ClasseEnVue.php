@@ -13,7 +13,7 @@ use App\Services\Catalogue\CapaciteDeClasse;
  */
 final class ClasseEnVue
 {
-    /** @return array{id: int, libelle: string, code: string|null, description: string|null, effectif: int|null} */
+    /** @return array{id: int, libelle: string, code: string|null, description: string|null, effectif: int|null, filiere: array{id: int, nom: string, code: string|null}|null, niveau: array{id: int, nom: string, code: string|null}|null} */
     public static function de(Classe $classe): array
     {
         return [
@@ -22,6 +22,9 @@ final class ClasseEnVue
             'code' => $classe->code === null ? null : (string) $classe->code,
             'description' => $classe->description === null ? null : (string) $classe->description,
             'effectif' => CapaciteDeClasse::lue($classe),
+            // #1648 B : la filière et le niveau LOCAUX, `null` sans rattachement.
+            'filiere' => ElementDeStructureEnVue::resume($classe->filiereLocale),
+            'niveau' => ElementDeStructureEnVue::resume($classe->niveauLocale),
         ];
     }
 }

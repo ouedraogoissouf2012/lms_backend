@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 class Matiere extends Model implements MirroredFromKlassci
 {
     /** @use HasFactory<MatiereFactory> */
-    use BelongsToInstitution, HasFactory, ResolvesMirroredIdentifier;
+    use BelongsToInstitution, Concerns\PorteUneStructureLocale, HasFactory, ResolvesMirroredIdentifier;
 
     protected $fillable = [
         'klassci_id',

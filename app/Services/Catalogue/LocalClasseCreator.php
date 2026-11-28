@@ -39,6 +39,7 @@ final class LocalClasseCreator
     public function __construct(
         private readonly PorteDuCatalogueLocal $porte,
         private readonly RattachementDeClasse $rattachement,
+        private readonly RattachementALaStructure $structure,
     ) {}
 
     /**
@@ -56,10 +57,11 @@ final class LocalClasseCreator
     {
         $institution = $this->porte->etablissement();
         $periode = $this->rattachement->periodeQuiRecoit($institution, $donnees['training_session_id'] ?? null);
+        $structure = $this->structure->colonnes($institution, $donnees);
 
         // #1521 : la base tranche l'unique `(institution_id, code)`, sans SELECT préalable ; sa
         // violation, et elle SEULE, devient une saisie invalide (`CodeDeClasse`, partagé avec #1652).
-        return CodeDeClasse::ecrire(fn (): Classe => Classe::create([
+        return CodeDeClasse::ecrire(fn (): Classe => tap((new Classe)->forceFill($structure + [
             'libelle' => $donnees['libelle'],
             'code' => CodeDeClasse::normalise($donnees['code'] ?? null),
             'description' => $donnees['description'] ?? null,
@@ -69,6 +71,6 @@ final class LocalClasseCreator
             // JAMAIS d'identifiant KLASSCI : une classe locale n'en a pas, et lui
             // en inventer un la rendrait indiscernable d'une classe miroitée.
             'klassci_id' => null,
-        ]));
+        ]))->save());
     }
 }

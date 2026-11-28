@@ -6,6 +6,7 @@ namespace App\Http\Presenters;
 
 use App\Models\Filiere;
 use App\Models\NiveauEtude;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Une filière ou un niveau d'études LOCAL, dans la forme du volet KLASSCI (#1648) : `{id, nom, code}`, et
@@ -24,6 +25,21 @@ final class ElementDeStructureEnVue
         }
 
         return $vue;
+    }
+
+    /**
+     * La filière ou le niveau d'une classe ou d'une matière (#1648, PR B), dans la forme d'une `combinaison` du volet
+     * KLASSCI : `{id, nom, code}`, ou `null` sans rattachement.
+     *
+     * @return array{id: int, nom: string, code: string|null}|null
+     */
+    public static function resume(?Model $ligne): ?array
+    {
+        if (! $ligne instanceof Filiere && ! $ligne instanceof NiveauEtude) {
+            return null;
+        }
+
+        return ['id' => $ligne->id, 'nom' => $ligne->libelle, 'code' => $ligne->code];
     }
 
     /**

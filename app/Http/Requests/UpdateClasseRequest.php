@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\PorteLaStructureLocale;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -16,6 +17,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class UpdateClasseRequest extends FormRequest
 {
+    use PorteLaStructureLocale;
+
     public function authorize(): bool
     {
         return true;
@@ -30,13 +33,14 @@ final class UpdateClasseRequest extends FormRequest
             'libelle' => ['sometimes', 'required', 'string', 'max:191'],
             'code' => ['sometimes', 'nullable', 'string', 'max:50'],
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            ...$this->reglesDeLaStructure(),
         ];
     }
 
     /**
      * Les seuls champs envoyés, typés.
      *
-     * @return array{libelle?: string, code?: string|null, description?: string|null}
+     * @return array{libelle?: string, code?: string|null, description?: string|null, filiere_id?: int|null, niveau_id?: int|null}
      */
     public function modifications(): array
     {
@@ -51,6 +55,6 @@ final class UpdateClasseRequest extends FormRequest
             }
         }
 
-        return $modifications;
+        return $modifications + $this->structure();
     }
 }

@@ -195,6 +195,16 @@ components:
           minimum: 1
           maximum: 60
           default: 1
+        filiere_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : une filiere LOCALE de l ecole (`/filieres`) ; nul la detache. D une autre ecole : 422."
+        niveau_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : un niveau d etudes LOCAL de l ecole (`/niveaux-etudes`) ; nul le detache. D une autre ecole : 422."
 
     MatiereUpdateInput:
       type: object
@@ -220,6 +230,16 @@ components:
           type: integer
           minimum: 1
           maximum: 60
+        filiere_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : une filiere LOCALE de l ecole (`/filieres`) ; nul la detache. D une autre ecole : 422."
+        niveau_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : un niveau d etudes LOCAL de l ecole (`/niveaux-etudes`) ; nul le detache. D une autre ecole : 422."
 
     MatiereCreated:
       type: object
@@ -245,6 +265,10 @@ components:
               type: integer
             credit:
               type: integer
+            filiere:
+              $ref: '#/components/schemas/StructureRattachee'
+            niveau:
+              $ref: '#/components/schemas/StructureRattachee'
 
     ClasseMatiereUpdateInput:
       type: object
@@ -565,6 +589,16 @@ components:
             FACULTATIF. Elle doit etre de cet etablissement et recevoir encore des
             inscriptions (ni annulee, ni close, ni archivee, ni purgee) : sinon 422
             sur `training_session_id`, sans qu aucune classe soit creee.
+        filiere_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : une filiere LOCALE de l ecole (`/filieres`) ; nul la detache. D une autre ecole : 422."
+        niveau_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : un niveau d etudes LOCAL de l ecole (`/niveaux-etudes`) ; nul le detache. D une autre ecole : 422."
 
     # #905 — une page de classes locales, chacune avec l etat de son code.
     # #1648 - une filiere ou un niveau d etudes local, dans la forme du volet KLASSCI.
@@ -582,6 +616,19 @@ components:
           type: integer
           nullable: true
           description: "Niveaux seulement"
+
+    # #1648 B - la filiere ou le niveau LOCAL d une classe ou d une matiere, `null` sans rattachement.
+    StructureRattachee:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+        code:
+          type: string
+          nullable: true
 
     ClassesLocalesPage:
       type: object
@@ -872,6 +919,10 @@ components:
               type: integer
               nullable: true
               description: "La CAPACITE de la classe (#1358) ; `null` quand elle n est pas renseignee."
+            filiere:
+              $ref: '#/components/schemas/StructureRattachee'
+            niveau:
+              $ref: '#/components/schemas/StructureRattachee'
 
     ClasseUpdateInput:
       type: object
@@ -889,6 +940,16 @@ components:
           type: string
           maxLength: 2000
           nullable: true
+        filiere_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : une filiere LOCALE de l ecole (`/filieres`) ; nul la detache. D une autre ecole : 422."
+        niveau_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "#1648 : un niveau d etudes LOCAL de l ecole (`/niveaux-etudes`) ; nul le detache. D une autre ecole : 422."
 
     TrainingSessionInput:
       type: object
@@ -10239,6 +10300,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`field_in_use` (#1648 B) : l element est employe par une classe ou une matiere ; detachez-les d abord."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -10427,6 +10494,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`level_in_use` (#1648 B) : l element est employe par une classe ou une matiere ; detachez-les d abord."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

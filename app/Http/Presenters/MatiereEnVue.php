@@ -12,7 +12,7 @@ use App\Models\Matiere;
  */
 final class MatiereEnVue
 {
-    /** @return array{id: int, libelle: string, code: string|null, description: string|null, coefficient: int, credit: int} */
+    /** @return array{id: int, libelle: string, code: string|null, description: string|null, coefficient: int, credit: int, filiere: array{id: int, nom: string, code: string|null}|null, niveau: array{id: int, nom: string, code: string|null}|null} */
     public static function de(Matiere $matiere): array
     {
         return [
@@ -22,6 +22,9 @@ final class MatiereEnVue
             'description' => $matiere->description === null ? null : (string) $matiere->description,
             'coefficient' => (int) $matiere->coefficient,
             'credit' => (int) $matiere->credit,
+            // #1648 B : la filière et le niveau LOCAUX, `null` sans rattachement.
+            'filiere' => ElementDeStructureEnVue::resume($matiere->filiereLocale),
+            'niveau' => ElementDeStructureEnVue::resume($matiere->niveauLocale),
         ];
     }
 }

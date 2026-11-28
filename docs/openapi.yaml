@@ -12317,7 +12317,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
         '404':
-          description: "Not found"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
             Erreur de validation (`errors`), `is_published` envoye (`publish_via_dedicated_route`, la
@@ -12380,7 +12384,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
         '404':
-          description: "Not found"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # ============ CYCLE EVALUATION (#892) ============
   # Chaque code et chaque cle ci-dessous a ete MESURE par appel reel de la
@@ -13257,13 +13265,18 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
             Aucune question (`reason: evaluation_without_questions`, C16, le meme refus que la mise
@@ -13377,14 +13390,19 @@ paths:
         '403':
           description: |
             Role insuffisant, enseignant non proprietaire, coordinateur sur une
-            evaluation non terminee — ou evaluation inconnue dans cet
-            etablissement : elle rend 403, pas 404. Seul le refus du coordinateur
+            evaluation non terminee (dans son ecole). Seul le refus du coordinateur
             porte `reason: preview_requires_finished_evaluation`.
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusApercuEvaluation'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -13486,13 +13504,18 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, enseignant non proprietaire — ou evaluation
-            inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -13577,15 +13600,14 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '404':
-          description: "Copie inexistante, ou appartenant a une autre evaluation"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs. Aussi : copie inexistante, ou appartenant a une autre evaluation"
           content:
             application/json:
               schema:
@@ -13766,13 +13788,18 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
-            Role insuffisant, enseignant non proprietaire — ou evaluation
-            inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '503':
@@ -13936,15 +13963,14 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '404':
-          description: "KLASSCI ne connait pas cette evaluation, relaye. Rien n est marque."
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs. Aussi : KLASSCI ne connait pas cette evaluation, relaye. Rien n est marque."
           content:
             application/json:
               schema:

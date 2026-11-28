@@ -247,6 +247,16 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/v1/evaluations/{id}/dispenses": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/v1/files/{file}": "*",
     "DELETE api/v1/forum/posts/{post}": "*",
     "DELETE api/v1/forum/topics/{topic}": "*",
@@ -2785,6 +2795,16 @@
         "supradmin"
     ],
     "PUT api/v1/evaluations/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/evaluations/{id}/dispenses": [
         "enseignant",
         "teacher",
         "coordinateur",

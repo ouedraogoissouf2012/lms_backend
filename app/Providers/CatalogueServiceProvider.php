@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Attendances\Appel\KlassciSaisieDeLAppel;
+use App\Services\Attendances\Appel\LocalSaisieDeLAppel;
+use App\Services\Attendances\Appel\SaisieDeLAppel;
 use App\Services\Attendances\KlassciSeanceSansLigneLocale;
 use App\Services\Attendances\LocalSeanceSansLigneLocale;
 use App\Services\Attendances\SeanceSansLigneLocale;
@@ -124,6 +127,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         SeanceDesigneeStrictement::class => [KlassciSeanceDesigneeStricte::class, LocalSeanceDesignee::class],
         // Modifier une séance : l'école autonome modifie, l'école KLASSCI refuse (#1121).
         ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
+        // #1649 : l'appel d'une séance ; une école KLASSCI le saisit dans KLASSCI.
+        SaisieDeLAppel::class => [KlassciSaisieDeLAppel::class, LocalSaisieDeLAppel::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).
         CreationDeSeance::class => [KlassciCreationDeSeance::class, LocalSeanceCreator::class],
         // Les présences d'une séance KLASSCI sans ligne locale (#1098).

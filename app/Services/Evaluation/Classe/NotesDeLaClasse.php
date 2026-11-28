@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Classe;
 
+use App\Enums\EtatDeLaCase;
 use App\Models\Classe;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
@@ -30,12 +31,14 @@ final class NotesDeLaClasse
     /**
      * @param  Collection<int, Evaluation>  $evaluations
      * @param  Collection<int, EvaluationSubmission>  $copies
+     * @param  Collection<int, EvaluationSubmission>  $sansNoteFinale  #1698 : à corriger ou verrouillées
      * @param  array<int, int>  $matieres  id local de la matière, par id d'évaluation
      * @param  array<int, float>  $coefficients  coefficient de la matière, par id d'évaluation
      */
     private function __construct(
         public readonly Collection $evaluations,
         Collection $copies,
+        Collection $sansNoteFinale,
         public readonly array $matieres,
         public readonly array $coefficients,
     ) {
@@ -44,10 +47,16 @@ final class NotesDeLaClasse
         foreach ($copies as $copie) {
             $this->parEvaluation[(int) $copie->evaluation_id][] = $copie;
         }
+        foreach ($sansNoteFinale as $copie) {
+            $this->sansNoteFinale[(int) $copie->evaluation_id][] = $copie;
+        }
     }
 
     /** @var array<int, list<EvaluationSubmission>> */
     private array $parEvaluation = [];
+
+    /** @var array<int, list<EvaluationSubmission>> */
+    private array $sansNoteFinale = [];
 
     public static function lire(
         Classe $classe,
@@ -70,9 +79,12 @@ final class NotesDeLaClasse
             ->filter(static fn (Evaluation $evaluation): bool => ResultatsVisibles::pour($evaluation))
             ->values();
 
+        $ids = array_values($evaluations->map(static fn (Evaluation $evaluation): int => (int) $evaluation->id)->all());
+
         return new self(
             $evaluations,
-            $copiesFinales->desEvaluations(array_values($evaluations->map(static fn (Evaluation $evaluation): int => (int) $evaluation->id)->all()), $etablissement),
+            $copiesFinales->desEvaluations($ids, $etablissement),
+            $copiesFinales->sansNoteFinale($ids, $etablissement),
             $coefficients->matieresLocales($evaluations),
             $coefficients->pour($evaluations),
         );
@@ -88,5 +100,25 @@ final class NotesDeLaClasse
         }
 
         return null;
+    }
+
+    /**
+     * #1698 : l'état d'une case SANS copie finale. Une remise à corriger l'emporte sur une
+     * tentative verrouillée : l'élève a rendu une copie, sa note viendra.
+     */
+    public function etatSansNote(EleveDeLaClasse $eleve, int $evaluation): EtatDeLaCase
+    {
+        $etat = EtatDeLaCase::Manquant;
+        foreach ($this->sansNoteFinale[$evaluation] ?? [] as $copie) {
+            if (! $eleve->possede($copie)) {
+                continue;
+            }
+            if ($copie->status !== 'verrouille') {
+                return EtatDeLaCase::ACorriger;
+            }
+            $etat = EtatDeLaCase::EnRetard;
+        }
+
+        return $etat;
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\Evaluation\Teacher\TeacherEvaluationViewService;
 use App\Services\Search\TeacherOwnershipScope;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Authorization check shared by `DeleteEvaluationRequest`, `PublishEvaluationRequest`,
@@ -36,6 +37,10 @@ use App\Services\Search\TeacherOwnershipScope;
  *    qui serait vulnérable à un re-sync compromis.
  *  - **Admin bypass** : `$user->isAdmin()` court-circuite le check d'ownership
  *    pour les rôles administratifs (admin, administrateur, superAdmin, supradmin).
+ *  - **Hors de portée : introuvable (#1782)** : une évaluation absente, supprimée ou
+ *    d'une AUTRE école rend 404, du même corps dans les trois cas, AVANT tout contrôle
+ *    de droit ({@see evaluationDeLEcoleOuIntrouvable()}). Un 403 dirait qu'elle existe
+ *    ailleurs ; le 403 reste pour un droit manquant dans SON école.
  *
  * ## Usage
  *
@@ -69,7 +74,8 @@ trait ChecksEvaluationOwnership
 {
     /**
      * Returns true iff the authenticated user can act on the evaluation
-     * referenced by `$this->route('id')`. False otherwise → 403.
+     * referenced by `$this->route('id')`. False otherwise → 403 ; hors de
+     * portée → 404 (#1782).
      *
      * Ne dépend que de :
      *  - `auth()->user()` (pattern FormRequest standard)
@@ -82,6 +88,7 @@ trait ChecksEvaluationOwnership
         if (! $user) {
             return false;
         }
+        $this->evaluationDeLEcoleOuIntrouvable($user);
 
         // Coordinators are excluded from evaluation mutations by business rule.
         if ($user->isCoordinator()) {
@@ -93,7 +100,7 @@ trait ChecksEvaluationOwnership
 
     /**
      * Returns true iff the authenticated user may READ the notes attached to the
-     * routed evaluation. False otherwise -> 403.
+     * routed evaluation. False otherwise -> 403 ; hors de portee -> 404 (#1782).
      *
      * ## Pourquoi une seconde methode, et pas la premiere reutilisee
      *
@@ -120,7 +127,11 @@ trait ChecksEvaluationOwnership
         if (! $user) {
             return false;
         }
+        $this->evaluationDeLEcoleOuIntrouvable($user);
 
+        // Le coordinateur lit les évaluations de SON école. La portée est relue ici, et non
+        // déduite du contrôle ci-dessus : la règle tient d'elle-même si ce contrôle venait à
+        // manquer (défense en profondeur).
         if ($user->isCoordinator()) {
             return $this->routedEvaluationForInstitution($user) !== null;
         }
@@ -167,6 +178,21 @@ trait ChecksEvaluationOwnership
 
         return $userKlassciEnseignantId !== null
             && $evaluation->klassci_enseignant_id === $userKlassciEnseignantId;
+    }
+
+    /**
+     * #1782 : l'evaluation routee existe-t-elle, non supprimee, DANS l'ecole de
+     * l'appelant ? Sinon elle est introuvable : 404, avec un message FIXE, donc le
+     * meme corps pour une evaluation absente, supprimee ou d'une autre ecole. Un
+     * appelant sans ecole n'a aucune evaluation dans sa portee.
+     *
+     * @throws NotFoundHttpException
+     */
+    private function evaluationDeLEcoleOuIntrouvable(User $user): void
+    {
+        if ($this->routedEvaluationForInstitution($user) === null) {
+            throw new NotFoundHttpException('Évaluation introuvable.');
+        }
     }
 
     /**

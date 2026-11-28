@@ -51,6 +51,9 @@ return [
         'matricules_sequences',
         // #1659 : les demandes d'inscription (institution_id NOT NULL).
         'demandes_inscription',
+        // #1663 : règles et décisions de passage (institution_id NOT NULL).
+        'regles_de_passage',
+        'decisions_de_passage',
         'creneaux',
         // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
         'sous_periodes',

@@ -48,6 +48,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "DELETE api/classes/{classe}/regles-de-passage": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "DELETE api/configuration": [
         "superAdmin",
         "supradmin"
@@ -200,6 +208,14 @@
         "supradmin"
     ],
     "DELETE api/v1/classes/{classe}/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/classes/{classe}/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -444,6 +460,22 @@
     "GET api/chapters/{chapter}/video": "*",
     "GET api/chapters/{id}": "*",
     "GET api/classes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/classes/{classe}/passages": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/classes/{classe}/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -778,6 +810,14 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/regles-de-passage": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/search": "*",
     "GET api/search/history": "*",
     "GET api/search/suggestions": "*",
@@ -933,6 +973,22 @@
     "GET api/v1/chapters/{chapter}/video": "*",
     "GET api/v1/chapters/{id}": "*",
     "GET api/v1/classes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/classes/{classe}/passages": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/classes/{classe}/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -1258,6 +1314,14 @@
     "GET api/v1/quizzes/{quiz}/attempts": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -2687,7 +2751,23 @@
         "superAdmin",
         "supradmin"
     ],
+    "PUT api/classes/{classe}/passages/{eleve}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/classes/{classe}/periode": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/classes/{classe}/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -2742,6 +2822,14 @@
     "PUT api/quizzes/{quiz}": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -2810,7 +2898,23 @@
         "superAdmin",
         "supradmin"
     ],
+    "PUT api/v1/classes/{classe}/passages/{eleve}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/v1/classes/{classe}/periode": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/classes/{classe}/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -2865,6 +2969,14 @@
     "PUT api/v1/quizzes/{quiz}": [
         "enseignant",
         "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/regles-de-passage": [
         "coordinateur",
         "coordinator",
         "admin",

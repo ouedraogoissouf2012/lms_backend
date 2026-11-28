@@ -6,12 +6,12 @@ namespace App\Services\Evaluation\Classe;
 
 use App\Models\Classe;
 use App\Models\Evaluation;
-use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Evaluation\Student\CoefficientsDesMatieres;
 use App\Services\Evaluation\Student\CopiesFinales;
 use App\Services\Evaluation\Student\Moyennes;
+use App\Services\Reinscription\SeuilDePassage;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class BilanDeClasse
 {
-    public const SEUIL_PAR_DEFAUT = 10.0;
+    public const SEUIL_PAR_DEFAUT = SeuilDePassage::PAR_DEFAUT;
 
     public const SOURCE = 'lms';
 
@@ -76,13 +76,10 @@ final class BilanDeClasse
     }
 
     /** Le seuil de réussite de l'école (`settings.seuil_reussite`, sur 20), 10 par défaut. */
+    /** #1663 : le seuil de la classe a UNE source, que lisent aussi les propositions de passage. */
     public static function seuil(Classe $classe): float
     {
-        // Par le modèle : `value()` rendrait le JSON brut de la colonne, sans le cast `array`.
-        $reglages = Institution::query()->find($classe->institution_id, ['id', 'settings'])?->settings;
-        $seuil = is_array($reglages) ? ($reglages['seuil_reussite'] ?? null) : null;
-
-        return is_numeric($seuil) && (float) $seuil >= 0 && (float) $seuil <= 20 ? (float) $seuil : self::SEUIL_PAR_DEFAUT;
+        return SeuilDePassage::pour($classe);
     }
 
     /** @return array<int, float> coefficient de la matière (id local), dans cette classe */

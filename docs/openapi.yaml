@@ -4686,6 +4686,163 @@ components:
         data:
           $ref: '#/components/schemas/DemandeDInscription'
 
+    ReglesDePassage:
+      type: object
+      additionalProperties: false
+      required:
+        - moyenne_passage
+        - moyenne_rattrapage
+        - max_matieres_rattrapage
+        - redoublement_autorise
+        - max_redoublements
+      properties:
+        moyenne_passage:
+          type: number
+        moyenne_rattrapage:
+          type: number
+        max_matieres_rattrapage:
+          type: integer
+        redoublement_autorise:
+          type: boolean
+        max_redoublements:
+          type: integer
+
+    ReglesDePassageSaisie:
+      type: object
+      additionalProperties: false
+      properties:
+        moyenne_passage:
+          type: number
+          minimum: 0
+          maximum: 20
+          nullable: true
+        moyenne_rattrapage:
+          type: number
+          minimum: 0
+          maximum: 20
+          nullable: true
+        max_matieres_rattrapage:
+          type: integer
+          minimum: 0
+          maximum: 20
+          nullable: true
+        redoublement_autorise:
+          type: boolean
+          nullable: true
+        max_redoublements:
+          type: integer
+          minimum: 0
+          maximum: 10
+          nullable: true
+
+    ReglesDUneClasse:
+      type: object
+      additionalProperties: false
+      required:
+        - effective
+        - surcharge
+      properties:
+        effective:
+          $ref: '#/components/schemas/ReglesDePassage'
+        surcharge:
+          type: object
+          nullable: true
+          additionalProperties: false
+          properties:
+            moyenne_passage:
+              type: number
+              nullable: true
+            moyenne_rattrapage:
+              type: number
+              nullable: true
+            max_matieres_rattrapage:
+              type: integer
+              nullable: true
+            redoublement_autorise:
+              type: boolean
+              nullable: true
+            max_redoublements:
+              type: integer
+              nullable: true
+
+    LigneDePassage:
+      type: object
+      additionalProperties: false
+      required:
+        - eleve_id
+        - nom
+        - moyenne_generale
+        - matieres_sous_le_seuil
+        - redoublements_precedents
+        - proposition
+        - decision
+      properties:
+        eleve_id:
+          type: integer
+        nom:
+          type: string
+        moyenne_generale:
+          type: number
+          nullable: true
+        matieres_sous_le_seuil:
+          type: integer
+        redoublements_precedents:
+          type: integer
+        proposition:
+          type: string
+          nullable: true
+          enum: [passe, rattrapage, redouble, exclu, null]
+        decision:
+          type: string
+          nullable: true
+          enum: [passe, rattrapage, redouble, exclu, null]
+        motif:
+          type: string
+          nullable: true
+        decide_le:
+          type: string
+          nullable: true
+
+    PassagesDUneClasse:
+      type: object
+      additionalProperties: false
+      required:
+        - classe
+        - periode
+        - regles
+        - eleves
+        - compteurs
+      properties:
+        classe:
+          type: object
+          required:
+            - id
+            - libelle
+          properties:
+            id:
+              type: integer
+            libelle:
+              type: string
+        periode:
+          type: object
+          properties:
+            du:
+              type: string
+              nullable: true
+            au:
+              type: string
+              nullable: true
+        regles:
+          $ref: '#/components/schemas/ReglesDePassage'
+        eleves:
+          type: array
+          items:
+            $ref: '#/components/schemas/LigneDePassage'
+        compteurs:
+          type: object
+          additionalProperties:
+            type: integer
+
     ValidationFailed:
       type: object
       properties:
@@ -9790,6 +9947,371 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '422':
           description: "Motif absent ou trop long."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /regles-de-passage:
+    get:
+      tags:
+        - Reinscription
+      operationId: lireLesReglesDePassage
+      summary: "Les regles de passage de l ecole"
+      description: "#1663. La moyenne de passage est settings.seuil_reussite, la seule source."
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les regles"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReglesDePassage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Reinscription
+      operationId: ecrireLesReglesDePassage
+      summary: "Regler le passage pour l ecole"
+      description: "#1663. Champs facultatifs ; moyenne_passage ecrit settings.seuil_reussite."
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReglesDePassageSaisie'
+      responses:
+        '200':
+          description: "Les regles a jour"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReglesDePassage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Champ invalide ; ou moyenne de rattrapage au-dessus de la moyenne de passage."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /classes/{classe}/regles-de-passage:
+    get:
+      tags:
+        - Reinscription
+      operationId: lireLesReglesDUneClasse
+      summary: "Les regles d une classe"
+      description: "#1663. La regle effective, et la surcharge de la classe (null sans surcharge)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Effective et surcharge"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReglesDUneClasse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Classe locale introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Reinscription
+      operationId: surchargerLesReglesDUneClasse
+      summary: "Surcharger les regles d une classe"
+      description: "#1663. Un champ null herite de l ecole."
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReglesDePassageSaisie'
+      responses:
+        '200':
+          description: "Effective et surcharge"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReglesDUneClasse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Classe locale introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Champ invalide ; ou moyenne de rattrapage au-dessus de la moyenne de passage."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Reinscription
+      operationId: retirerLaSurchargeDUneClasse
+      summary: "Retirer la surcharge d une classe"
+      description: "#1663. La classe suit de nouveau l ecole."
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Effective, sans surcharge"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ReglesDUneClasse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Classe locale introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /classes/{classe}/passages:
+    get:
+      tags:
+        - Reinscription
+      operationId: lesPropositionsDePassage
+      summary: "Les propositions de passage d une classe"
+      description: "#1663. Une par eleve, sur le bilan de classe aux dates de sa periode ; null quand rien n est a moyenner."
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les propositions"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/PassagesDUneClasse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Classe locale introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /classes/{classe}/passages/{eleve}:
+    put:
+      tags:
+        - Reinscription
+      operationId: corrigerUnePropositionDePassage
+      summary: "Corriger une proposition, avec un motif"
+      description: "#1663. Auditee. Un eleve hors de la classe : 404."
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: eleve
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - decision
+                - motif
+              properties:
+                decision:
+                  type: string
+                  enum: [passe, rattrapage, redouble, exclu]
+                motif:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: "La ligne de l eleve"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/LigneDePassage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI, ou classe MIROIR de l ecole (venue de KLASSCI) : `reason: catalogue_managed_by_klassci`, un refus motive, pas le 404 d une classe inconnue. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Classe ou eleve introuvable (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Decision inconnue, ou motif absent."
           content:
             application/json:
               schema:

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\API\LMS\LMSBulletinsController;
 use App\Http\Controllers\API\LMS\LMSClasseBilanController;
 use App\Http\Controllers\API\LMS\LMSClasseLocalDetailsController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
@@ -66,6 +67,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/classes/{classe}/resultats', [LMSClasseBilanController::class, 'show'])
         ->whereNumber('classe')
         ->name('lms.classes.resultats');
+
+    // #1677 (B1) : le modèle de bulletin de l'école, les appréciations d'une classe (personnel).
+    Route::get('/bulletins/modele', [LMSBulletinsController::class, 'modele'])->middleware('personnel')->name('lms.bulletins.modele');
+    Route::put('/bulletins/modele', [LMSBulletinsController::class, 'enregistrerModele'])->middleware('personnel')->name('lms.bulletins.modele.enregistrer');
+    Route::get('/classes/{classe}/appreciations', [LMSBulletinsController::class, 'appreciations'])->whereNumber('classe')->middleware('personnel')->name('lms.classes.appreciations');
+    Route::put('/classes/{classe}/appreciations', [LMSBulletinsController::class, 'ecrireAppreciation'])->whereNumber('classe')->middleware('personnel')->name('lms.classes.appreciations.ecrire');
 
     Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
         ->middleware('role:enseignant,coordinateur')

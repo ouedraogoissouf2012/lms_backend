@@ -37,6 +37,9 @@ return [
         'evaluations',
         'evaluation_questions',
         'evaluation_submissions',
+        // #1677 (B1) : le modèle de bulletin d'une école, les appréciations.
+        'modeles_de_bulletin',
+        'appreciations_de_bulletin',
         'seances',
         'esbtp_attendance',
         'lesson_progress',

@@ -992,6 +992,16 @@
         "supradmin"
     ],
     "GET api/v1/evaluations/{id}/time-status": "*",
+    "GET api/v1/evaluations/{id}/tirages": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/files": "*",
     "GET api/v1/files/stats": "*",
     "GET api/v1/files/{id}": "*",
@@ -2785,6 +2795,16 @@
         "supradmin"
     ],
     "PUT api/v1/evaluations/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/evaluations/{id}/tirages": [
         "enseignant",
         "teacher",
         "coordinateur",

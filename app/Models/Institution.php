@@ -32,6 +32,8 @@ class Institution extends Model
         'primary_color',
         'is_active',
         'settings',
+        // #1658 : une inscription par code attend la validation de l ecole.
+        'inscriptions_a_valider',
     ];
 
     /**
@@ -47,6 +49,7 @@ class Institution extends Model
     protected $casts = [
         'mode' => InstitutionMode::class,
         'is_active' => 'boolean',
+        'inscriptions_a_valider' => 'boolean',
         'settings' => 'array',
         'klassci_api_token_encrypted' => 'encrypted',
     ];

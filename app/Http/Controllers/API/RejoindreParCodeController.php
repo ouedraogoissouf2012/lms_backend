@@ -34,11 +34,21 @@ final class RejoindreParCodeController extends AuthenticatedController
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
-        $nouvelle = $rejointe->adhesion === Adhesion::Nouvelle;
+        $enAttente = $rejointe->adhesion === Adhesion::EnAttente;
+        $nouvelle = $enAttente || $rejointe->adhesion === Adhesion::Nouvelle;
+        $message = match (true) {
+            $enAttente => 'Votre demande est enregistrée : elle attend la validation de votre établissement.',
+            $nouvelle => 'Vous avez rejoint la classe.',
+            default => 'Vous êtes déjà inscrit dans cette classe.',
+        };
 
         return $this->successResponse(
-            ['classe' => ['id' => $rejointe->classe->getKey(), 'libelle' => $rejointe->classe->libelle]],
-            $nouvelle ? 'Vous avez rejoint la classe.' : 'Vous êtes déjà inscrit dans cette classe.',
+            [
+                'classe' => ['id' => $rejointe->classe->getKey(), 'libelle' => $rejointe->classe->libelle],
+                // #1658 : l'élève sait si son accès est ouvert ou attend l'école.
+                'validation' => $enAttente ? 'en_attente' : 'validee',
+            ],
+            $message,
             $nouvelle ? 201 : 200
         );
     }

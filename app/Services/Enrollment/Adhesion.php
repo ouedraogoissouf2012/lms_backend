@@ -19,4 +19,6 @@ enum Adhesion
 {
     case Nouvelle;
     case DejaActive;
+    /** #1658 : l'adhésion est née, mais attend la validation de l'école (réglage `inscriptions_a_valider`). */
+    case EnAttente;
 }

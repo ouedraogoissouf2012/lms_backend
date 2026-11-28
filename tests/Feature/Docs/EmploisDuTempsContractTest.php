@@ -91,6 +91,10 @@ final class EmploisDuTempsContractTest extends TestCase
         $this->contrat($this->api()->getJson('/api/lms/emplois-du-temps/424242')->assertNotFound(), self::UN, 'get');
         $this->contrat($this->api()->postJson('/api'.self::RACINE, ['titre' => 'S1'])->assertUnprocessable(), self::RACINE, 'post');
         $this->contrat($this->asTenant($this->enseignant)->getJson('/api'.self::RACINE)->assertForbidden(), self::RACINE, 'get');
+        $archivee = $this->classe($this->ecole, 'Terminale Z');
+        $archivee->forceFill(['archivee_le' => now()])->save();
+        $this->contrat($this->api()->postJson('/api'.self::RACINE, ['classe_id' => $archivee->id] + $this->champs())
+            ->assertStatus(409)->assertJsonPath('reason', 'class_archived'), self::RACINE, 'post');
         $klassci = $this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur');
         $this->contrat($this->asTenant($klassci)->getJson('/api'.self::RACINE.'/alertes')
             ->assertForbidden()->assertJsonPath('reason', 'catalogue_managed_by_klassci'), self::RACINE.'/alertes', 'get');

@@ -5237,7 +5237,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "`no_institution` : compte sans etablissement resolu."
+          description: "`no_institution` : compte sans etablissement resolu. `class_archived` : la classe est archivee (#1763), elle ne recoit plus d'emploi du temps ; rien n'est cree."
           content:
             application/json:
               schema:
@@ -5614,7 +5614,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "`no_institution` : compte sans etablissement resolu."
+          description: "`no_institution` : compte sans etablissement resolu. `class_archived` : la classe de cet emploi du temps est archivee (#1763) ; aucune seance n'est creee."
           content:
             application/json:
               schema:
@@ -5680,7 +5680,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "`no_institution` : compte sans etablissement resolu."
+          description: "`no_institution` : compte sans etablissement resolu. `class_archived` : la classe cible est archivee (#1763) ; rien n'est copie."
           content:
             application/json:
               schema:

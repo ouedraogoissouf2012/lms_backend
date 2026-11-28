@@ -194,8 +194,8 @@ final class RejoindreParCodeTest extends TestCase
 
     public function test_l_administrateur_d_ecole_ne_rejoint_pas_une_classe_comme_apprenant(): void
     {
-        // `EnsureRole` laisse passer le `superAdmin` d'établissement sur toute
-        // route qui n'exige pas `supradmin` : `role:etudiant` ne l'arrête pas.
+        // `PermissionsDuRole` donne au `superAdmin` d'établissement toute permission hors
+        // de la plateforme : `permission:inscription.rejoindre` ne l'arrête pas.
         // Sans le contrôle du service, il apparaîtrait parmi les élèves.
         [$ecole, $code] = $this->classeAvecCode();
         $admin = User::factory()->create(['institution_id' => $ecole->getKey(), 'role' => 'superAdmin']);

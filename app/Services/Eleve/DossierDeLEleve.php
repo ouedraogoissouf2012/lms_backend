@@ -27,6 +27,8 @@ use Illuminate\Support\Str;
  */
 final class DossierDeLEleve
 {
+    public const DOSSIER_ABSENT = 'dossier_absent';
+
     private const REDUIT = ['matricule', 'nom', 'prenoms', 'photo_url'];
 
     public function __construct(
@@ -59,11 +61,7 @@ final class DossierDeLEleve
      */
     public function lire(User $acteur, int $eleveId): array
     {
-        $eleve = $this->eleve($acteur, $eleveId);
-        $complet = $acteur->isManager() || $acteur->is($eleve);
-        if (! $complet && ! $this->enseigneA($acteur, $eleve)) {
-            throw new BusinessException('Ce dossier n\'est pas accessible.', 403);
-        }
+        ['eleve' => $eleve, 'complet' => $complet] = $this->lecteur($acteur, $eleveId);
 
         $local = $this->porte->ouvertePour(Institution::query()->find($eleve->institution_id));
         $dossier = $local ? $this->presentation->locale($eleve) : $this->presentation->klassci($eleve);
@@ -73,6 +71,42 @@ final class DossierDeLEleve
             'source' => $local ? 'lms' : 'klassci',
             'dossier' => $dossier === null || $complet ? $dossier : array_intersect_key($dossier, array_flip(self::REDUIT)),
         ];
+    }
+
+    /**
+     * Le dossier EXISTANT d'un élève de l'école de l'acteur : ses tuteurs et sa photo en dépendent.
+     *
+     * @throws BusinessException 404, 409 `dossier_absent`
+     */
+    public function dossierExistant(User $acteur, int $eleveId): DossierEleve
+    {
+        $eleve = $this->eleve($acteur, $eleveId);
+        $dossier = DossierEleve::query()->withoutGlobalScopes()->where('user_id', $eleve->id)->first();
+
+        if (! $dossier instanceof DossierEleve) {
+            throw new BusinessException('Créez d\'abord le dossier de l\'élève.', 409, reason: self::DOSSIER_ABSENT);
+        }
+
+        return $dossier;
+    }
+
+    /**
+     * La règle de LECTURE du dossier, en un seul lieu (le dossier et sa photo la partagent) : la gestion et l'élève
+     * lui-même lisent tout (`complet`), un enseignant d'une de ses classes en partie ; tout autre : 403.
+     *
+     * @return array{eleve: User, complet: bool}
+     *
+     * @throws BusinessException 403, 404
+     */
+    public function lecteur(User $acteur, int $eleveId): array
+    {
+        $eleve = $this->eleve($acteur, $eleveId);
+        $complet = $acteur->isManager() || $acteur->is($eleve);
+        if (! $complet && ! $this->enseigneA($acteur, $eleve)) {
+            throw new BusinessException('Ce dossier n\'est pas accessible.', 403);
+        }
+
+        return ['eleve' => $eleve, 'complet' => $complet];
     }
 
     /**

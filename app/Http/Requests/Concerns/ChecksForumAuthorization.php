@@ -16,7 +16,7 @@ use App\Models\User;
  *     institution-scoped moderators. Must be confined to their own
  *     `institution_id`.
  *   - **Cross-tenant platform manager** : `supradmin` — bypasses tenant
- *     isolation by design (cf. `EnsureRole::userHasRole()` L107-108).
+ *     isolation by design (cf. `PermissionsDuRole`).
  *
  * Using `isAdmin()` in a FormRequest's `authorize()` therefore lets a tenant-A
  * admin moderate tenant-B resources (CRITICAL-09 IDOR class). This trait

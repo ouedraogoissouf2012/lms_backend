@@ -2,6 +2,19 @@
 
 declare(strict_types=1);
 
+/*
+ * #1868 : les tables tenant-scopées NEUVES se déclarent chacune dans leur fragment,
+ * `database/tenancy/<issue>-<sujet>.php`, qui rend une liste de noms. Ils sont ajoutés ici,
+ * triés par nom de fichier : plus de liste partagée qui rouvre les conflits des PR. La liste
+ * ci-dessous garde l'existant, sans le déplacer. Évalué une fois par `config:cache`.
+ */
+$tablesDesFragments = [];
+$fragmentsDeTenancy = glob(dirname(__DIR__).'/database/tenancy/*.php') ?: [];
+sort($fragmentsDeTenancy);
+foreach ($fragmentsDeTenancy as $fragmentDeTenancy) {
+    array_push($tablesDesFragments, ...array_values((array) require $fragmentDeTenancy));
+}
+
 return [
 
     /*
@@ -18,8 +31,9 @@ return [
     |   - App\Console\Commands\AuditInstitutionOrphans (audit lecture seule)
     |   - la migration ajoutant les clés étrangères ON DELETE RESTRICT (#583)
     |
-    | RÈGLE : toute nouvelle table tenant-scopée DOIT être ajoutée ici ET
-    | recevoir sa clé étrangère `institution_id -> institutions(id)`.
+    | RÈGLE : toute nouvelle table tenant-scopée DOIT être déclarée dans son
+    | fragment `database/tenancy/<issue>-<sujet>.php` (#1868), jamais dans la
+    | liste ci-dessous, ET recevoir sa clé étrangère `institution_id -> institutions(id)`.
     |
     */
 
@@ -35,7 +49,11 @@ return [
         'dossiers_eleves',
         'tuteurs',
         'matricules_sequences',
+        // #1659 : les demandes d'inscription (institution_id NOT NULL).
+        'demandes_inscription',
         'creneaux',
+        // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
+        'sous_periodes',
         'classes',
         'matieres',
         'lessons',
@@ -50,6 +68,8 @@ return [
         'esbtp_attendance',
         // #1680 : les codes d'émargement d'une séance.
         'codes_emargement',
+        // #1681 : les justificatifs d'absence (le pivot des séances n'a pas d'école propre).
+        'justificatifs_absence',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',
@@ -71,6 +91,8 @@ return [
         'consents',
         'classe_etudiant',
         'classe_matiere',
+        // #1868 : les tables neuves, chacune dans son fragment (database/tenancy/).
+        ...$tablesDesFragments,
     ],
 
     /*

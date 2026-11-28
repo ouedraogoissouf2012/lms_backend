@@ -11,6 +11,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
@@ -68,12 +69,38 @@ final class ReglesDePassageTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('moyenne_rattrapage');
     }
 
+    /**
+     * Le rattrapage non réglé SUIT le passage (passage − 2, au moins 0), à chaque niveau : une constante dépasserait le
+     * passage d'une école au seuil bas. Une seule source, le seuil.
+     */
+    public function test_le_rattrapage_par_defaut_suit_le_passage(): void
+    {
+        $this->classeNotee();
+
+        $this->asTenant($this->admin)->putJson('/api/regles-de-passage', ['moyenne_passage' => 7])
+            ->assertOk()->assertJsonPath('data.moyenne_rattrapage', 5);
+        $this->asTenant($this->admin)->putJson('/api/regles-de-passage', ['moyenne_passage' => 1])
+            ->assertOk()->assertJsonPath('data.moyenne_rattrapage', 0);
+    }
+
+    /** Une seule règle d'école : la base la garantit (clé non nulle dans l'index unique), pas le service. */
+    public function test_une_seule_regle_d_ecole_meme_ecrite_deux_fois(): void
+    {
+        $this->classeNotee();
+        $this->asTenant($this->admin)->putJson('/api/regles-de-passage', ['max_redoublements' => 2])->assertOk();
+        $this->asTenant($this->admin)->putJson('/api/regles-de-passage', ['max_redoublements' => 3])->assertOk();
+        self::assertSame(1, DB::table('regles_de_passage')->where('institution_id', $this->ecole->id)->whereNull('classe_id')->count());
+
+        $this->expectException(UniqueConstraintViolationException::class);
+        DB::table('regles_de_passage')->insert(['institution_id' => $this->ecole->id, 'classe_id' => null, 'classe_cle' => 0, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
     public function test_la_surcharge_d_une_classe_et_son_retrait(): void
     {
         $this->classeNotee();
 
         $this->asTenant($this->admin)->putJson("/api/classes/{$this->classe->id}/regles-de-passage", ['moyenne_passage' => 13.5])
-            ->assertOk()->assertJsonPath('data.effective.moyenne_passage', 13.5)->assertJsonPath('data.effective.moyenne_rattrapage', 8)
+            ->assertOk()->assertJsonPath('data.effective.moyenne_passage', 13.5)->assertJsonPath('data.effective.moyenne_rattrapage', 11.5)
             ->assertJsonPath('data.surcharge.moyenne_passage', 13.5);
         $this->asTenant($this->admin)->getJson("/api/lms/classes/{$this->classe->id}/resultats")->assertJsonPath('data.seuil_reussite', 13.5);
         $this->asTenant($this->admin)->getJson("/api/classes/{$this->classe->id}/passages")->assertJsonPath('data.regles.moyenne_passage', 13.5);

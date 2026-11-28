@@ -1660,6 +1660,38 @@
     ],
     "POST api/forum/topics/{topic}/posts": "*",
     "POST api/inscriptions": "*",
+    "POST api/inscriptions/{inscription}/annuler": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/inscriptions/{inscription}/lever-reserve": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/inscriptions/{inscription}/reserve": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/inscriptions/{inscription}/valider": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/integrations/authorize": [
         "superAdmin",
         "supradmin"
@@ -2282,6 +2314,38 @@
     ],
     "POST api/v1/forum/topics/{topic}/posts": "*",
     "POST api/v1/inscriptions": "*",
+    "POST api/v1/inscriptions/{inscription}/annuler": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/inscriptions/{inscription}/lever-reserve": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/inscriptions/{inscription}/reserve": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/inscriptions/{inscription}/valider": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "POST api/v1/integrations/authorize": [
         "superAdmin",
         "supradmin"
@@ -2720,6 +2784,22 @@
     "PUT api/files/{file}": "*",
     "PUT api/forum/posts/{post}": "*",
     "PUT api/forum/topics/{topic}": "*",
+    "PUT api/inscriptions/reglage": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/inscriptions/{inscription}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/knowledge-checks/{id}": "*",
     "PUT api/lms/seances/{seanceId}/appel": [
         "enseignant",
@@ -2843,6 +2923,22 @@
     "PUT api/v1/files/{file}": "*",
     "PUT api/v1/forum/posts/{post}": "*",
     "PUT api/v1/forum/topics/{topic}": "*",
+    "PUT api/v1/inscriptions/reglage": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/inscriptions/{inscription}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "PUT api/v1/knowledge-checks/{id}": "*",
     "PUT api/v1/lms/seances/{seanceId}/appel": [
         "enseignant",

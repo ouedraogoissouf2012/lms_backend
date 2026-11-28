@@ -3999,6 +3999,10 @@ components:
                   type: integer
                 libelle:
                   type: string
+            validation:
+              type: string
+              enum: [en_attente, validee]
+              description: "#1658 : en_attente quand l ecole valide les inscriptions ; l acces s ouvre a la validation."
 
     # Error Response
     # --- Cycle evaluation (#892) -------------------------------------------
@@ -4686,6 +4690,62 @@ components:
         data:
           $ref: '#/components/schemas/DemandeDInscription'
 
+    InscriptionReponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - classe_id
+            - eleve_id
+            - statut
+            - validation
+          properties:
+            id:
+              type: integer
+            classe_id:
+              type: integer
+            eleve_id:
+              type: integer
+            statut:
+              type: string
+            validation:
+              type: string
+              nullable: true
+              enum: [en_attente, validee, annulee, null]
+            reserve:
+              type: object
+              nullable: true
+              properties:
+                condition:
+                  type: string
+                piece:
+                  type: string
+                  nullable: true
+                levee:
+                  type: boolean
+            redoublant:
+              type: boolean
+              nullable: true
+            etablissement_origine:
+              type: string
+              nullable: true
+            affectation:
+              type: string
+              nullable: true
+            motif_annulation:
+              type: string
+              nullable: true
+
     ValidationFailed:
       type: object
       properties:
@@ -5014,6 +5074,10 @@ components:
             - seance_past
             - evaluation_locked
             - class_full
+            # #1658 : la validation des inscriptions.
+            - enrolment_pending
+            - etat_de_validation
+            - reserve_non_levee
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -9794,6 +9858,346 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /inscriptions/reglage:
+    put:
+      tags:
+        - Inscriptions
+      operationId: reglerLaValidationDesInscriptions
+      summary: "Regler la validation des inscriptions"
+      description: "#1658. Vrai : une inscription par code nait inactive et en attente."
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - a_valider
+              properties:
+                a_valider:
+                  type: boolean
+      responses:
+        '200':
+          description: "Le reglage"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    required:
+                      - a_valider
+                    properties:
+                      a_valider:
+                        type: boolean
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`a_valider` absent ou non booleen."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /inscriptions/{inscription}:
+    put:
+      tags:
+        - Inscriptions
+      operationId: modifierLaFicheDUneInscription
+      summary: "La fiche d une inscription"
+      description: "#1658. Redoublant, etablissement d origine, affectation."
+      security:
+        - sanctum: []
+      parameters:
+        - name: inscription
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                redoublant:
+                  type: boolean
+                  nullable: true
+                etablissement_origine:
+                  type: string
+                  maxLength: 150
+                  nullable: true
+                affectation:
+                  type: string
+                  enum: [affecte, reaffecte, non_affecte, null]
+                  nullable: true
+      responses:
+        '200':
+          description: "L inscription a jour"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Inscription introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Affectation inconnue, ou champ invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /inscriptions/{inscription}/valider:
+    post:
+      tags:
+        - Inscriptions
+      operationId: validerUneInscription
+      summary: "Valider une inscription"
+      description: "#1658. Depuis en_attente seulement ; ouvre l acces (actif), s il reste une place."
+      security:
+        - sanctum: []
+      parameters:
+        - name: inscription
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "L inscription validee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Inscription introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`etat_de_validation` : pas en attente. `reserve_non_levee` : une reserve n est pas levee. `class_full` : plus de place."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /inscriptions/{inscription}/annuler:
+    post:
+      tags:
+        - Inscriptions
+      operationId: annulerUneInscription
+      summary: "Annuler une inscription, avec un motif"
+      description: "#1658. Ferme l acces (inactif, datee, motif_fin annulation) ; l historique demeure."
+      security:
+        - sanctum: []
+      parameters:
+        - name: inscription
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - motif
+              properties:
+                motif:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: "L inscription annulee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Inscription introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`etat_de_validation` : deja annulee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "`motif` absent."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /inscriptions/{inscription}/reserve:
+    post:
+      tags:
+        - Inscriptions
+      operationId: reserverUneInscription
+      summary: "Poser une reserve"
+      description: "#1658. Une condition et la piece attendue ; la validation attend sa levee."
+      security:
+        - sanctum: []
+      parameters:
+        - name: inscription
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - condition
+              properties:
+                condition:
+                  type: string
+                  maxLength: 255
+                piece:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+      responses:
+        '200':
+          description: "La reserve posee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Inscription introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`condition` absente."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /inscriptions/{inscription}/lever-reserve:
+    post:
+      tags:
+        - Inscriptions
+      operationId: leverLaReserveDUneInscription
+      summary: "Lever la reserve"
+      description: "#1658."
+      security:
+        - sanctum: []
+      parameters:
+        - name: inscription
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La reserve levee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InscriptionReponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Hors de la gestion ; ou ecole KLASSCI (`reason: catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Inscription introuvable dans l etablissement (meme corps qu un id absent)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`etat_de_validation` : aucune reserve."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

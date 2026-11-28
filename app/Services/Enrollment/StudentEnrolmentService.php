@@ -183,19 +183,26 @@ final class StudentEnrolmentService
      * laisse rien passer, et même un membre déjà actif reçoit le refus (aucune écriture
      * n'aurait lieu, mais « déjà inscrit » laisserait croire la classe ouverte).
      *
-     * @throws BusinessException 409 si une adhésion non active existe, si la classe est
-     *                           complète (`class_full`) ou archivée (`class_archived`)
+     * @throws BusinessException 409 si une adhésion non active existe (`enrolment_pending` quand elle attend la
+     *                           validation de l'école, #1658), si la classe est complète (`class_full`) ou
+     *                           archivée (`class_archived`)
      */
     public function rejoindre(User $etudiant, Classe $classe): Adhesion
     {
         $statut = $this->db->transaction(fn (): ?string => $this->entrer($etudiant, $classe));
 
         if ($statut === null) {
-            return Adhesion::Nouvelle;
+            // La ligne ÉCRITE décide, pas une relecture du réglage (qui a pu changer depuis).
+            return ReglageDeValidation::enAttente($classe, $etudiant->id) ? Adhesion::EnAttente : Adhesion::Nouvelle;
         }
 
         if ($statut === ClasseEtudiantStatut::Actif->value) {
             return Adhesion::DejaActive;
+        }
+
+        // #1658 : une adhésion en attente de l'école se dit telle, pas « inscription non active ».
+        if (ReglageDeValidation::enAttente($classe, $etudiant->id)) {
+            throw new BusinessException('Votre inscription attend la validation de votre établissement.', 409, reason: ReglageDeValidation::EN_ATTENTE);
         }
 
         throw new BusinessException(
@@ -249,11 +256,11 @@ final class StudentEnrolmentService
         $this->exigerUnePlace($classe);
 
         try {
+            // #1658 : le réglage de l'école décide de la naissance (active et validée, ou inactive en attente).
             $classe->etudiants()->attach($etudiant->id, [
                 'institution_id' => $classe->institution_id,
-                'statut' => ClasseEtudiantStatut::Actif->value,
                 'date_inscription' => now()->toDateString(),
-            ]);
+            ] + ReglageDeValidation::naissance($classe));
 
             return null;
         } catch (UniqueConstraintViolationException) {

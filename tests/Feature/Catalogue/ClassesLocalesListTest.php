@@ -171,7 +171,7 @@ final class ClassesLocalesListTest extends TestCase
     #[DataProvider('gestionnaires')]
     public function test_chaque_role_de_gestion_lit_ses_codes(string $role): void
     {
-        // `superAdmin` passe par une branche à part d'`EnsureRole` : chaque rôle
+        // `superAdmin` a sa ligne à part dans `PermissionsDuRole` : chaque rôle
         // admis est éprouvé, pas seulement le coordinateur.
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique', 'BUR7K2');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Http\Middleware\EnsurePermission;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Lesson;
@@ -26,7 +27,7 @@ use Tests\TestCase;
  * Complète le flow E2E #211 n°5 (isolation) avec un fichier dédié exigé par
  * l'issue #212, centré sur les frontières d'autorisation.
  *
- * @see app/Http/Middleware/EnsureRole.php
+ * @see EnsurePermission
  * @see app/Models/Traits/BelongsToInstitution.php
  */
 final class AuthorizationTest extends TestCase

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\NormalizesQueryBooleans;
+use App\Models\Notification;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates GET /notifications query parameters — issue #548.
@@ -33,6 +35,8 @@ final class ListNotificationsRequest extends FormRequest
             ],
             'unread_only' => ['sometimes', 'boolean'],
             'page' => ['sometimes', 'integer', 'min:1'],
+            // front#690 : le fil « Mes annonces » (`type=annonce`), parmi les types connus seulement.
+            'type' => ['sometimes', 'string', Rule::in(Notification::TYPES)],
         ];
     }
 

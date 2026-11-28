@@ -9,7 +9,6 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
-use Illuminate\Support\Collection;
 use Throwable;
 
 /**
@@ -19,7 +18,7 @@ use Throwable;
  * Récupère les présences d'une séance (lookup par ID local OU klassci_seance_id),
  * applique la règle d'accès du détail de séance (#1078, `VisioActorAuthorization`),
  * puis calcule :
- *   - les statistiques globales (totalParticipants, averageDuration, presenceRate),
+ *   - les statistiques globales, par {@see StatistiquesDesPresences} (#1649),
  *   - le formatage par participant (status_level, presence_status, % participation,
  *     gestion observateurs).
  *
@@ -34,6 +33,7 @@ final class SeanceAttendancesQueryService
     public function __construct(
         private readonly CaughtExceptionLog $journal,
         private readonly VisioActorAuthorization $acces,
+        private readonly StatistiquesDesPresences $statistiques,
     ) {}
 
     /**
@@ -67,7 +67,7 @@ final class SeanceAttendancesQueryService
                 ->orderBy('joined_at', 'asc')
                 ->get();
 
-            $statistics = $this->buildStatistics($allAttendances);
+            $statistics = $this->statistiques->de($allAttendances);
             $formattedAttendances = $allAttendances->map(
                 fn ($att) => $this->formatAttendance($att, $seanceDurationMinutes),
             );
@@ -193,39 +193,6 @@ final class SeanceAttendancesQueryService
     }
 
     /**
-     * @param  Collection<int, ESBTPAttendance>  $allAttendances
-     * @return array{total_participants:int, average_duration:int, presence_rate:int}
-     */
-    private function buildStatistics(Collection $allAttendances): array
-    {
-        // Statistiques (non-observateurs uniquement)
-        $nonObserverAttendances = $allAttendances->filter(function ($att) {
-            return ! $att->is_observer;
-        });
-
-        $totalParticipants = $nonObserverAttendances->count();
-
-        $durations = $nonObserverAttendances->pluck('duration_minutes')
-            ->filter(fn ($d) => $d !== null && $d > 0);
-
-        $averageDuration = $durations->count() > 0
-            ? (int) round($durations->avg())
-            : 0;
-
-        $validPresences = $durations->filter(fn ($d) => $d > 3)->count();
-
-        $presenceRate = $totalParticipants > 0
-            ? (int) round(($validPresences / $totalParticipants) * 100)
-            : 0;
-
-        return [
-            'total_participants' => $totalParticipants,
-            'average_duration' => $averageDuration,
-            'presence_rate' => $presenceRate,
-        ];
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function formatAttendance(ESBTPAttendance $att, ?int $seanceDurationMinutes): array
@@ -261,6 +228,9 @@ final class SeanceAttendancesQueryService
             'presence_status' => $presenceStatus,
             'participation_percentage' => $participationPercentage,
             'is_observer' => (bool) $att->is_observer,
+            // #1649 : la marque de l'appel et son origine, nulles sans appel.
+            'mark' => $att->mark?->value,
+            'origin' => $att->origin?->value,
         ];
     }
 

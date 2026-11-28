@@ -82,7 +82,10 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
     }
 
     /**
-     * @return array{id: int, name: string, libelle: string, code: string|null, filiere: array{id: int, nom: string, code: string|null}|null, niveau: array{id: int, nom: string, code: string|null}|null, is_active: bool|null, places_occupees: int, places_totales: null, nb_matieres: int}
+     * La période (#1785) se lit sur la relation déjà chargée, bornée à l'école : aucune requête par classe ; sans
+     * période, ou période supprimée ou d'une autre école, `null` (comme `is_active`).
+     *
+     * @return array{id: int, name: string, libelle: string, code: string|null, filiere: array{id: int, nom: string, code: string|null}|null, niveau: array{id: int, nom: string, code: string|null}|null, is_active: bool|null, periode: array{id: int, libelle: string|null}|null, places_occupees: int, places_totales: null, nb_matieres: int}
      */
     private function ligne(Classe $classe): array
     {
@@ -98,6 +101,7 @@ final class LocalInstitutionClassesReader implements InstitutionClassesReader
             'filiere' => ElementDeStructureEnVue::resume($classe->filiereLocale),
             'niveau' => ElementDeStructureEnVue::resume($classe->niveauLocale),
             'is_active' => $periode instanceof TrainingSession ? $periode->estActive() : null,
+            'periode' => $periode instanceof TrainingSession ? ['id' => $periode->id, 'libelle' => $periode->libelle] : null,
             'places_occupees' => is_numeric($compte['places_occupees'] ?? null) ? (int) $compte['places_occupees'] : 0,
             'places_totales' => null,
             'nb_matieres' => is_numeric($compte['nb_matieres'] ?? null) ? (int) $compte['nb_matieres'] : 0,

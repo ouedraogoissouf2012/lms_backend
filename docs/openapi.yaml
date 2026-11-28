@@ -865,10 +865,30 @@ components:
             code:
               type: string
               nullable: true
+            description:
+              type: string
+              nullable: true
             effectif:
               type: integer
               nullable: true
               description: "La CAPACITE de la classe (#1358) ; `null` quand elle n est pas renseignee."
+
+    ClasseUpdateInput:
+      type: object
+      description: "#1652 : un PATCH ; chaque champ est facultatif, seul un champ envoye change."
+      properties:
+        libelle:
+          type: string
+          maxLength: 191
+        code:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: "Vide ou nul : efface le code. Unique dans l ecole."
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
 
     TrainingSessionInput:
       type: object
@@ -2040,6 +2060,7 @@ components:
               required:
                 - teacher_id
                 - classe_id
+                - type
               properties:
                 teacher_id:
                   type: integer
@@ -2047,6 +2068,8 @@ components:
                 classe_id:
                   type: integer
                   nullable: true
+                type:
+                  $ref: '#/components/schemas/TypeDeSeance'
 
     SeancesListe:
       type: object
@@ -2066,6 +2089,62 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SeanceCalendrier'
+
+    TypeDeSeance:
+      type: string
+      nullable: true
+      enum: [cm, td, tp, projet, travail_personnel, examen, null]
+      description: |
+        Le type d'une seance (#1668), liste fermee ; `null` sans type, jamais
+        fabrique. Ecole creee depuis KLASSCI : `type_cours` de KLASSCI, repris
+        pour CM, TD et TP seulement (toute autre valeur donne `null`).
+
+    ConflitDHoraireRefus:
+      type: object
+      additionalProperties: false
+      description: |
+        409 `seance_schedule_conflict` (#1668) : le creneau `[debut, fin effective)`
+        chevauche des seances actives de l'etablissement du meme enseignant ou de
+        la meme classe. `conflicts` les nomme. La fin effective est `fin_seance`,
+        a defaut le debut + 2 h (la duree supposee du calendrier).
+      required: [success, message, reason, conflicts]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+        reason:
+          type: string
+          enum: [seance_schedule_conflict]
+        conflicts:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, titre, date_seance, fin_effective, motifs]
+            properties:
+              id:
+                type: integer
+              titre:
+                type: string
+                nullable: true
+              date_seance:
+                type: string
+                format: date-time
+                description: "Le debut de la seance en conflit."
+              fin_effective:
+                type: string
+                format: date-time
+                description: "La fin EFFECTIVE : `fin_seance`, a defaut le debut + 2 h."
+              motifs:
+                type: array
+                minItems: 1
+                description: "`teacher` : meme enseignant ; `class` : meme classe. Les deux peuvent valoir a la fois. Identifiants stables (ADR-906-01)."
+                items:
+                  type: string
+                  enum: [teacher, class]
 
     SeanceCalendrier:
       type: object
@@ -2095,6 +2174,8 @@ components:
           type: string
           nullable: true
           description: "Le titre de la seance, lu sur la ligne dans les deux types d'ecole. `null` sans titre (absent ou vide) : jamais remplace par le nom de la matiere."
+        type_seance:
+          $ref: '#/components/schemas/TypeDeSeance'
         date_seance:
           type: string
           nullable: true
@@ -2695,6 +2776,17 @@ components:
             elle doit etre au programme de la classe, sinon 422
             `subject_not_in_class_program`. Donnee, son libelle remplace
             `matiere_nom`.
+        type_seance:
+          $ref: '#/components/schemas/TypeDeSeance'
+        fin_seance:
+          type: string
+          format: date-time
+          nullable: true
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'
+          description: "Facultative, strictement apres `date_seance`, en ISO 8601 AVEC decalage. Absente, aucune fin n'est ecrite (#1668)."
+        forcer_conflit:
+          type: boolean
+          description: "Passer outre un conflit d'horaire (409 `seance_schedule_conflict`) : la gestion seule ; un enseignant recoit 403 `conflict_override_forbidden`."
 
     SeanceLocaleCreated:
       type: object
@@ -2722,6 +2814,8 @@ components:
             - matiere_id
             - classe_nom
             - classe_id
+            - type_seance
+            - fin_seance
             - created_by
             - institution_id
             - is_active
@@ -2752,6 +2846,12 @@ components:
               nullable: true
             classe_id:
               type: integer
+              nullable: true
+            type_seance:
+              $ref: '#/components/schemas/TypeDeSeance'
+            fin_seance:
+              type: string
+              format: date-time
               nullable: true
             created_by:
               type: integer
@@ -2788,6 +2888,27 @@ components:
     # Les refus de POST /lms/seances, SERRES : propres a la route, pour que le
     # test de contrat garde aussi les erreurs (MessageOnly et ValidationFailed,
     # partages, restent laches).
+    ProgrammeHorsEtablissement:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - class_out_of_scope
+            - subject_out_of_scope
+            - teacher_out_of_scope
+
     SeanceLocaleHorsEtablissement:
       type: object
       additionalProperties: false
@@ -2850,6 +2971,16 @@ components:
           type: string
           nullable: true
           maxLength: 191
+        type_seance:
+          $ref: '#/components/schemas/TypeDeSeance'
+        fin_seance:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'
+          description: "ISO 8601 AVEC decalage ; `null` la retire. Doit suivre le debut FINAL, sinon 422 `seance_end_before_start` (#1668)."
+        forcer_conflit:
+          type: boolean
+          description: "Comme a la creation : la gestion seule passe outre un conflit d'horaire."
 
     SeanceLocaleModifiee:
       type: object
@@ -2883,6 +3014,12 @@ components:
             date_seance:
               type: string
               format: date-time
+            type_seance:
+              $ref: '#/components/schemas/TypeDeSeance'
+            fin_seance:
+              type: string
+              format: date-time
+              nullable: true
             classe_id:
               type: integer
               nullable: true
@@ -2910,6 +3047,8 @@ components:
             - seance_managed_by_klassci
             - seance_past
             - seance_visio_active
+            - conflict_override_forbidden
+            - seance_end_before_start
 
     SeanceLocaleRefus:
       type: object
@@ -3072,9 +3211,12 @@ components:
             par la porte des comptes sans etablissement (ADR-906-01).
             `seance_managed_by_klassci` : une ecole creee depuis KLASSCI, ou la
             seance se cree dans KLASSCI (#1182).
+            `conflict_override_forbidden` : un enseignant qui force un conflit
+            d'horaire (#1668).
           enum:
             - no_institution
             - seance_managed_by_klassci
+            - conflict_override_forbidden
 
     SeanceLocaleInvalide:
       type: object
@@ -5083,7 +5225,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '403':
-          description: "Ecole creee depuis KLASSCI (`seance_managed_by_klassci`, #1182), role non admis a creer une seance, ou compte sans etablissement. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Ecole creee depuis KLASSCI (`seance_managed_by_klassci`, #1182), role non admis a creer une seance, compte sans etablissement, ou enseignant qui force un conflit d'horaire (`conflict_override_forbidden`, #1668). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -5094,6 +5236,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleHorsEtablissement'
+        '409':
+          description: "Le creneau chevauche une seance du meme enseignant ou de la meme classe (`seance_schedule_conflict`, #1668) ; `conflicts` les nomme."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflitDHoraireRefus'
         '422':
           description: "Charge invalide (`errors`), ou matiere hors du programme de la classe (`reason` `subject_not_in_class_program`)."
           content:
@@ -5158,7 +5306,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '403':
-          description: "Ecole KLASSCI (`seance_managed_by_klassci`) ; sans motif : compte ni auteur ni gestion, role hors du personnel, etablissement desactive."
+          description: "Ecole KLASSCI (`seance_managed_by_klassci`) ; enseignant qui force un conflit d'horaire (`conflict_override_forbidden`, #1668) ; sans motif : compte ni auteur ni gestion, role hors du personnel, etablissement desactive."
           content:
             application/json:
               schema:
@@ -5172,19 +5320,22 @@ paths:
                   - $ref: '#/components/schemas/SeanceModificationRefusee'
                   - $ref: '#/components/schemas/SeanceLocaleHorsEtablissement'
         '409':
-          description: "Seance passee (`seance_past`) ou visio en cours (`seance_visio_active`)."
+          description: "Seance passee (`seance_past`), visio en cours (`seance_visio_active`), ou creneau en conflit (`seance_schedule_conflict`, #1668, `conflicts` les nomme)."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SeanceModificationRefusee'
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceModificationRefusee'
+                  - $ref: '#/components/schemas/ConflitDHoraireRefus'
         '422':
-          description: "Charge invalide (`errors`), ou classe hors du programme de la matiere (`subject_not_in_class_program`)."
+          description: "Charge invalide (`errors`), classe hors du programme de la matiere (`subject_not_in_class_program`), ou fin qui ne suit pas le debut final (`seance_end_before_start`, #1668)."
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/SeanceLocaleInvalide'
                   - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
+                  - $ref: '#/components/schemas/SeanceModificationRefusee'
         '429':
           $ref: '#/components/responses/TooManyRequests'
     patch:
@@ -5241,7 +5392,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '403':
-          description: "Ecole KLASSCI (`seance_managed_by_klassci`) ; sans motif : compte ni auteur ni gestion, role hors du personnel, etablissement desactive."
+          description: "Ecole KLASSCI (`seance_managed_by_klassci`) ; enseignant qui force un conflit d'horaire (`conflict_override_forbidden`, #1668) ; sans motif : compte ni auteur ni gestion, role hors du personnel, etablissement desactive."
           content:
             application/json:
               schema:
@@ -5255,19 +5406,22 @@ paths:
                   - $ref: '#/components/schemas/SeanceModificationRefusee'
                   - $ref: '#/components/schemas/SeanceLocaleHorsEtablissement'
         '409':
-          description: "Seance passee (`seance_past`) ou visio en cours (`seance_visio_active`)."
+          description: "Seance passee (`seance_past`), visio en cours (`seance_visio_active`), ou creneau en conflit (`seance_schedule_conflict`, #1668, `conflicts` les nomme)."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SeanceModificationRefusee'
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceModificationRefusee'
+                  - $ref: '#/components/schemas/ConflitDHoraireRefus'
         '422':
-          description: "Charge invalide (`errors`), ou classe hors du programme de la matiere (`subject_not_in_class_program`)."
+          description: "Charge invalide (`errors`), classe hors du programme de la matiere (`subject_not_in_class_program`), ou fin qui ne suit pas le debut final (`seance_end_before_start`, #1668)."
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/SeanceLocaleInvalide'
                   - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
+                  - $ref: '#/components/schemas/SeanceModificationRefusee'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -5874,6 +6028,13 @@ paths:
           in: query
           schema:
             type: integer
+        - name: type
+          in: query
+          required: false
+          description: "#1668 : ne garder que les seances de ce type (liste fermee) ; une seance sans type n'y passe jamais. Hors de la liste : 422."
+          schema:
+            type: string
+            enum: [cm, td, tp, projet, travail_personnel, examen]
       responses:
         '200':
           description: "Les seances, et la fenetre lue"
@@ -5891,6 +6052,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '422':
+          description: "`type` hors de la liste fermee (#1668)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -7654,6 +7821,69 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /classes/{classe}:
+    patch:
+      tags:
+        - Session de formation
+      summary: "Modifier une Classe locale"
+      description: |
+        #1652. Modifie une classe LOCALE de l ecole de l appelant : libelle, code,
+        description. Seuls les champs ENVOYES changent ; un `code` vide ou nul
+        EFFACE le code. Le code est unique dans l ecole : la BASE le tranche, et
+        sa violation rend 422 `class_code_already_used` sur `code`. Une classe
+        MIROIR de KLASSCI ne se modifie pas ici. La filiere et le niveau
+        attendront #1648 ; capacite, periode et code d inscription ont leurs routes.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasseUpdateInput'
+      responses:
+        '200':
+          description: "Classe modifiee, relue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant ; etablissement dont le catalogue vient de KLASSCI,
+            ou classe MIROIR de KLASSCI (`catalogue_managed_by_klassci`).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Aucune classe de ce numero dans l ecole de l appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Libelle vide, ou code deja employe dans l ecole (`class_code_already_used` sur `code`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /inscriptions:
     post:
       operationId: registerWithEnrolmentCode
@@ -8298,11 +8528,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: |
-            Classe, matiere ou formateur introuvable DANS CET ETABLISSEMENT.
+            Classe, matiere ou formateur introuvable DANS CET ETABLISSEMENT (#1707), chacun avec son motif :
+            `class_out_of_scope`, `subject_out_of_scope`, `teacher_out_of_scope`. Un compte de l'ecole qui
+            n'enseigne pas rend le MEME corps qu'un formateur d'une autre ecole : l'existence d'un compte ne se
+            devine pas.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ProgrammeHorsEtablissement'
         '409':
           description: |
             Aucun etablissement resolu. Controle AVANT le droit du

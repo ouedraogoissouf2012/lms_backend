@@ -77,6 +77,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // localement est verifie plus bas, au point d ecriture, par une
         // capacite — la route ne lit aucun mode.
         Route::post('/classes', [LMSClasseWriteController::class, 'store']);
+        // La modifier (#1652) : une classe LOCALE de son ecole ; son code y est unique.
+        Route::patch('/classes/{classe}', [LMSClasseWriteController::class, 'update'])->whereNumber('classe');
         // Sa collection, une LECTURE, vit dans `routes/api/classes.php` (#924).
 
         // Creer une matiere SANS KLASSCI (#797, #848). Second des trois verrous

@@ -153,7 +153,10 @@ final class TirageAuSortTest extends TestCase
         $this->ecole = $this->ecole($mode);
         $this->classe = $this->classe($this->ecole, '6e A');
         $this->maths = $this->matiere($this->ecole, 'Maths');
-        $this->programme($this->classe, $this->maths, null);
+        // Le programme d'une classe KLASSCI vient de KLASSCI : il ne se rattache ici que dans une école du LMS.
+        if ($mode === InstitutionMode::Standalone) {
+            $this->programme($this->classe, $this->maths, null);
+        }
         $this->auteur = $this->membre($this->ecole, 'enseignant');
         $this->evaluation = Evaluation::factory()->create([
             'institution_id' => $this->ecole->id, 'classe_id' => $this->classe->id, 'classe_nom' => $this->classe->libelle,

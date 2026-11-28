@@ -37,6 +37,9 @@ final class PanneKlassciALaConnexionTest extends TestCase
 
     private const IDENTIFIANT = 'compte.687';
 
+    /** Le message mesuré de l'API KLASSCI de test, le 27/11 (#1739). */
+    private const NON_REINSCRIT = "Vous n'êtes pas encore réinscrit pour l'année universitaire en cours. Veuillez contacter le secrétariat pour procéder à votre réinscription.";
+
     /** @var array<string, array{check: mixed, login: mixed}> réponses par école */
     private array $reponses = [];
 
@@ -140,6 +143,92 @@ final class PanneKlassciALaConnexionTest extends TestCase
         $this->postJson('/api/auth/login', ['username' => self::IDENTIFIANT.'@ecole-a.ci', 'password' => 'le-bon-mot-de-passe'])
             ->assertOk()
             ->assertJsonPath('success', true);
+    }
+
+    // ───────────────────────── #1739 : le refus de compte de KLASSCI est dit
+
+    /** Cas mesuré le 27/11 : un élève non réinscrit reçoit un 403 de KLASSCI, avec son motif. */
+    public function test_un_refus_de_compte_est_dit_avec_le_message_de_klassci(): void
+    {
+        $this->ecoleA(check: $this->trouve(true), login: $this->refusDeCompte(self::NON_REINSCRIT));
+
+        $this->connexion()
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('reason', 'klassci_account_refused')
+            ->assertJsonPath('message', self::NON_REINSCRIT);
+    }
+
+    public function test_le_message_de_klassci_est_nettoye(): void
+    {
+        $brut = "  <b>Compte</b>\n\t suspendu <script>alert(1)</script>. ".str_repeat('x', 400);
+        $this->ecoleA(check: $this->trouve(true), login: $this->refusDeCompte($brut));
+
+        $message = $this->connexion()->assertStatus(403)->json('message');
+
+        self::assertIsString($message);
+        self::assertStringStartsWith('Compte suspendu alert(1). x', $message);
+        self::assertStringNotContainsString('<', $message);
+        self::assertLessThanOrEqual(300, mb_strlen($message));
+    }
+
+    public function test_un_refus_de_compte_sans_message_a_un_texte_a_nous(): void
+    {
+        $this->ecoleA(check: $this->trouve(true), login: Http::response(['success' => false], 403));
+
+        $message = $this->connexion()->assertStatus(403)->assertJsonPath('reason', 'klassci_account_refused')->json('message');
+
+        self::assertIsString($message);
+        self::assertNotSame('', trim($message));
+    }
+
+    /** L'ordre : un succès l'emporte sur un refus de compte, qui l'emporte sur une panne, puis sur un 401. */
+    public function test_un_succes_ailleurs_l_emporte_sur_un_refus_de_compte(): void
+    {
+        $this->ecoleA(check: $this->trouve(true), login: $this->refusDeCompte(self::NON_REINSCRIT));
+        $this->ecoleB(check: $this->trouve(true), login: Http::response($this->succesDeConnexion(), 200));
+
+        $this->connexion()->assertOk()->assertJsonPath('success', true);
+    }
+
+    public function test_un_refus_de_compte_l_emporte_sur_une_panne_et_sur_un_401(): void
+    {
+        $this->ecoleA(check: $this->trouve(true), login: $this->panne('503'));
+        $this->ecoleB(check: $this->trouve(true), login: $this->refusDeCompte(self::NON_REINSCRIT));
+
+        $this->connexion()->assertStatus(403)->assertJsonPath('reason', 'klassci_account_refused');
+
+        $this->ecoleA(check: $this->trouve(true), login: Http::response(['success' => false, 'message' => 'Identifiants incorrects'], 401));
+
+        $this->connexion()->assertStatus(403)->assertJsonPath('reason', 'klassci_account_refused');
+    }
+
+    /**
+     * Décision de la superviseure (27/11) : un REFUS explicite de KLASSCI est une réponse conclusive, et
+     * KLASSCI fait autorité pour son école. Le compte local lié n'y passe pas outre : le repli local reste
+     * réservé à la PANNE (`test_un_compte_local_lie_garde_son_repli_pendant_une_panne`).
+     */
+    public function test_un_compte_local_lie_refuse_par_klassci_ne_passe_pas_outre(): void
+    {
+        $ecole = Institution::query()->where('slug', 'ecole-a')->firstOrFail();
+        $compte = User::factory()->for($ecole)->create([
+            'email' => self::IDENTIFIANT.'@ecole-a.ci',
+            'password' => 'le-bon-mot-de-passe',
+            'klassci_id' => 687003,
+            'role' => 'etudiant',
+        ]);
+        $this->ecoleA(check: $this->trouve(true), login: $this->refusDeCompte(self::NON_REINSCRIT));
+
+        $this->postJson('/api/auth/login', ['username' => self::IDENTIFIANT.'@ecole-a.ci', 'password' => 'le-bon-mot-de-passe'])
+            ->assertStatus(403)
+            ->assertJsonPath('reason', 'klassci_account_refused')
+            ->assertJsonPath('message', self::NON_REINSCRIT);
+        self::assertSame(0, $compte->tokens()->count(), 'Aucun jeton n est émis au compte refusé.');
+    }
+
+    private function refusDeCompte(string $message): mixed
+    {
+        return Http::response(['success' => false, 'message' => $message], 403);
     }
 
     private function ecoleA(mixed $check, mixed $login): void

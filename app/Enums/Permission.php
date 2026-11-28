@@ -41,12 +41,16 @@ enum Permission: string
     case FormationsGerer = 'formations.gerer';
     case ReferentielConsulter = 'referentiel.consulter';
     case ImportsImporter = 'imports.importer';
+    // #1657 : le dossier de l'élève, ses tuteurs et sa photo (écriture).
+    case ElevesDossiers = 'eleves.dossiers';
 
     // ─── Contenus et évaluations
     case ContenusRediger = 'contenus.rediger';
     case ForumModerer = 'forum.moderer';
     case EvaluationsGerer = 'evaluations.gerer';
     case NotesSaisir = 'notes.saisir';
+    // #1650 : annoncer à toute une classe.
+    case AnnoncesPublier = 'annonces.publier';
 
     // ─── Séances et visio
     case SeancesGerer = 'seances.gerer';
@@ -54,10 +58,16 @@ enum Permission: string
     case EnseignementConsulter = 'enseignement.consulter';
     case VisioAnimer = 'visio.animer';
     case VisioEnregistrements = 'visio.enregistrements';
+    // #1823 : traiter les justificatifs d'absence (lire, valider, rejeter).
+    case AbsencesTraiter = 'absences.traiter';
 
     // ─── L'élève
     case InscriptionRejoindre = 'inscription.rejoindre';
     case SeancesMasquer = 'seances.masquer';
+    // #1680 : signer sa présence par le code d'une séance.
+    case PresencesEmarger = 'presences.emarger';
+    // #1823 : voir ses absences et déposer un justificatif.
+    case AbsencesJustifier = 'absences.justifier';
 
     /** Réservée au gestionnaire de la plateforme : jamais à un rôle d'école, ni à un accès individuel. */
     public function estDeLaPlateforme(): bool

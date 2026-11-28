@@ -4,7 +4,9 @@ use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\Dashboard\DashboardAdminController;
 use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
+use App\Http\Controllers\API\LMS\LMSAppelController;
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
+use App\Http\Controllers\API\LMS\LMSEmargementController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
@@ -116,6 +118,33 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         // la voisine /seances/history). Sans ce garde, un étudiant listait les
         // emails de toute séance (checkAccess ne bloque que l'enseignant non-owner).
         ->middleware('permission:seances.gerer');
+
+    // #1649 : l'appel d'une séance (lire la classe et ses marques, saisir ou corriger). La source de l'école
+    // (SaisieDeLAppel) est choisie au point de liaison ; le droit sur la séance, par la source.
+    Route::get('/seances/{seanceId}/appel', [LMSAppelController::class, 'show'])
+        ->whereNumber('seanceId')
+        ->name('lms.seances.appel')
+        ->middleware('permission:seances.gerer');
+    Route::put('/seances/{seanceId}/appel', [LMSAppelController::class, 'update'])
+        ->whereNumber('seanceId')
+        ->name('lms.seances.appel.update')
+        ->middleware('permission:seances.gerer');
+
+    // #1680 : l'émargement par code d'une séance en ligne. L'auteur ou la gestion génère, liste et révoque les
+    // codes ; l'élève signe. La source de l'école (EmargementParCode) est choisie au point de liaison.
+    Route::post('/codes-emargement', [LMSEmargementController::class, 'store'])
+        ->name('lms.codes-emargement.store')
+        ->middleware('permission:seances.gerer');
+    Route::get('/codes-emargement', [LMSEmargementController::class, 'index'])
+        ->name('lms.codes-emargement.index')
+        ->middleware('permission:seances.gerer');
+    Route::delete('/codes-emargement/{codeId}', [LMSEmargementController::class, 'destroy'])
+        ->whereNumber('codeId')
+        ->name('lms.codes-emargement.destroy')
+        ->middleware('permission:seances.gerer');
+    Route::post('/emargement', [LMSEmargementController::class, 'sign'])
+        ->name('lms.emargement')
+        ->middleware('permission:presences.emarger');
 
     // Suppression d'une séance (soft delete)
     Route::delete('/seances/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteSeance'])

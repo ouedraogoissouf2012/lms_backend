@@ -27,6 +27,8 @@ final class PermissionsDuRole
         Permission::ClassesGerer,
         Permission::FormationsGerer,
         Permission::PresencesDepuisVisio,
+        Permission::AbsencesTraiter,
+        Permission::ElevesDossiers,
     ];
 
     /** `personnel` : enseignant, coordinateur et administrateurs. */
@@ -38,6 +40,7 @@ final class PermissionsDuRole
         Permission::ForumModerer,
         Permission::EvaluationsGerer,
         Permission::SeancesGerer,
+        Permission::AnnoncesPublier,
     ];
 
     /** `role:enseignant,coordinateur` : celui qui enseigne. */
@@ -51,6 +54,8 @@ final class PermissionsDuRole
     private const ELEVE = [
         Permission::InscriptionRejoindre,
         Permission::SeancesMasquer,
+        Permission::PresencesEmarger,
+        Permission::AbsencesJustifier,
     ];
 
     /**
@@ -61,7 +66,8 @@ final class PermissionsDuRole
         $permissions = match ($role) {
             Role::Supradmin => Permission::cases(),
             Role::SuperAdmin => array_filter(Permission::cases(), static fn (Permission $p): bool => ! $p->estDeLaPlateforme()),
-            Role::Admin => [...self::PERSONNEL, ...self::GESTION, Permission::ComptesMotDePasse],
+            // #1708 : l'admin d'école importe (la couche métier l'admettait déjà ; seule la route le refusait).
+            Role::Admin => [...self::PERSONNEL, ...self::GESTION, Permission::ComptesMotDePasse, Permission::ImportsImporter],
             Role::Coordinateur => [
                 ...self::PERSONNEL,
                 ...self::GESTION,

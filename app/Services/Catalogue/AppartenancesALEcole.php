@@ -19,7 +19,9 @@ use App\Models\User;
  * explicitement, plutôt que de dépendre d'une garde qui se tait quand aucun tenant n'est résolu.
  *
  * Le message ne distingue PAS « n'existe pas » de « appartient à quelqu'un d'autre » : les
- * séparer dirait à un établissement quels identifiants existent chez ses voisins.
+ * séparer dirait à un établissement quels identifiants existent chez ses voisins. Chaque 404 porte
+ * en revanche le motif de l'OBJET manquant (#1707) : `class_out_of_scope`, `subject_out_of_scope`,
+ * `teacher_out_of_scope`.
  *
  * Deux méthodes jumelles pour la classe et la matière plutôt qu'une générique : celle-ci rendait
  * `mixed`, et PHPStan n9 l'a refusée à juste titre.
@@ -35,7 +37,7 @@ final class AppartenancesALEcole
             ->first();
 
         if (! $classe instanceof Classe) {
-            throw new BusinessException('Classe introuvable dans cet établissement.', 404);
+            throw new BusinessException('Classe introuvable dans cet établissement.', 404, reason: 'class_out_of_scope');
         }
 
         return $classe;
@@ -50,7 +52,7 @@ final class AppartenancesALEcole
             ->first();
 
         if (! $matiere instanceof Matiere) {
-            throw new BusinessException('Matière introuvable dans cet établissement.', 404);
+            throw new BusinessException('Matière introuvable dans cet établissement.', 404, reason: 'subject_out_of_scope');
         }
 
         return $matiere;
@@ -76,7 +78,7 @@ final class AppartenancesALEcole
             ->first();
 
         if (! $user instanceof User || Role::tryFromString($user->role) !== Role::Enseignant) {
-            throw new BusinessException('Formateur introuvable dans cet établissement.', 404);
+            throw new BusinessException('Formateur introuvable dans cet établissement.', 404, reason: 'teacher_out_of_scope');
         }
 
         return $enseignantId;

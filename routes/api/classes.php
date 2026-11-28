@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\API\LMS\LMSClasseBilanController;
 use App\Http\Controllers\API\LMS\LMSClasseLocalDetailsController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSClassesDeLEtablissementController;
@@ -57,6 +58,14 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
         ->middleware('permission:classes.eleves')
         ->name('lms.classes.etudiants');
+
+    // #1676 : moyennes, rangs et réussite d'une classe, par l'id de l'ESPACE SOURCE, comme ses
+    // voisines (`ClasseDeLEspaceSource`). L'accès
+    // (personnel, enseignant de la classe, élève pour sa SEULE ligne) est décidé par
+    // `AccesAuBilanDeClasse`, pas par un middleware de rôle : l'élève y a sa porte.
+    Route::get('/classes/{classe}/resultats', [LMSClasseBilanController::class, 'show'])
+        ->whereNumber('classe')
+        ->name('lms.classes.resultats');
 
     Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
         ->middleware('permission:enseignement.consulter')

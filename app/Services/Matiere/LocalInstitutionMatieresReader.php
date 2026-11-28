@@ -110,6 +110,16 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
             'nb_seances_programmees' => null,
             'nb_lecons' => $lecons[$matiere->id] ?? 0,
             'combinaisons' => [],
+            // #1653 : les valeurs BRUTES, pour l'écran qui modifie. Sur une matière LOCALE
+            // seulement : un miroir de KLASSCI ne se modifie pas ici, et l'absence de la clé
+            // le dit. Les champs affichés ci-dessus ne changent pas (`code` garde son N/A).
+            ...($matiere->klassci_id === null ? ['edition' => [
+                'libelle' => $matiere->libelle,
+                'code' => $matiere->code,
+                'description' => $matiere->description,
+                'coefficient' => $matiere->coefficient,
+                'credit' => $matiere->credit,
+            ]] : []),
         ], $matieres));
 
         return [

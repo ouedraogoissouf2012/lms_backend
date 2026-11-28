@@ -30,12 +30,14 @@ final class AucuneListeDeRolesEnDurTest extends TestCase
 
     /**
      * Des littéraux qui ne sont pas des rôles de compte, par fichier et par motif : des
-     * relations Eloquent, une clé de payload KLASSCI, les rôles Jitsi (un autre vocabulaire).
+     * relations Eloquent, une clé de payload KLASSCI, les rôles Jitsi (un autre vocabulaire),
+     * le motif d'un conflit d'horaire (#1668 : la séance gêne celle du même enseignant).
      */
     private const FAUX_POSITIFS = [
         "app/Services/Evaluation/Teacher/EvaluationTeacherGradeService.php  'student'",
         "app/Services/Lesson/LessonListService.php  'enseignant'",
         "app/Services/Matiere/MatiereInfoFetcher.php  'enseignant'",
+        "app/Services/Seances/Conflits/ConflitsDHoraire.php  'teacher'",
         "app/Services/Report/ReportGenerationService.php  'student'",
         "app/Services/Seances/KlassciSeanceLookupService.php  'enseignant'",
         "app/Services/Seances/Mutations/ParticipantValidationService.php  'student'",

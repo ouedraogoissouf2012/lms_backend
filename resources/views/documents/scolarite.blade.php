@@ -1,5 +1,10 @@
 {{-- #1662 : la page d'un document de scolarité, tirée de son instantané (`contenu`). Échappée par Blade ({{ }}). --}}
-@php($c = $document->contenu)
+@php
+  $c = $document->contenu;
+  // Les compléments facultatifs, composés ici : des directives Blade collées (`@endif@if`) ne se compilent pas.
+  $periode = empty($c['periode']) ? '' : $c['periode'];
+  $depuis = empty($c['inscrit_le']) ? '' : \Illuminate\Support\Carbon::parse($c['inscrit_le'])->format('d/m/Y');
+@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -23,12 +28,10 @@
 <p class="corps">
 @if ($document->type === \App\Enums\TypeDeDocument::CertificatScolarite)
   L'établissement {{ $c['ecole'] ?? '' }} certifie que <strong>{{ $c['titulaire'] ?? '' }}</strong> est régulièrement
-  inscrit(e) dans la classe <strong>{{ $c['classe'] ?? '' }}</strong>@if (! empty($c['periode'])), pour la période
-  {{ $c['periode'] }}@endif.
+  inscrit(e) dans la classe <strong>{{ $c['classe'] ?? '' }}</strong>{{ $periode !== '' ? ', pour la période '.$periode : '' }}.
 @else
   L'établissement {{ $c['ecole'] ?? '' }} atteste que <strong>{{ $c['titulaire'] ?? '' }}</strong> fréquente la classe
-  <strong>{{ $c['classe'] ?? '' }}</strong>@if (! empty($c['periode'])), période {{ $c['periode'] }}@endif@if (! empty($c['inscrit_le'])),
-  depuis le {{ \Illuminate\Support\Carbon::parse($c['inscrit_le'])->format('d/m/Y') }}@endif.
+  <strong>{{ $c['classe'] ?? '' }}</strong>{{ $periode !== '' ? ', période '.$periode : '' }}{{ $depuis !== '' ? ', depuis le '.$depuis : '' }}.
 @endif
 </p>
 <p class="corps">Ce document est délivré pour servir et valoir ce que de droit.</p>

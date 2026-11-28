@@ -5112,6 +5112,8 @@ paths:
                         type: string
                       titulaire:
                         type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '404':
           description: "Aucun document ne porte ce code"
           content:

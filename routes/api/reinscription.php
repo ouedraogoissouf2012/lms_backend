@@ -12,9 +12,10 @@ use Illuminate\Support\Facades\Route;
 |
 | PR 1 : les règles (école, surcharge par classe) et les propositions de
 | passage d'une classe locale, avec leur correction motivée. Gestion d'une
-| école autonome (`gestion`, puis `PorteDuCatalogueLocal`).
+| école autonome (`permission:formations.gerer`, comme les gestes
+| d'inscription ; puis `PorteDuCatalogueLocal`).
 */
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:formations.gerer'])->group(function (): void {
     Route::get('regles-de-passage', [ReglesDePassageController::class, 'ecole']);
     Route::put('regles-de-passage', [ReglesDePassageController::class, 'ecrireEcole']);
     Route::get('classes/{classe}/regles-de-passage', [ReglesDePassageController::class, 'classe'])->whereNumber('classe');

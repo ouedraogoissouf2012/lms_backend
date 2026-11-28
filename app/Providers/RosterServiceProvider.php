@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Admission\DroitDInscription;
+use App\Services\Admission\DroitDInscriptionParLeRoster;
 use App\Services\Classe\ClasseRoster;
 use App\Services\Classe\KlassciEnvelopeClasseRoster;
 use App\Services\Roster\RosterAuthority;
@@ -35,6 +37,9 @@ final class RosterServiceProvider extends ServiceProvider
             RosterAuthority::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)->forCurrentTenant(),
         );
+
+        // #1659 : une admission est une inscription ; elle lit le droit d'inscription, pour une école DONNÉE.
+        $this->app->bind(DroitDInscription::class, DroitDInscriptionParLeRoster::class);
 
         // Qui sont les etudiants d'une classe (#841). Le roster se lit dans
         // l'enveloppe `classes/{id}` et jamais via `classes/{id}/etudiants`, que

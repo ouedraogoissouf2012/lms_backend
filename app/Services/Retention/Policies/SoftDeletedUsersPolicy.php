@@ -86,7 +86,8 @@ final class SoftDeletedUsersPolicy implements RetentionPolicy
             ->where(static fn (Builder $q): Builder => $q->where('user_id', $id)->orWhere('actor_user_id', $id))
             ->exists();
 
-        return $porteUnePreuve ? self::RAISON_PREUVE_DE_CONSENTEMENT : null;
+        // SONDE #1705 : la preuve de consentement n'épargne plus le compte.
+        return $porteUnePreuve && false ? self::RAISON_PREUVE_DE_CONSENTEMENT : null;
     }
 
     public function purge(Model $item, CarbonInterface $cutoff): void

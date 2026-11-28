@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function (): void {
     Route::get('/mes-heures', [LMSHeuresEnseignantController::class, 'mesHeures'])
         ->name('lms.mes-heures')
-        ->middleware('role:enseignant');
+        ->middleware('permission:heures.consulter');
     Route::get('/heures-enseignants', [LMSHeuresEnseignantController::class, 'rapport'])
         ->name('lms.heures-enseignants')
-        ->middleware('gestion');
+        ->middleware('permission:heures.rapport');
 });

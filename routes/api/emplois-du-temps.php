@@ -12,13 +12,14 @@ use Illuminate\Support\Facades\Route;
 |
 | Hors de `routes/api/lms.php`, déjà proche des 300 lignes du §1.1 (précédent :
 | `sessions.php`, #918). Même groupe que les routes `lms` : `auth:sanctum`,
-| `klassci.sync`, préfixe `lms` ; la gestion seule (`gestion`). Chargé juste APRÈS
-| `lms.php` par `routes/api.php`. Les alertes sont déclarées AVANT toute route
-| `/{emploiId}` : aucune ne les masque.
+| `klassci.sync`, préfixe `lms` ; la gestion seule (`classes.gerer` : coordinateur
+| et administrateurs, #1760). Chargé par la boucle de `routes/api.php` (#1870).
+| Les alertes sont déclarées AVANT toute route `/{emploiId}` : aucune ne les
+| masque.
 |
 */
 
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->prefix('lms/emplois-du-temps')->group(function (): void {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:classes.gerer'])->prefix('lms/emplois-du-temps')->group(function (): void {
     Route::get('/alertes', [LMSEmploiDuTempsController::class, 'alertes'])->name('lms.emplois-du-temps.alertes');
     Route::get('/', [LMSEmploiDuTempsController::class, 'index'])->name('lms.emplois-du-temps.index');
     Route::post('/', [LMSEmploiDuTempsController::class, 'store'])->name('lms.emplois-du-temps.store');

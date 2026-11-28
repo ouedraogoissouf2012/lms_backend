@@ -38,9 +38,9 @@ use Illuminate\Support\Facades\Route;
 // le contrat OCP (#697 art. 1) veut que les appelants recoivent une capacite,
 // jamais un mode.
 //
-// La garde `gestion` (`isManager()`) : organiser une formation est un acte de
+// La permission `formations.gerer` (#1665) : organiser une formation est un acte de
 // gestion. Un enseignant anime, il ne date pas la session ; un etudiant la suit.
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:formations.gerer'])
     ->group(function () {
         Route::post('/programs', [TrainingSessionController::class, 'storeProgram']);
         // Lire ses Programmes pour en choisir un (#1206) : le front faisait saisir

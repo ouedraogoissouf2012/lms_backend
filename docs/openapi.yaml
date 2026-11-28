@@ -639,6 +639,10 @@ components:
           format: date-time
           nullable: true
           description: "Date d archive (#1652) ; `null` pour une classe active."
+        filiere:
+          $ref: '#/components/schemas/StructureRattachee'
+        niveau:
+          $ref: '#/components/schemas/StructureRattachee'
 
     # #1652 — la reponse d un archivage ou d un desarchivage.
     ClasseLocaleArchivage:
@@ -651,7 +655,6 @@ components:
         data:
           $ref: '#/components/schemas/ClasseLocaleLigne'
 
-    # #905 — une page de classes locales, chacune avec l etat de son code.
     # #1648 - une filiere ou un niveau d etudes local, dans la forme du volet KLASSCI.
     ElementDeStructure:
       type: object
@@ -681,6 +684,7 @@ components:
           type: string
           nullable: true
 
+    # #905 — une page de classes locales, chacune avec l etat de son code.
     ClassesLocalesPage:
       type: object
       properties:

@@ -78,7 +78,8 @@ final class ClassesLocalesQuery
         // `id` en second critère : deux libellés égaux garderaient sinon un
         // ordre instable d'une page à l'autre, et une classe pourrait
         // apparaître deux fois — ou jamais — en paginant.
-        return $classes->orderBy('libelle')->orderBy('id')->paginate($parPage);
+        // #1648 B : la filière et le niveau de chaque ligne, en UNE requête par table, jamais une par classe.
+        return $classes->with(['filiereLocale', 'niveauLocale'])->orderBy('libelle')->orderBy('id')->paginate($parPage);
     }
 
     /** @param Builder<Classe> $classes */

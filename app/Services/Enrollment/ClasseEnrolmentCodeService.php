@@ -6,6 +6,7 @@ namespace App\Services\Enrollment;
 
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
+use App\Services\Catalogue\ClasseArchivee;
 use App\Services\Catalogue\PorteDuCatalogueLocal;
 use Illuminate\Database\QueryException;
 
@@ -45,13 +46,18 @@ final class ClasseEnrolmentCodeService
 
     /**
      * Émet un nouveau code et le rend. Efface une révocation précédente : la
-     * classe rouvre.
+     * classe rouvre. Refusé sur une classe archivée (#1652, 409 `class_archived`) :
+     * le code s'afficherait ouvert sur une porte qui n'ouvre rien.
      *
      * @throws BusinessException
      */
     public function generer(int $classeId): string
     {
         $classe = $this->saClasse($classeId);
+
+        if ($classe->estArchivee()) {
+            throw ClasseArchivee::exception();
+        }
 
         for ($essai = 1; $essai <= self::ESSAIS; $essai++) {
             $classe->code_inscription = ClasseEnrolmentCode::tirer();

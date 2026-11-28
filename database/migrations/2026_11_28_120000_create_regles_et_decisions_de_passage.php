@@ -32,7 +32,8 @@ return new class extends Migration
             $table->boolean('redoublement_autorise')->nullable();
             $table->unsignedTinyInteger('max_redoublements')->nullable();
             $table->timestamps();
-            $table->unique(['institution_id', 'classe_cle']);
+            // SONDE #1663 : l index n est plus unique.
+            $table->index(['institution_id', 'classe_cle']);
         });
 
         Schema::create('decisions_de_passage', static function (Blueprint $table): void {

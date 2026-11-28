@@ -16,6 +16,6 @@ final class KlassciPorteDesDispenses implements PorteDesDispenses
 
     public function ouvrir(): void
     {
-        throw new BusinessException('Les notes de cette école sont tenues dans KLASSCI : la dispense s\'y saisit.', 409, null, self::REASON);
+        // FALSIFICATION : l'école KLASSCI ne refuse plus la dispense.
     }
 }

@@ -7,6 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\Classe\NotesDeLaClasse;
 use App\Services\Evaluation\EvaluationGradingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -28,11 +29,17 @@ final class CopiesFinales
      * l'identifiant KLASSCI seul, qui désignerait aussi les copies d'un homonyme d'une autre
      * école quand aucun tenant n'est résolu. Les plus récentes d'abord.
      *
+     * #1715 : UNE copie par évaluation, la plus récente des copies finales. Une évaluation à
+     * plusieurs tentatives (`max_attempts`) ne pèse qu'une fois, comme dans le bilan de la
+     * classe ({@see NotesDeLaClasse::copieDe()}).
+     *
      * @return Collection<int, EvaluationSubmission>
      */
     public function deLEleve(User $eleve): Collection
     {
-        return $this->finales(EvaluationSubmission::query()->ownedBy($eleve));
+        return $this->finales(EvaluationSubmission::query()->ownedBy($eleve))
+            ->unique(static fn (EvaluationSubmission $copie): int => (int) $copie->evaluation_id)
+            ->values();
     }
 
     /**

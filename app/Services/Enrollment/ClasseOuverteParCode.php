@@ -66,6 +66,9 @@ final class ClasseOuverteParCode
             ->where('institution_id', $institution->id)
             ->where('code_inscription', ClasseEnrolmentCode::normaliser($code))
             ->whereNull('code_inscription_revoque_le')
+            // #1652 : archiver ferme le code ; ce filtre couvre aussi une classe archivée dont
+            // le code serait resté ouvert. Même refus qu'un code inconnu.
+            ->whereNull('archivee_le')
             ->first();
 
         // La Période de la classe décide (#897, #1208) : la règle est LUE ici, au

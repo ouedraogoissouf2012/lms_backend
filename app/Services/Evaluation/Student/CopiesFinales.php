@@ -157,7 +157,7 @@ final class CopiesFinales
             // sans ce préchargement chaque note coûterait une requête de plus.
             ->with(['evaluation' => fn ($query) => $query->where('is_published', true)->with('questions')])
             ->whereRelation('evaluation', 'is_published', true)
-            ->where(static fn (Builder $q) => self::nonDispensees($q))
+            // FALSIFICATION : la copie dispensée compte encore.
             ->orderBy('submitted_at', 'desc');
     }
 

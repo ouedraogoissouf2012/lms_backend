@@ -11,6 +11,8 @@ use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
@@ -99,6 +101,33 @@ final class DureesDeConservationTest extends TestCase
 
         $restants = User::query()->withoutGlobalScopes()->withTrashed()->whereIn('id', [$ancien->id, $recent->id, $vivant->id])->pluck('id')->sort()->values()->all();
         self::assertSame([$recent->id, $vivant->id], $restants);
+    }
+
+    /**
+     * Mesuré le 28/11 (#1827) : `consents.user_id` est en RESTRICT (preuve append-only, #716). Un compte qui a consenti
+     * faisait lever la purge, et aucun compte n'était purgé. Il est désormais ÉPARGNÉ avec sa raison, journalisée, et la
+     * purge continue pour les autres.
+     */
+    public function test_un_compte_qui_porte_une_preuve_de_consentement_est_epargne_et_les_autres_purges(): void
+    {
+        Log::spy();
+        $ecole = Institution::factory()->create();
+        $avec = User::factory()->create(['institution_id' => $ecole->id]);
+        $sans = User::factory()->create(['institution_id' => $ecole->id]);
+        DB::table('consents')->insert(['institution_id' => $ecole->id, 'user_id' => $avec->id, 'actor_user_id' => $avec->id,
+            'purpose' => 'recording', 'granted' => true, 'granted_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $avec->delete();
+        $sans->delete();
+        DB::table('users')->whereIn('id', [$avec->id, $sans->id])->update(['deleted_at' => now()->subDays(31)]);
+
+        self::assertSame(0, Artisan::call('comptes:purge', ['--apply' => true]));
+
+        self::assertSame([$avec->id], DB::table('users')->whereIn('id', [$avec->id, $sans->id])->pluck('id')->all());
+        self::assertSame(1, DB::table('consents')->where('user_id', $avec->id)->count(), 'La preuve reste intacte.');
+        Log::shouldHaveReceived('warning')->withArgs(
+            static fn (string $message, array $contexte = []): bool => str_contains($message, 'épargné')
+                && str_contains((string) ($contexte['raison'] ?? ''), 'consentement'),
+        )->once();
     }
 
     public function test_la_purge_des_comptes_est_planifiee_et_celle_des_ecoles_ne_l_est_pas(): void

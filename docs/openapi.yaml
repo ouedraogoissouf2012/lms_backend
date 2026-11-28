@@ -1800,6 +1800,21 @@ components:
             Ecole creee depuis le LMS : vrai si la Periode de la classe est
             publiee et pas terminee ; faux pour toute autre Periode ; `null`
             sans Periode, ou quand la Periode est supprimee (etat inconnu).
+        periode:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [id, libelle]
+          description: |
+            #1785. Ecole creee depuis le LMS : la Periode de la classe, `null`
+            sans Periode ou quand elle est supprimee. Ecole creee depuis
+            KLASSCI : absente (la reponse de KLASSCI est relayee telle quelle).
+          properties:
+            id:
+              type: integer
+            libelle:
+              type: string
+              nullable: true
         places_occupees:
           type: integer
           description: "Ecole creee depuis le LMS : les inscriptions actives d'eleves de l'etablissement."
@@ -2098,6 +2113,46 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SeanceCalendrier'
+
+    AppelDeLaSeance:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required: [seance_id, eleves]
+          properties:
+            seance_id:
+              type: integer
+            eleves:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [user_id, nom, mark, origin, delegated_at]
+                properties:
+                  user_id:
+                    type: integer
+                  nom:
+                    type: string
+                  mark:
+                    type: string
+                    nullable: true
+                    enum: [present, absent, late, excused, null]
+                  origin:
+                    type: string
+                    nullable: true
+                    enum: [visio, code, delegated, paper, null]
+                  delegated_at:
+                    type: string
+                    format: date-time
+                    nullable: true
 
     TypeDeSeance:
       type: string
@@ -3788,10 +3843,24 @@ components:
           type: boolean
         show_results:
           type: boolean
+          description: "Notes publiees a l eleve (#1699) : note, score et commentaire. Se regle aussi apres les remises, par `PATCH /evaluations/{id}/release`."
+        correction_release:
+          type: string
+          enum: [never, with_results, after_close, at_date]
+          description: |
+            Quand le corrige s ouvre a l eleve (#1699) : `never`, `with_results` (defaut, a la
+            publication des notes), `after_close` (a la fermeture), `at_date` (a
+            `correction_release_at`). Jamais avant la fermeture de l evaluation pour tous.
+        correction_release_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "La date d ouverture du corrige, seulement pour `at_date`."
         is_published:
           type: boolean
         notes_published:
           type: boolean
+          description: "Notes envoyees a KLASSCI (`sync-klassci`). Ne gouverne pas ce que voit l eleve : c est `show_results`."
         is_locked:
           type: boolean
         locked_at:
@@ -4507,6 +4576,9 @@ components:
           enum:
             - enrolment_not_active
             - no_institution
+            - attendance_managed_by_klassci
+            - seance_not_started
+            - student_not_in_seance
             - klassci_account_refused
             - account_quota_exceeded
             - account_daily_cap_reached
@@ -4643,6 +4715,21 @@ components:
                 description: "Les evaluations de la periode sans note finale de l eleve."
                 items:
                   type: integer
+              cellules:
+                type: array
+                description: "#1698 : le carnet de notes. Une case par evaluation, dans l ordre de `evaluations`. Seule une case `rendu` porte une note et compte dans les moyennes : `a_corriger` (remise, correction manuelle attendue), `en_retard` (remise refusee apres l echeance, copie verrouillee), `manquant` (rien de remis)."
+                items:
+                  type: object
+                  required: [evaluation_id, etat, note]
+                  properties:
+                    evaluation_id:
+                      type: integer
+                    etat:
+                      type: string
+                      enum: [rendu, a_corriger, en_retard, manquant]
+                    note:
+                      type: number
+                      nullable: true
         statistiques:
           type: object
           properties:
@@ -5416,6 +5503,151 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/SeanceLocaleInvalide'
                   - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
+
+  /lms/seances/{seanceId}/appel:
+    get:
+      tags:
+        - Visio
+      operationId: lireLAppel
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
+      summary: "L'appel d'une seance : la classe et ses marques"
+      description: |
+        #1649. Les eleves ACTIFS de la classe de la seance, tries par nom, chacun
+        avec sa marque (`null` sans marque). Ecole creee depuis le LMS ; une
+        ecole KLASSCI saisit l'appel dans KLASSCI (409).
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "L'appel"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppelDeLaSeance'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Ecole KLASSCI : l'appel se saisit dans KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Visio
+      operationId: saisirLAppel
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la seance."
+          schema:
+            type: integer
+            minimum: 1
+      summary: "Saisir ou corriger l'appel d'une seance"
+      description: |
+        #1649. L'auteur de la seance ou la gestion marque present, absent, en
+        retard ou excuse, pour les seuls eleves ACTIFS de la classe, des le DEBUT
+        de la seance. La marque porte son origine (`delegated`), qui l'a posee et
+        quand ; une transaction pour le lot. L'historique reste corrigeable, et
+        chaque correction est auditee (avant, apres). La marque l'emporte sur le
+        statut visio dans tout comptage de presence. Rend l'appel relu.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [marques]
+              properties:
+                marques:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [user_id, mark]
+                    properties:
+                      user_id:
+                        type: integer
+                        minimum: 1
+                      mark:
+                        type: string
+                        enum: [present, absent, late, excused]
+      responses:
+        '200':
+          description: "L'appel relu"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppelDeLaSeance'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ni l'auteur de la seance ni la gestion, role hors du personnel ; aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Seance introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Avant le debut de la seance (`seance_not_started`), ou ecole KLASSCI (`attendance_managed_by_klassci`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "Charge invalide (`errors`), ou eleve hors des eleves actifs de la classe (`student_not_in_seance`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationFailed'
+                  - $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /lms/seances/{seanceId}:
     put:
@@ -7008,6 +7240,124 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+
+  /annonces:
+    post:
+      tags:
+        - Notifications
+      operationId: publierUneAnnonce
+      summary: "Annoncer a toute une classe"
+      description: |
+        #1650. Le personnel de l ecole (admin, superAdmin, coordinateur ; l enseignant pour ses
+        seules classes) annonce a toute une classe. L annonce est enregistree, et chaque eleve
+        inscrit et ACTIF de la classe en recoit une notification `annonce` (`data.annonce_id`,
+        `data.classe_id`). Les eleves viennent de la source d inscription de l ecole, dans les deux
+        types d ecole.
+
+        Si un canal de courriel existe, une tache en file ecrit aussi a chaque destinataire
+        (`courriel` vrai) ; sans canal, aucun courriel (`courriel` faux). Une classe sans eleve
+        n est pas une erreur : `destinataires` vaut 0.
+
+        `classe_id` est l id de la classe dans l ESPACE SOURCE de l ecole (`ClasseDeLEspaceSource`,
+        comme `/lms/classes/{classe}/resultats`) : l id KLASSCI dans une ecole KLASSCI, celui que
+        donnent ses ecrans de classe ; l id local dans une ecole autonome. La reponse le rend tel
+        quel. Limite nommee `annonce` (10 par minute et par compte).
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - classe_id
+                - titre
+                - message
+              properties:
+                classe_id:
+                  type: integer
+                  minimum: 1
+                titre:
+                  type: string
+                  maxLength: 150
+                message:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: "Annonce envoyee"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - classe_id
+                      - titre
+                      - destinataires
+                      - courriel
+                    properties:
+                      id:
+                        type: integer
+                      classe_id:
+                        type: integer
+                      titre:
+                        type: string
+                      destinataires:
+                        type: integer
+                        minimum: 0
+                        description: "Le nombre d eleves prevenus."
+                      courriel:
+                        type: boolean
+                        description: "Vrai si un courriel part aussi (canal disponible et au moins un eleve)."
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role hors du personnel de l ecole (eleve), ou enseignant hors de ses classes. Aussi,
+            sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: |
+            Classe introuvable : absente, supprimee, d une AUTRE ecole, ou designee hors de
+            l espace source (un id local dans une ecole KLASSCI). Le meme corps dans tous les cas
+            (isolation).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Classe, titre (150 au plus) ou message (2 000 au plus) absent ou invalide."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /regles-de-passage:
     get:
@@ -8983,6 +9333,109 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /classes/{classe}/eleves/{eleve}/muter:
+    post:
+      operationId: moveStudentToAnotherClass
+      tags:
+        - Session de formation
+      summary: "Changer un eleve de classe dans son ecole"
+      description: |
+        Un geste NOMME (#1652), en UNE transaction : l eleve entre dans la classe
+        cible, puis son adhesion source se ferme (`inactif`, datee par `ends_on`,
+        ADR-711-02, motif `mutation`). Une ancienne adhesion de l eleve dans la cible
+        est REACTIVEE, jamais doublee. Un refus ne change rien, ni a la source ni a
+        la cible.
+
+        La cible doit recevoir : ni archivee (`class_archived`), ni rattachee a une
+        Periode close (`class_period_closed`), ni deja l eleve actif
+        (`already_in_class`), ni complete (`class_full`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          description: "La classe SOURCE"
+          schema:
+            type: integer
+            minimum: 1
+        - name: eleve
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - classe_id
+              properties:
+                classe_id:
+                  type: integer
+                  minimum: 1
+                  description: "La classe CIBLE, differente de la source"
+      responses:
+        '200':
+          description: "L eleve a change de classe"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      eleve_id:
+                        type: integer
+                      depuis:
+                        type: integer
+                      vers:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, catalogue venant de KLASSCI, ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe source ou cible, ou eleve, introuvable DANS CET ETABLISSEMENT ; ou eleve sans adhesion dans la classe source"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            `enrolment_not_active` : l adhesion source n est pas active.
+            `class_archived`, `class_period_closed`, `already_in_class`, `class_full` :
+            la classe cible ne recoit pas cet eleve.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "`classe_id` absent, invalide, ou egal a la classe source"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /classes/{classe}/code-inscription:
@@ -11884,7 +12337,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
         '404':
-          description: "Not found"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
             Erreur de validation (`errors`), `is_published` envoye (`publish_via_dedicated_route`, la
@@ -11947,7 +12404,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
         '404':
-          description: "Not found"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # ============ CYCLE EVALUATION (#892) ============
   # Chaque code et chaque cle ci-dessous a ete MESURE par appel reel de la
@@ -12643,14 +13104,21 @@ paths:
       tags:
         - Evaluations
       operationId: getMySubmission
-      summary: "Derniere copie de l eleve, et son corrige apres delai"
+      summary: "Derniere copie de l eleve, et son corrige une fois ouvert"
       description: |
         Rend la tentative de plus haut numero, quel que soit son statut.
 
         Le corrige (`correct_answers`, `explanation` sur chaque question)
-        n apparait qu a partir de `correction_available_at` : 7 jours apres
-        la remise. Avant, les questions sont rendues sans lui. Quand
-        `show_results` est faux, `score` et `note_sur_20` valent `null`.
+        n apparait que si `correction_available` est vrai (#1699). La regle suit
+        `correction_release`, choisi par l enseignant. Dans tous les modes, le
+        corrige ne s ouvre jamais avant la fermeture de l evaluation pour tous.
+        La fermeture est le `end_at` programme par KLASSCI, sinon la fin de
+        l evaluation. Une fenetre illisible, ou une evaluation sans fin connue,
+        laisse le corrige ferme. Avant son ouverture, les questions sont rendues
+        sans lui.
+
+        Quand `show_results` est faux (notes non publiees), `score`,
+        `note_sur_20` et `feedback` valent `null`.
       security:
         - sanctum: []
       parameters:
@@ -12706,6 +13174,7 @@ paths:
                       feedback:
                         type: string
                         nullable: true
+                        description: "Commentaire de l enseignant ; `null` tant que les notes ne sont pas publiees (#1699)."
                       questions:
                         type: array
                         items:
@@ -12722,9 +13191,12 @@ paths:
                         type: string
                         format: date-time
                         nullable: true
+                        description: "L instant d ouverture du corrige, passe ou a venir, s il est connu. Nul sinon : jamais, notes non publiees, ou fermeture inconnue."
                       correction_delay_days:
                         type: integer
-                        example: 7
+                        nullable: true
+                        deprecated: true
+                        description: "Toujours `null` depuis #1699 : il n y a plus de delai fixe. Lire `correction_available_at`."
                       evaluation:
                         type: object
                         properties:
@@ -12736,6 +13208,13 @@ paths:
                             $ref: '#/components/schemas/Decimal2'
                           coefficient:
                             $ref: '#/components/schemas/Decimal2'
+                          show_results:
+                            type: boolean
+                            description: "Notes publiees (#1699). Faux : « notes pas encore publiees », a distinguer d une copie pas encore corrigee."
+                          correction_release:
+                            type: string
+                            enum: [never, with_results, after_close, at_date]
+                            description: "Le mode d ouverture du corrige, choisi par l enseignant (#1699)."
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '401':
@@ -12806,13 +13285,18 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
             Aucune question (`reason: evaluation_without_questions`, C16, le meme refus que la mise
@@ -12926,14 +13410,19 @@ paths:
         '403':
           description: |
             Role insuffisant, enseignant non proprietaire, coordinateur sur une
-            evaluation non terminee — ou evaluation inconnue dans cet
-            etablissement : elle rend 403, pas 404. Seul le refus du coordinateur
+            evaluation non terminee (dans son ecole). Seul le refus du coordinateur
             porte `reason: preview_requires_finished_evaluation`.
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusApercuEvaluation'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -13035,13 +13524,18 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, enseignant non proprietaire — ou evaluation
-            inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -13126,15 +13620,14 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '404':
-          description: "Copie inexistante, ou appartenant a une autre evaluation"
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs. Aussi : copie inexistante, ou appartenant a une autre evaluation"
           content:
             application/json:
               schema:
@@ -13315,13 +13808,18 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
-            Role insuffisant, enseignant non proprietaire — ou evaluation
-            inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '503':
@@ -13336,6 +13834,105 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorWithDetail'
+
+  /evaluations/{id}/release:
+    patch:
+      tags:
+        - Evaluations
+      operationId: releaseEvaluation
+      summary: "Publier les notes et regler l ouverture du corrige"
+      description: |
+        #1699 : publier les notes est un geste distinct de leur saisie. `show_results`
+        vrai rend a l eleve sa note, son score et le commentaire de l enseignant. Faux
+        les lui retire. `correction_release` choisit quand le corrige s ouvre (voir
+        `EvaluationRecord`). Dans tous les modes, jamais avant la fermeture de
+        l evaluation pour tous.
+
+        Permise sur une evaluation VERROUILLEE (copies remises) : elle ne touche ni
+        aux questions ni aux copies. `PUT /evaluations/{id}` rend 409 des la premiere
+        copie, et c etait la seule voie vers `show_results`.
+
+        Au moins un reglage. `correction_release_at` n existe qu avec `at_date`, qui
+        l exige ; un autre mode efface la date.
+
+        Roles : enseignant (proprietaire de l evaluation) ou administrateur. Les
+        coordinateurs ne publient pas.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                show_results:
+                  type: boolean
+                correction_release:
+                  type: string
+                  enum: [never, with_results, after_close, at_date]
+                correction_release_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: "Requise pour `at_date`, interdite sinon."
+      responses:
+        '200':
+          description: "Reglage enregistre"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/EvaluationRecord'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role insuffisant, coordinateur, eleve, enseignant non proprietaire. Aussi,
+            sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: |
+            Evaluation introuvable : absente, supprimee, ou d une AUTRE ecole. Le meme
+            corps dans les trois cas (isolation : un 403 confirmerait qu elle existe).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Aucun reglage, mode inconnu, ou date absente, illisible ou orpheline."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /evaluations/{id}/sync-klassci:
     post:
@@ -13386,15 +13983,14 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
-            Role insuffisant, coordinateur, enseignant non proprietaire — ou
-            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Role insuffisant, coordinateur, enseignant non proprietaire (dans son ecole).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '404':
-          description: "KLASSCI ne connait pas cette evaluation, relaye. Rien n est marque."
+          description: "Evaluation introuvable (#1782) : absente, supprimee ou d une autre ecole, avec le meme corps dans les trois cas. Un 403 dirait qu elle existe ailleurs. Aussi : KLASSCI ne connait pas cette evaluation, relaye. Rien n est marque."
           content:
             application/json:
               schema:
@@ -14158,27 +14754,102 @@ paths:
     get:
       tags:
         - Notifications
-      summary: "List notifications"
+      summary: "Les notifications de l appelant, paginees"
+      description: |
+        Les notifications de l APPELANT seul, les plus recentes d abord. `type` filtre sur un
+        type connu : `type=annonce` est le fil « Mes annonces » (#1650, front#690). La page
+        est gardee en cache 60 s, par appelant, filtre, taille et numero de page.
       security:
         - sanctum: []
       parameters:
-        - name: read
+        - name: unread_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: type
           in: query
           schema:
             type: string
-            enum: [true, false]
+            enum: [lesson_published, forum_reply, quiz_available, grade_received, lesson_updated, forum_solution, quiz_deadline, visio_scheduled, visio_starting, evaluation_approaching, annonce]
         - name: per_page
           in: query
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
             default: 10
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
       responses:
         '200':
-          description: "List of notifications"
+          description: "Une page de notifications"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - meta
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      required:
+                        - id
+                        - type
+                        - title
+                        - message
+                      properties:
+                        id:
+                          type: integer
+                        type:
+                          type: string
+                        title:
+                          type: string
+                        message:
+                          type: string
+                        data:
+                          type: object
+                          additionalProperties: true
+                          description: "Les donnees du type (`annonce_id`, `classe_id` pour une annonce). Toujours un objet, `{}` quand il est vide."
+                        read_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      last_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '422':
+          description: "`type` inconnu, `per_page` hors bornes, `page` ou `unread_only` invalides."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 

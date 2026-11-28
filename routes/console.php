@@ -126,6 +126,14 @@ Schedule::command('chapters:purge --apply')
     ->withoutOverlapping()
     ->onOneServer();
 
+// #1659 — Durée de conservation des demandes d'inscription (loi 2013-450) : une
+// OBLIGATION, donc planifiée, comme les chapitres et les enregistrements.
+Schedule::command('admissions:purge --apply')
+    ->dailyAt('04:10')
+    ->name('purge-demandes-inscription')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // #514 + #680 — Filets de sécurité. Un enregistrement peut se figer de deux
 // façons, et les deux conservent `active_lock_key`, donc BLOQUENT tout nouvel
 // enregistrement de la séance :

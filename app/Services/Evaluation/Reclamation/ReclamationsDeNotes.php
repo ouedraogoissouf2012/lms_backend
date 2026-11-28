@@ -121,23 +121,30 @@ final class ReclamationsDeNotes
      */
     public function visibles(User $lecteur, ?StatutDeReclamation $statut): Collection
     {
-        return self::portee($lecteur)->when($statut !== null, static fn (Builder $q) => $q->where('statut', $statut))
-            ->with(['copie', 'evaluation'])->orderByDesc('created_at')->orderByDesc('id')->get();
+        $requete = self::portee($lecteur);
+        if ($statut !== null) {
+            $requete->where('statut', $statut);
+        }
+
+        return $requete->with(['copie', 'evaluation'])->orderByDesc('created_at')->orderByDesc('id')->get();
     }
 
     /** @return array{en_attente_enseignant: int, a_trancher: int, corrigees_30j: int, maintenues_30j: int, a_renvoyer_a_klassci: int} */
     public function compteurs(User $lecteur): array
     {
-        $recentes = static fn (Builder $q) => $q->where('statut', StatutDeReclamation::Tranchee)->where('decision_le', '>=', Carbon::now()->subDays(30));
+        $depuis = Carbon::now()->subDays(30);
+        $tranchees = static fn (string $decision): int => self::portee($lecteur)->where('statut', StatutDeReclamation::Tranchee)
+            ->where('decision_le', '>=', $depuis)->where('decision', $decision)->count();
 
         return [
             'en_attente_enseignant' => self::portee($lecteur)->where('statut', StatutDeReclamation::Deposee)->count(),
             'a_trancher' => self::portee($lecteur)->where('statut', StatutDeReclamation::AvisDonne)->count(),
-            'corrigees_30j' => self::portee($lecteur)->where($recentes)->where('decision', 'corrigee')->count(),
-            'maintenues_30j' => self::portee($lecteur)->where($recentes)->where('decision', 'maintenue')->count(),
+            'corrigees_30j' => $tranchees('corrigee'),
+            'maintenues_30j' => $tranchees('maintenue'),
             'a_renvoyer_a_klassci' => self::portee($lecteur)->where('decision', 'corrigee')
-                ->whereHas('evaluation', static fn (Builder $e) => $e->withoutGlobalScope('institution')->whereNotNull('klassci_evaluation_id'))
-                ->whereHas('copie', static fn (Builder $c) => $c->withoutGlobalScope('institution')->where('synced_to_klassci', false))->count(),
+                ->whereIn('evaluation_id', Evaluation::query()->withoutGlobalScope('institution')->whereNotNull('klassci_evaluation_id')->select('id'))
+                ->whereIn('evaluation_submission_id', EvaluationSubmission::query()->withoutGlobalScope('institution')->where('synced_to_klassci', false)->select('id'))
+                ->count(),
         ];
     }
 
@@ -163,12 +170,28 @@ final class ReclamationsDeNotes
             return $requete;
         }
         if ($lecteur->isTeacher()) {
-            return $requete->whereHas('evaluation', static fn (Builder $e) => $e->withoutGlobalScope('institution')
-                ->where(static fn (Builder $p) => $p->where('enseignant_id', $lecteur->id)
-                    ->when($lecteur->klassci_enseignant_id !== null, static fn (Builder $k) => $k->orWhere('klassci_enseignant_id', $lecteur->klassci_enseignant_id))));
+            return $requete->whereIn('evaluation_id', self::evaluationsDe($lecteur));
         }
 
         return $requete->where('student_id', $lecteur->id);
+    }
+
+    /**
+     * Les évaluations de l'enseignant, par la règle de propriété de `ChecksEvaluationOwnership` :
+     * l'auteur local, sinon (une ligne d'avant D72) l'identité KLASSCI ; une identité nulle ne vaut
+     * jamais propriété.
+     *
+     * @return list<int>
+     */
+    private static function evaluationsDe(User $enseignant): array
+    {
+        $ecole = Evaluation::query()->withoutGlobalScope('institution')->where('institution_id', $enseignant->institution_id);
+        $ids = (clone $ecole)->where('enseignant_id', $enseignant->id)->pluck('id')->all();
+        if ($enseignant->klassci_enseignant_id !== null) {
+            $ids = array_merge($ids, (clone $ecole)->where('klassci_enseignant_id', $enseignant->klassci_enseignant_id)->pluck('id')->all());
+        }
+
+        return array_values(array_unique(array_map(static fn (mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids)));
     }
 
     /** @return Builder<ReclamationDeNote> */

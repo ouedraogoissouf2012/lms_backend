@@ -49,7 +49,7 @@ final class ReclamationsDeNotesController extends AuthenticatedController
         $commentaire = $request->validated('commentaire');
 
         return $this->etape(fn (): ReclamationDeNote => $this->reclamations->donnerAvis(
-            $this->reclamations->de($id, $reclamation, $auteur), $auteur, (string) $request->validated('avis'),
+            $this->reclamations->de($id, $reclamation, $auteur), $auteur, $request->validated('avis') === 'corriger' ? 'corriger' : 'maintenir',
             is_string($commentaire) ? $commentaire : null, is_numeric($note) ? (float) $note : null,
         ));
     }
@@ -61,7 +61,7 @@ final class ReclamationsDeNotesController extends AuthenticatedController
         $commentaire = $request->validated('commentaire');
 
         return $this->etape(fn (): ReclamationDeNote => $this->reclamations->trancher(
-            $this->reclamations->de($id, $reclamation, $auteur), $auteur, (string) $request->validated('decision'),
+            $this->reclamations->de($id, $reclamation, $auteur), $auteur, $request->validated('decision') === 'corrigee' ? 'corrigee' : 'maintenue',
             is_numeric($note) ? (float) $note : null, is_string($commentaire) ? $commentaire : null,
         ));
     }

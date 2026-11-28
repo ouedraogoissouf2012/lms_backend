@@ -16,13 +16,14 @@ use Illuminate\Support\Facades\Route;
 | confirmerait). La réponse est la même dans tous les cas. Limite nommée
 | `demandes-inscription` par adresse ; le plafond par école est silencieux.
 |
-| La gestion (`gestion`, puis `PorteDuCatalogueLocal`) : liste, consultation,
-| examen, rejet.
+| La gestion (`permission:formations.gerer`, comme les autres gestes
+| d'inscription : codes, mutation ; puis `PorteDesAdmissions`) : liste,
+| consultation, examen, rejet.
 */
 Route::post('demandes-inscription', [DepotDeDemandeController::class, 'store'])
     ->middleware('throttle:demandes-inscription');
 
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:formations.gerer'])->group(function (): void {
     Route::get('demandes-inscription', [DemandeInscriptionController::class, 'index']);
     Route::get('demandes-inscription/{demande}', [DemandeInscriptionController::class, 'show'])->whereNumber('demande');
     Route::post('demandes-inscription/{demande}/examiner', [DemandeInscriptionController::class, 'examiner'])->whereNumber('demande');

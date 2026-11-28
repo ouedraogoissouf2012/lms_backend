@@ -14,15 +14,15 @@ use Symfony\Component\HttpFoundation\Response;
  * Défense en profondeur (#511) : réserve un endpoint au gestionnaire PLATEFORME
  * (cross-tenant) via la comparaison STRICTE {@see InteractsWithRoles::isPlatformSupradmin()}.
  *
- * Deuxième couche INDÉPENDANTE, appliquée en plus de `role:supradmin`, sur les
+ * Deuxième couche INDÉPENDANTE, appliquée en plus de `permission:plateforme.*`, sur les
  * surfaces cross-tenant les plus sensibles (gestion des institutions : lecture/
- * écriture/rotation de tokens de TOUS les tenants). Si la logique de `EnsureRole`
+ * écriture/rotation de tokens de TOUS les tenants). Si la logique de `EnsurePermission`
  * régressait, cette barrière stricte protégerait encore le CRUD cross-tenant.
  *
- * Réponse alignée sur EnsureRole (401 non authentifié / 403 rôle insuffisant),
+ * Réponse alignée sur EnsurePermission (401 non authentifié / 403 rôle insuffisant),
  * sans exposer de métadonnée d'autorisation au client (OWASP A06).
  *
- * @see app/Http/Middleware/EnsureRole.php
+ * @see EnsurePermission
  * @see app/Http/Controllers/API/InstitutionController.php
  */
 final class EnsurePlatformSupradmin
@@ -39,7 +39,7 @@ final class EnsurePlatformSupradmin
         }
 
         if (! $user->isPlatformSupradmin()) {
-            // Ce refus ne survient que si la garde primaire `role:supradmin` a
+            // Ce refus ne survient que si la garde primaire `permission:plateforme.*` a
             // régressé — c'est précisément l'événement que cette 2ᵉ couche existe
             // pour capter. On le rend observable côté SOC (jamais exposé au client).
             Log::warning('Accès plateforme refusé (défense en profondeur #511)', [

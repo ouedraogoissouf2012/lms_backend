@@ -34,8 +34,8 @@ use Psr\Log\LoggerInterface;
  *
  * ## Seul un apprenant adhère
  *
- * `role:etudiant` ne suffit pas : `EnsureRole` laisse passer le `superAdmin`
- * d'établissement sur toute route qui n'exige pas `supradmin`. Sans ce contrôle,
+ * `permission:inscription.rejoindre` ne suffit pas : `PermissionsDuRole` donne au `superAdmin`
+ * d'établissement toute permission hors de la plateforme. Sans ce contrôle,
  * un administrateur apparaîtrait dans la liste des élèves de la classe.
  *
  * ## Un plafond d'ÉCHECS par établissement

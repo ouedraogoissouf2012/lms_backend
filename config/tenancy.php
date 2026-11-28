@@ -50,6 +50,8 @@ return [
         'tuteurs',
         'matricules_sequences',
         'creneaux',
+        // #1806 — les sous-périodes d'une période ; table neuve, NOT NULL.
+        'sous_periodes',
         'classes',
         'matieres',
         'lessons',

@@ -108,7 +108,7 @@ final class ArbreLmd
         $colonne = $niveau->colonneDuParent();
         $parent = $niveau->parent();
         if ($colonne !== null && $parent !== null && array_key_exists($colonne, $donnees)
-            && ! $this->dansLEcole($parent, $ecole)->whereKey($donnees[$colonne])->exists()) {
+            && ! $parent->modele()::query()->withoutGlobalScopes()->whereKey($donnees[$colonne])->exists()) {
             throw ValidationException::withMessages([$colonne => 'Ce parent n\'existe pas dans cet établissement.']);
         }
 

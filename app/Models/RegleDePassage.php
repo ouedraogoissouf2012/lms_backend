@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property int $institution_id
  * @property int|null $classe_id
+ * @property int $classe_cle
  * @property string|null $moyenne_passage
  * @property string|null $moyenne_rattrapage
  * @property int|null $max_matieres_rattrapage
@@ -33,14 +34,23 @@ final class RegleDePassage extends Model
     protected $table = 'regles_de_passage';
 
     protected $fillable = [
-        'institution_id', 'classe_id', 'moyenne_passage', 'moyenne_rattrapage', 'max_matieres_rattrapage', 'redoublement_autorise', 'max_redoublements',
+        'institution_id', 'classe_id', 'classe_cle', 'moyenne_passage', 'moyenne_rattrapage', 'max_matieres_rattrapage', 'redoublement_autorise', 'max_redoublements',
     ];
 
     protected $casts = [
         'institution_id' => 'integer',
         'classe_id' => 'integer',
+        'classe_cle' => 'integer',
         'max_matieres_rattrapage' => 'integer',
         'redoublement_autorise' => 'boolean',
         'max_redoublements' => 'integer',
     ];
+
+    /** La clé d'unicité suit toujours la classe : 0 pour la ligne de l'école (index unique `institution_id, classe_cle`). */
+    protected static function booted(): void
+    {
+        self::saving(static function (self $regle): void {
+            $regle->classe_cle = $regle->classe_id ?? 0;
+        });
+    }
 }

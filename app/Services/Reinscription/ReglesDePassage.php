@@ -16,12 +16,20 @@ use Illuminate\Validation\ValidationException;
  * `catalogue_managed_by_klassci` en école KLASSCI). La moyenne de passage de l'école s'écrit dans
  * `settings.seuil_reussite` ({@see SeuilDePassage}), la seule source.
  *
- * La règle effective d'une classe : sa surcharge, champ par champ, sinon l'école, sinon {@see self::PAR_DEFAUT}.
+ * La règle effective d'une classe : sa surcharge, champ par champ, sinon l'école, sinon {@see self::PAR_DEFAUT}. La
+ * moyenne de rattrapage non réglée SUIT la moyenne de passage effective ({@see self::ECART_RATTRAPAGE} en dessous, au
+ * moins 0) : une constante dépasserait le passage d'une école au seuil bas, et le seuil reste la seule source.
+ *
+ * Une ligne par école et par classe, garantie par la BASE : `classe_cle` (0 pour l'école) dans l'index unique, et
+ * `createOrFirst`, qui rattrape la ligne d'une écriture concurrente au lieu d'en créer une seconde.
  */
 final class ReglesDePassage
 {
-    /** Les valeurs d'une école qui n'a rien réglé (hors moyenne de passage, {@see SeuilDePassage::PAR_DEFAUT}). */
-    public const PAR_DEFAUT = ['moyenne_rattrapage' => 8.0, 'max_matieres_rattrapage' => 2, 'redoublement_autorise' => true, 'max_redoublements' => 1];
+    /** Les valeurs d'une école qui n'a rien réglé (le passage : {@see SeuilDePassage} ; le rattrapage : dérivé). */
+    public const PAR_DEFAUT = ['max_matieres_rattrapage' => 2, 'redoublement_autorise' => true, 'max_redoublements' => 1];
+
+    /** Le rattrapage non réglé : la moyenne de passage moins cet écart, au moins 0. */
+    public const ECART_RATTRAPAGE = 2.0;
 
     public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
 
@@ -38,7 +46,7 @@ final class ReglesDePassage
     public function ecrireEcole(User $acteur, array $valeurs): array
     {
         $ecole = $this->porte->etablissementDe($acteur);
-        $this->verifierRattrapage($valeurs, $this->ecole($ecole));
+        $this->verifierRattrapage($valeurs, SeuilDePassage::deLEcole($ecole), $this->rattrapageExplicite($ecole));
         if (is_numeric($valeurs['moyenne_passage'] ?? null)) {
             $institution = Institution::query()->findOrFail($ecole);
             $institution->settings = ['seuil_reussite' => (float) $valeurs['moyenne_passage']] + (is_array($institution->settings) ? $institution->settings : []);
@@ -65,7 +73,7 @@ final class ReglesDePassage
     public function surchargerClasse(User $acteur, int $classeId, array $valeurs): array
     {
         $classe = ClasseLocale::de($this->porte->etablissementDe($acteur), $classeId);
-        $this->verifierRattrapage($valeurs, $this->effective($classe));
+        $this->verifierRattrapage($valeurs, SeuilDePassage::pour($classe), $this->surcharge($classe)['moyenne_rattrapage'] ?? $this->rattrapageExplicite((int) $classe->institution_id));
         $this->ligne((int) $classe->institution_id, $classe->id)->fill($valeurs)->save();
 
         return $this->classe($classe);
@@ -85,7 +93,11 @@ final class ReglesDePassage
     {
         $surcharge = $this->surcharge($classe);
         $ecole = $this->ecole((int) $classe->institution_id);
-        $effective = ['moyenne_passage' => SeuilDePassage::pour($classe)];
+        $passage = SeuilDePassage::pour($classe);
+        $effective = [
+            'moyenne_passage' => $passage,
+            'moyenne_rattrapage' => $surcharge['moyenne_rattrapage'] ?? $this->rattrapageExplicite((int) $classe->institution_id) ?? self::rattrapageDerive($passage),
+        ];
         foreach (array_keys(self::PAR_DEFAUT) as $champ) {
             $effective[$champ] = $surcharge[$champ] ?? $ecole[$champ];
         }
@@ -96,8 +108,9 @@ final class ReglesDePassage
     /** @return array<string, float|int|bool> */
     private function ecole(int $ecole): array
     {
-        $ligne = RegleDePassage::query()->withoutGlobalScopes()->where('institution_id', $ecole)->whereNull('classe_id')->first();
-        $regle = ['moyenne_passage' => SeuilDePassage::deLEcole($ecole)];
+        $ligne = $this->ligneDeLEcole($ecole);
+        $passage = SeuilDePassage::deLEcole($ecole);
+        $regle = ['moyenne_passage' => $passage, 'moyenne_rattrapage' => $this->rattrapageExplicite($ecole) ?? self::rattrapageDerive($passage)];
         foreach (self::PAR_DEFAUT as $champ => $defaut) {
             $regle[$champ] = self::typer($champ, $ligne?->getAttribute($champ)) ?? $defaut;
         }
@@ -122,22 +135,40 @@ final class ReglesDePassage
         return array_combine(RegleDePassage::CHAMPS, array_map(static fn (string $c): mixed => self::typer($c, $ligne->getAttribute($c)), RegleDePassage::CHAMPS));
     }
 
+    /** La ligne de l'école ou de la classe, créée au besoin ; une écriture concurrente rend la même (index unique). */
     private function ligne(int $ecole, ?int $classe): RegleDePassage
     {
-        return RegleDePassage::query()->withoutGlobalScopes()->where('institution_id', $ecole)->where('classe_id', $classe)->first()
-            ?? new RegleDePassage(['institution_id' => $ecole, 'classe_id' => $classe]);
+        return RegleDePassage::query()->withoutGlobalScopes()
+            ->createOrFirst(['institution_id' => $ecole, 'classe_cle' => $classe ?? 0], ['classe_id' => $classe]);
+    }
+
+    private function ligneDeLEcole(int $ecole): ?RegleDePassage
+    {
+        return RegleDePassage::query()->withoutGlobalScopes()->where('institution_id', $ecole)->where('classe_cle', 0)->first();
+    }
+
+    private function rattrapageExplicite(int $ecole): ?float
+    {
+        $valeur = $this->ligneDeLEcole($ecole)?->moyenne_rattrapage;
+
+        return is_numeric($valeur) ? (float) $valeur : null;
+    }
+
+    private static function rattrapageDerive(float $passage): float
+    {
+        return max(0.0, $passage - self::ECART_RATTRAPAGE);
     }
 
     /**
      * La moyenne de rattrapage ne dépasse pas celle de passage, valeurs reçues ou en vigueur.
      *
      * @param  array<string, mixed>  $valeurs
-     * @param  array<string, float|int|bool>  $enVigueur
      */
-    private function verifierRattrapage(array $valeurs, array $enVigueur): void
+    private function verifierRattrapage(array $valeurs, float $passageEnVigueur, mixed $rattrapageRegle): void
     {
-        $passage = $valeurs['moyenne_passage'] ?? $enVigueur['moyenne_passage'];
-        $rattrapage = $valeurs['moyenne_rattrapage'] ?? $enVigueur['moyenne_rattrapage'];
+        // Seul un rattrapage RÉGLÉ se compare : non réglé, il se dérive du passage et ne peut pas le dépasser.
+        $passage = $valeurs['moyenne_passage'] ?? $passageEnVigueur;
+        $rattrapage = $valeurs['moyenne_rattrapage'] ?? $rattrapageRegle;
         if (is_numeric($passage) && is_numeric($rattrapage) && (float) $rattrapage > (float) $passage) {
             throw ValidationException::withMessages(['moyenne_rattrapage' => 'La moyenne de rattrapage ne dépasse pas la moyenne de passage.']);
         }

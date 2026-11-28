@@ -1,0 +1,2977 @@
+{
+    "DELETE api/admin/institutions/{id}": [
+        "supradmin"
+    ],
+    "DELETE api/banque/categories/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/banque/questions/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/chapters/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/classes/{classe}/code-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/classes/{classe}/eleves/{eleve}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/classes/{classe}/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/configuration": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/eleves/{eleve}/photo": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/eleves/{eleve}/tuteurs/{tuteur}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/evaluations/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/files/{file}": "*",
+    "DELETE api/forum/posts/{post}": "*",
+    "DELETE api/forum/topics/{topic}": "*",
+    "DELETE api/knowledge-checks/{id}": "*",
+    "DELETE api/lessons/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/lms/codes-emargement/{codeId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/lms/seances/local/{seanceId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/lms/seances/{seanceId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/notifications/read/all": "*",
+    "DELETE api/notifications/{id}": "*",
+    "DELETE api/quizzes/{quiz}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/training-sessions/{trainingSession}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/users/{user}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/admin/institutions/{id}": [
+        "supradmin"
+    ],
+    "DELETE api/v1/banque/categories/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/banque/questions/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/chapters/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/classes/{classe}/code-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/classes/{classe}/eleves/{eleve}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/classes/{classe}/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/configuration": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/eleves/{eleve}/photo": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/eleves/{eleve}/tuteurs/{tuteur}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/evaluations/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/files/{file}": "*",
+    "DELETE api/v1/forum/posts/{post}": "*",
+    "DELETE api/v1/forum/topics/{topic}": "*",
+    "DELETE api/v1/knowledge-checks/{id}": "*",
+    "DELETE api/v1/lessons/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/lms/codes-emargement/{codeId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/lms/seances/local/{seanceId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/lms/seances/{seanceId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/notifications/read/all": "*",
+    "DELETE api/v1/notifications/{id}": "*",
+    "DELETE api/v1/quizzes/{quiz}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/training-sessions/{trainingSession}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "DELETE api/v1/users/{user}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/__test/tenant-scope-probe": "*",
+    "GET api/admin/analytics/activity-trends": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/analytics/pending-tasks": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/analytics/recent-users": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/analytics/system-metrics": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/audit-log": "*",
+    "GET api/admin/institutions": [
+        "supradmin"
+    ],
+    "GET api/admin/institutions/{id}": [
+        "supradmin"
+    ],
+    "GET api/admin/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/notifications/stats": [
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/reports/async/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/reports/async/{id}/download": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/school-requests": [
+        "supradmin"
+    ],
+    "GET api/admin/statistics": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/admin/users": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/auth/check": "*",
+    "GET api/auth/me": "*",
+    "GET api/banque/categories": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/banque/categories/{id}/questions": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/chapters/uploads/{id}/status": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/chapters/{chapterId}/progress": "*",
+    "GET api/chapters/{chapter}/original": "*",
+    "GET api/chapters/{chapter}/slides/{slide}": "*",
+    "GET api/chapters/{chapter}/video": "*",
+    "GET api/chapters/{id}": "*",
+    "GET api/classes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/configuration": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/dashboard/stats": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/dashboard/student": "*",
+    "GET api/dashboard/teacher": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/demandes-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/demandes-inscription/{demande}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/documentation": "*",
+    "GET api/eleves/{eleve}/dossier": "*",
+    "GET api/eleves/{eleve}/photo": "*",
+    "GET api/evaluations": "*",
+    "GET api/evaluations/student": "*",
+    "GET api/evaluations/{id}": "*",
+    "GET api/evaluations/{id}/my-submission": "*",
+    "GET api/evaluations/{id}/preview": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/evaluations/{id}/results-by-class": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/evaluations/{id}/submissions": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/evaluations/{id}/time-status": "*",
+    "GET api/files": "*",
+    "GET api/files/stats": "*",
+    "GET api/files/{id}": "*",
+    "GET api/files/{id}/download": "*",
+    "GET api/forum/topics": "*",
+    "GET api/forum/topics/{topic}": "*",
+    "GET api/institution/current": "*",
+    "GET api/institutions/active": "*",
+    "GET api/knowledge-checks": "*",
+    "GET api/knowledge-checks/chapter/{chapterId}": "*",
+    "GET api/knowledge-checks/{id}": "*",
+    "GET api/knowledge-checks/{id}/my-attempts": "*",
+    "GET api/lessons": "*",
+    "GET api/lessons/my-courses": "*",
+    "GET api/lessons/{id}": "*",
+    "GET api/lessons/{id}/progress": "*",
+    "GET api/lessons/{lessonId}/chapter-progress": "*",
+    "GET api/lessons/{lessonId}/chapters": "*",
+    "GET api/lms/attendance/history": "*",
+    "GET api/lms/classes/etablissement": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/classes/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/classes/local/{classeId}": "*",
+    "GET api/lms/classes/{classeId}": "*",
+    "GET api/lms/classes/{classeId}/etudiants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/classes/{classeId}/etudiants/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/classes/{classe}/resultats": "*",
+    "GET api/lms/codes-emargement": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/enseignants": "*",
+    "GET api/lms/heures-enseignants": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/imports/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/justificatifs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/justificatifs/{justificatifId}/piece": "*",
+    "GET api/lms/matieres/{matiereId}": "*",
+    "GET api/lms/mes-absences": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/mes-heures": [
+        "enseignant",
+        "teacher",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/mes-justificatifs": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/notifications/preferences/{userId}": "*",
+    "GET api/lms/seances/history": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/seances/my-classes": "*",
+    "GET api/lms/seances/my-teaching": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/seances/upcoming": "*",
+    "GET api/lms/seances/{seanceId}/appel": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/seances/{seanceId}/attendances": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/seances/{seanceId}/details": "*",
+    "GET api/lms/seances/{seanceId}/recording": "*",
+    "GET api/lms/seances/{seanceId}/visio-participants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/teacher/classes": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/teacher/my-matieres": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/visio/active": "*",
+    "GET api/lms/visio/consent": "*",
+    "GET api/my-grades": "*",
+    "GET api/notifications": "*",
+    "GET api/notifications/recent": "*",
+    "GET api/notifications/unread-count": "*",
+    "GET api/oauth2-callback": "*",
+    "GET api/ping": "*",
+    "GET api/programs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/proxy/classes": "*",
+    "GET api/proxy/classes/{id}/etudiants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/proxy/emploi-temps": "*",
+    "GET api/proxy/enseignants": "*",
+    "GET api/proxy/evaluations": "*",
+    "GET api/proxy/filieres": "*",
+    "GET api/proxy/matieres": "*",
+    "GET api/proxy/matieres/{id}": "*",
+    "GET api/proxy/me/dashboard": "*",
+    "GET api/proxy/me/teacher-dashboard": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/proxy/niveaux-etudes": "*",
+    "GET api/proxy/structure": "*",
+    "GET api/proxy/test-connection": [
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/quiz-attempts/{id}": "*",
+    "GET api/quiz-attempts/{id}/time-remaining": "*",
+    "GET api/quizzes": "*",
+    "GET api/quizzes/{quiz}": "*",
+    "GET api/quizzes/{quiz}/attempts": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/search": "*",
+    "GET api/search/history": "*",
+    "GET api/search/suggestions": "*",
+    "GET api/teacher/stats": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/test-throw-exception": "*",
+    "GET api/training-sessions": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/training-sessions/{trainingSession}/sous-periodes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/user": "*",
+    "GET api/v1/admin/analytics/activity-trends": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/analytics/pending-tasks": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/analytics/recent-users": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/analytics/system-metrics": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/audit-log": "*",
+    "GET api/v1/admin/institutions": [
+        "supradmin"
+    ],
+    "GET api/v1/admin/institutions/{id}": [
+        "supradmin"
+    ],
+    "GET api/v1/admin/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/notifications/stats": [
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/reports/async/{id}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/reports/async/{id}/download": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/school-requests": [
+        "supradmin"
+    ],
+    "GET api/v1/admin/statistics": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/admin/users": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/auth/check": "*",
+    "GET api/v1/auth/me": "*",
+    "GET api/v1/banque/categories": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/banque/categories/{id}/questions": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/chapters/uploads/{id}/status": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/chapters/{chapterId}/progress": "*",
+    "GET api/v1/chapters/{chapter}/original": "*",
+    "GET api/v1/chapters/{chapter}/slides/{slide}": "*",
+    "GET api/v1/chapters/{chapter}/video": "*",
+    "GET api/v1/chapters/{id}": "*",
+    "GET api/v1/classes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/configuration": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/dashboard/stats": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/dashboard/student": "*",
+    "GET api/v1/dashboard/teacher": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/demandes-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/demandes-inscription/{demande}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/eleves/{eleve}/dossier": "*",
+    "GET api/v1/eleves/{eleve}/photo": "*",
+    "GET api/v1/evaluations": "*",
+    "GET api/v1/evaluations/student": "*",
+    "GET api/v1/evaluations/{id}": "*",
+    "GET api/v1/evaluations/{id}/my-submission": "*",
+    "GET api/v1/evaluations/{id}/preview": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/evaluations/{id}/results-by-class": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/evaluations/{id}/submissions": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/evaluations/{id}/time-status": "*",
+    "GET api/v1/files": "*",
+    "GET api/v1/files/stats": "*",
+    "GET api/v1/files/{id}": "*",
+    "GET api/v1/files/{id}/download": "*",
+    "GET api/v1/forum/topics": "*",
+    "GET api/v1/forum/topics/{topic}": "*",
+    "GET api/v1/institution/current": "*",
+    "GET api/v1/institutions/active": "*",
+    "GET api/v1/knowledge-checks": "*",
+    "GET api/v1/knowledge-checks/chapter/{chapterId}": "*",
+    "GET api/v1/knowledge-checks/{id}": "*",
+    "GET api/v1/knowledge-checks/{id}/my-attempts": "*",
+    "GET api/v1/lessons": "*",
+    "GET api/v1/lessons/my-courses": "*",
+    "GET api/v1/lessons/{id}": "*",
+    "GET api/v1/lessons/{id}/progress": "*",
+    "GET api/v1/lessons/{lessonId}/chapter-progress": "*",
+    "GET api/v1/lessons/{lessonId}/chapters": "*",
+    "GET api/v1/lms/attendance/history": "*",
+    "GET api/v1/lms/classes/etablissement": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/classes/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/classes/local/{classeId}": "*",
+    "GET api/v1/lms/classes/{classeId}": "*",
+    "GET api/v1/lms/classes/{classeId}/etudiants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/classes/{classeId}/etudiants/export": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/classes/{classe}/resultats": "*",
+    "GET api/v1/lms/codes-emargement": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/enseignants": "*",
+    "GET api/v1/lms/heures-enseignants": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/imports/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/justificatifs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/justificatifs/{justificatifId}/piece": "*",
+    "GET api/v1/lms/matieres/{matiereId}": "*",
+    "GET api/v1/lms/mes-absences": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/mes-heures": [
+        "enseignant",
+        "teacher",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/mes-justificatifs": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/notifications/preferences/{userId}": "*",
+    "GET api/v1/lms/seances/history": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/seances/my-classes": "*",
+    "GET api/v1/lms/seances/my-teaching": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/seances/upcoming": "*",
+    "GET api/v1/lms/seances/{seanceId}/appel": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/seances/{seanceId}/attendances": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/seances/{seanceId}/details": "*",
+    "GET api/v1/lms/seances/{seanceId}/recording": "*",
+    "GET api/v1/lms/seances/{seanceId}/visio-participants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/teacher/classes": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/teacher/my-matieres": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/visio/active": "*",
+    "GET api/v1/lms/visio/consent": "*",
+    "GET api/v1/my-grades": "*",
+    "GET api/v1/notifications": "*",
+    "GET api/v1/notifications/recent": "*",
+    "GET api/v1/notifications/unread-count": "*",
+    "GET api/v1/ping": "*",
+    "GET api/v1/programs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/proxy/classes": "*",
+    "GET api/v1/proxy/classes/{id}/etudiants": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/proxy/emploi-temps": "*",
+    "GET api/v1/proxy/enseignants": "*",
+    "GET api/v1/proxy/evaluations": "*",
+    "GET api/v1/proxy/filieres": "*",
+    "GET api/v1/proxy/matieres": "*",
+    "GET api/v1/proxy/matieres/{id}": "*",
+    "GET api/v1/proxy/me/dashboard": "*",
+    "GET api/v1/proxy/me/teacher-dashboard": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/proxy/niveaux-etudes": "*",
+    "GET api/v1/proxy/structure": "*",
+    "GET api/v1/proxy/test-connection": [
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/quiz-attempts/{id}": "*",
+    "GET api/v1/quiz-attempts/{id}/time-remaining": "*",
+    "GET api/v1/quizzes": "*",
+    "GET api/v1/quizzes/{quiz}": "*",
+    "GET api/v1/quizzes/{quiz}/attempts": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/search": "*",
+    "GET api/v1/search/history": "*",
+    "GET api/v1/search/suggestions": "*",
+    "GET api/v1/teacher/stats": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/test-throw-exception": "*",
+    "GET api/v1/training-sessions": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/training-sessions/{trainingSession}/sous-periodes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/user": "*",
+    "PATCH api/admin/institutions/{id}/mode": [
+        "supradmin"
+    ],
+    "PATCH api/admin/institutions/{id}/toggle": [
+        "supradmin"
+    ],
+    "PATCH api/banque/categories/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/classes/{classe}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/classes/{classe}/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/evaluations/{id}/release": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/admin/institutions/{id}/mode": [
+        "supradmin"
+    ],
+    "PATCH api/v1/admin/institutions/{id}/toggle": [
+        "supradmin"
+    ],
+    "PATCH api/v1/banque/categories/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/classes/{classe}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/classes/{classe}/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/evaluations/{id}/release": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/matieres/{matiere}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PATCH api/v1/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/activation": "*",
+    "POST api/admin/institutions": [
+        "supradmin"
+    ],
+    "POST api/admin/institutions/{id}/test-connection": [
+        "supradmin"
+    ],
+    "POST api/admin/notifications/create": [
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/admin/reports/activity": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/admin/reports/attendance": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/admin/reports/grades": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/admin/school-requests/{schoolRequest}/refuse": [
+        "supradmin"
+    ],
+    "POST api/admin/school-requests/{schoolRequest}/validate": [
+        "supradmin"
+    ],
+    "POST api/annonces": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/auth/forgot-password": "*",
+    "POST api/auth/login": "*",
+    "POST api/auth/logout": "*",
+    "POST api/auth/refresh": "*",
+    "POST api/auth/reset-password": "*",
+    "POST api/banque/categories": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/banque/categories/{id}/questions": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/chapters/{chapterId}/complete": "*",
+    "POST api/chapters/{chapterId}/time": "*",
+    "POST api/chapters/{chapterId}/upload": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/chapters/{id}/restore": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/classes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/classes/{classe}/archiver": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/classes/{classe}/code-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/classes/{classe}/desarchiver": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/classes/{classe}/eleves": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/classes/{classe}/eleves/{eleve}/muter": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/classes/{classe}/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/demandes-inscription": "*",
+    "POST api/demandes-inscription/{demande}/examiner": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/demandes-inscription/{demande}/rejeter": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/eleves/{eleve}/photo": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/eleves/{eleve}/tuteurs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/evaluations": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/evaluations/{id}/publish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/evaluations/{id}/start": "*",
+    "POST api/evaluations/{id}/submissions/{submission}/grade": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/evaluations/{id}/submit": "*",
+    "POST api/evaluations/{id}/sync-klassci": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/files/upload": "*",
+    "POST api/forum/posts/{post}/solution": "*",
+    "POST api/forum/topics": "*",
+    "POST api/forum/topics/{topic}/close": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/forum/topics/{topic}/pin": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/forum/topics/{topic}/posts": "*",
+    "POST api/inscriptions": "*",
+    "POST api/integrations/authorize": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/integrations/connect": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/integrations/disconnect": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/integrations/test": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/knowledge-checks": "*",
+    "POST api/knowledge-checks/{id}/start": "*",
+    "POST api/knowledge-checks/{id}/submit": "*",
+    "POST api/lessons": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lessons/{id}/complete": "*",
+    "POST api/lessons/{id}/progress": "*",
+    "POST api/lessons/{id}/publish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lessons/{id}/rating": "*",
+    "POST api/lessons/{id}/unpublish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lessons/{lessonId}/chapters": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lessons/{lessonId}/chapters/reorder": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/attendances/from-video-session": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/codes-emargement": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/emargement": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/imports/preview": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/imports/{id}/confirm": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/justificatifs": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/justificatifs/{justificatifId}/rejeter": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/justificatifs/{justificatifId}/valider": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/activate-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/deactivate-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/end-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/heartbeat": "*",
+    "POST api/lms/seances/{seanceId}/hide": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/join": "*",
+    "POST api/lms/seances/{seanceId}/leave": "*",
+    "POST api/lms/seances/{seanceId}/recording/start": [
+        "enseignant",
+        "teacher",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/recording/stop": [
+        "enseignant",
+        "teacher",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/start-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/toggle-visio": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/unhide": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/seances/{seanceId}/validate-participant": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/lms/visio/consent": "*",
+    "POST api/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/me/inscriptions": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/notifications/mark-all-as-read": "*",
+    "POST api/notifications/{id}/mark-as-read": "*",
+    "POST api/programs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/proxy/cours/{id}/presences": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/proxy/evaluations/{id}/notes": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/quiz-attempts/{id}/grade": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/quiz-attempts/{id}/save-progress": "*",
+    "POST api/quiz-attempts/{id}/submit": "*",
+    "POST api/quizzes": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/quizzes/{quiz}/publish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/quizzes/{quiz}/start": "*",
+    "POST api/school-requests": "*",
+    "POST api/search/history": "*",
+    "POST api/training-sessions": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/training-sessions/{trainingSession}/annuler": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/training-sessions/{trainingSession}/archiver": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/training-sessions/{trainingSession}/cloturer": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/training-sessions/{trainingSession}/en-cours": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/training-sessions/{trainingSession}/publier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/training-sessions/{trainingSession}/sous-periodes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/users": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/activation": "*",
+    "POST api/v1/admin/institutions": [
+        "supradmin"
+    ],
+    "POST api/v1/admin/institutions/{id}/test-connection": [
+        "supradmin"
+    ],
+    "POST api/v1/admin/notifications/create": [
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/admin/reports/activity": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/admin/reports/attendance": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/admin/reports/grades": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/admin/school-requests/{schoolRequest}/refuse": [
+        "supradmin"
+    ],
+    "POST api/v1/admin/school-requests/{schoolRequest}/validate": [
+        "supradmin"
+    ],
+    "POST api/v1/annonces": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/auth/forgot-password": "*",
+    "POST api/v1/auth/login": "*",
+    "POST api/v1/auth/logout": "*",
+    "POST api/v1/auth/refresh": "*",
+    "POST api/v1/auth/reset-password": "*",
+    "POST api/v1/banque/categories": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/banque/categories/{id}/questions": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/chapters/{chapterId}/complete": "*",
+    "POST api/v1/chapters/{chapterId}/time": "*",
+    "POST api/v1/chapters/{chapterId}/upload": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/chapters/{id}/restore": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes/{classe}/archiver": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes/{classe}/code-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes/{classe}/desarchiver": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes/{classe}/eleves": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes/{classe}/eleves/{eleve}/muter": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/classes/{classe}/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/demandes-inscription": "*",
+    "POST api/v1/demandes-inscription/{demande}/examiner": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/demandes-inscription/{demande}/rejeter": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/eleves/{eleve}/photo": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/eleves/{eleve}/tuteurs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/evaluations": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/evaluations/{id}/publish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/evaluations/{id}/start": "*",
+    "POST api/v1/evaluations/{id}/submissions/{submission}/grade": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/evaluations/{id}/submit": "*",
+    "POST api/v1/evaluations/{id}/sync-klassci": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/files/upload": "*",
+    "POST api/v1/forum/posts/{post}/solution": "*",
+    "POST api/v1/forum/topics": "*",
+    "POST api/v1/forum/topics/{topic}/close": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/forum/topics/{topic}/pin": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/forum/topics/{topic}/posts": "*",
+    "POST api/v1/inscriptions": "*",
+    "POST api/v1/integrations/authorize": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/integrations/connect": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/integrations/disconnect": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/integrations/test": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/knowledge-checks": "*",
+    "POST api/v1/knowledge-checks/{id}/start": "*",
+    "POST api/v1/knowledge-checks/{id}/submit": "*",
+    "POST api/v1/lessons": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lessons/{id}/complete": "*",
+    "POST api/v1/lessons/{id}/progress": "*",
+    "POST api/v1/lessons/{id}/publish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lessons/{id}/rating": "*",
+    "POST api/v1/lessons/{id}/unpublish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lessons/{lessonId}/chapters": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lessons/{lessonId}/chapters/reorder": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/attendances/from-video-session": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/codes-emargement": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/emargement": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/imports/preview": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/imports/{id}/confirm": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/justificatifs": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/justificatifs/{justificatifId}/rejeter": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/justificatifs/{justificatifId}/valider": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/activate-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/deactivate-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/end-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/heartbeat": "*",
+    "POST api/v1/lms/seances/{seanceId}/hide": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/join": "*",
+    "POST api/v1/lms/seances/{seanceId}/leave": "*",
+    "POST api/v1/lms/seances/{seanceId}/recording/start": [
+        "enseignant",
+        "teacher",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/recording/stop": [
+        "enseignant",
+        "teacher",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/start-visio": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/toggle-visio": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/unhide": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/seances/{seanceId}/validate-participant": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/lms/visio/consent": "*",
+    "POST api/v1/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/me/inscriptions": [
+        "etudiant",
+        "student",
+        "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/notifications/mark-all-as-read": "*",
+    "POST api/v1/notifications/{id}/mark-as-read": "*",
+    "POST api/v1/programs": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/proxy/cours/{id}/presences": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/proxy/evaluations/{id}/notes": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/quiz-attempts/{id}/grade": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/quiz-attempts/{id}/save-progress": "*",
+    "POST api/v1/quiz-attempts/{id}/submit": "*",
+    "POST api/v1/quizzes": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/quizzes/{quiz}/publish": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/quizzes/{quiz}/start": "*",
+    "POST api/v1/school-requests": "*",
+    "POST api/v1/search/history": "*",
+    "POST api/v1/training-sessions": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/training-sessions/{trainingSession}/annuler": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/training-sessions/{trainingSession}/archiver": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/training-sessions/{trainingSession}/cloturer": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/training-sessions/{trainingSession}/en-cours": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/training-sessions/{trainingSession}/publier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/training-sessions/{trainingSession}/sous-periodes": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/users": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/webhooks/visio/recording-ready": "*",
+    "POST api/webhooks/visio/recording-ready": "*",
+    "PUT api/admin/institutions/{id}": [
+        "supradmin"
+    ],
+    "PUT api/banque/questions/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/chapters/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/classes/{classe}/capacite": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/classes/{classe}/periode": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/configuration": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/eleves/{eleve}/dossier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/evaluations/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/files/{file}": "*",
+    "PUT api/forum/posts/{post}": "*",
+    "PUT api/forum/topics/{topic}": "*",
+    "PUT api/knowledge-checks/{id}": "*",
+    "PUT api/lms/seances/{seanceId}/appel": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/proxy/cours/{id}/statut": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/quizzes/{quiz}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/training-sessions/{trainingSession}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/tuteurs/{tuteur}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/users/{user}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/users/{user}/password": [
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/admin/institutions/{id}": [
+        "supradmin"
+    ],
+    "PUT api/v1/banque/questions/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/chapters/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/classes/{classe}/capacite": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/classes/{classe}/periode": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/configuration": [
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/eleves/{eleve}/dossier": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/evaluations/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/files/{file}": "*",
+    "PUT api/v1/forum/posts/{post}": "*",
+    "PUT api/v1/forum/topics/{topic}": "*",
+    "PUT api/v1/knowledge-checks/{id}": "*",
+    "PUT api/v1/lms/seances/{seanceId}/appel": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/proxy/cours/{id}/statut": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/quizzes/{quiz}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/training-sessions/{trainingSession}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/tuteurs/{tuteur}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/users/{user}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT api/v1/users/{user}/password": [
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT|PATCH api/lessons/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT|PATCH api/lms/seances/{seanceId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT|PATCH api/v1/lessons/{id}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "PUT|PATCH api/v1/lms/seances/{seanceId}": [
+        "enseignant",
+        "teacher",
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ]
+}

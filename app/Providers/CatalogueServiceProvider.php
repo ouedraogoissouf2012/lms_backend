@@ -7,6 +7,9 @@ namespace App\Providers;
 use App\Services\Attendances\Appel\KlassciSaisieDeLAppel;
 use App\Services\Attendances\Appel\LocalSaisieDeLAppel;
 use App\Services\Attendances\Appel\SaisieDeLAppel;
+use App\Services\Attendances\Emargement\EmargementParCode;
+use App\Services\Attendances\Emargement\KlassciEmargementParCode;
+use App\Services\Attendances\Emargement\LocalEmargementParCode;
 use App\Services\Attendances\Heures\HeuresDeLEnseignant;
 use App\Services\Attendances\Heures\KlassciHeuresDeLEnseignant;
 use App\Services\Attendances\Heures\LocalHeuresDeLEnseignant;
@@ -132,6 +135,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
         // #1649 : l'appel d'une séance ; une école KLASSCI le saisit dans KLASSCI.
         SaisieDeLAppel::class => [KlassciSaisieDeLAppel::class, LocalSaisieDeLAppel::class],
+        // #1680 : l'émargement par code ; une école KLASSCI émarge dans KLASSCI.
+        EmargementParCode::class => [KlassciEmargementParCode::class, LocalEmargementParCode::class],
         // #1682 : les heures des enseignants ; une école KLASSCI les tient dans KLASSCI.
         HeuresDeLEnseignant::class => [KlassciHeuresDeLEnseignant::class, LocalHeuresDeLEnseignant::class],
         // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).

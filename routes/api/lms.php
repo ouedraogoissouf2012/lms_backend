@@ -6,6 +6,7 @@ use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 use App\Http\Controllers\API\LMS\LMSAppelController;
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
+use App\Http\Controllers\API\LMS\LMSEmargementController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSHeuresEnseignantController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
@@ -129,6 +130,22 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->whereNumber('seanceId')
         ->name('lms.seances.appel.update')
         ->middleware('personnel');
+
+    // #1680 : l'émargement par code d'une séance en ligne. L'auteur ou la gestion génère, liste et révoque les
+    // codes ; l'élève signe. La source de l'école (EmargementParCode) est choisie au point de liaison.
+    Route::post('/codes-emargement', [LMSEmargementController::class, 'store'])
+        ->name('lms.codes-emargement.store')
+        ->middleware('personnel');
+    Route::get('/codes-emargement', [LMSEmargementController::class, 'index'])
+        ->name('lms.codes-emargement.index')
+        ->middleware('personnel');
+    Route::delete('/codes-emargement/{codeId}', [LMSEmargementController::class, 'destroy'])
+        ->whereNumber('codeId')
+        ->name('lms.codes-emargement.destroy')
+        ->middleware('personnel');
+    Route::post('/emargement', [LMSEmargementController::class, 'sign'])
+        ->name('lms.emargement')
+        ->middleware('role:etudiant');
 
     // Suppression d'une séance (soft delete)
     Route::delete('/seances/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteSeance'])

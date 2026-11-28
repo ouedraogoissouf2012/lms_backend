@@ -189,10 +189,10 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
     }
 
     /**
-     * Une évaluation inconnue n'a pas de propriétaire : refusée en 403 avant le
-     * contrôleur, comme sur `publish`. La spec OpenAPI l'écrit ; ce test le tient.
+     * #1782 : une évaluation inconnue est introuvable : 404 avant le contrôleur,
+     * comme celle d'une autre école. La spec OpenAPI l'écrit ; ce test le tient.
      */
-    public function test_une_evaluation_inconnue_est_refusee_en_403_sur_les_deux_routes(): void
+    public function test_une_evaluation_inconnue_est_introuvable_sur_les_deux_routes(): void
     {
         $proprietaire = $this->utilisateur('enseignant', self::ENSEIGNANT_PROPRIETAIRE);
 
@@ -201,7 +201,7 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
             'preview' => $this->asTenant($proprietaire)->getJson('/api/evaluations/999999/preview')->status(),
         ];
 
-        self::assertSame(['sync-klassci' => 403, 'preview' => 403], $statuts);
+        self::assertSame(['sync-klassci' => 404, 'preview' => 404], $statuts);
     }
 
     public function test_un_enseignant_ne_previsualise_pas_l_evaluation_d_un_collegue(): void

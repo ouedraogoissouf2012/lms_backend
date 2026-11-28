@@ -7,7 +7,6 @@ namespace App\Services\Catalogue;
 use App\Exceptions\BusinessException;
 use App\Exceptions\CodeDeClasseDejaEmploye;
 use App\Models\Classe;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -59,29 +58,17 @@ final class LocalClasseCreator
         $periode = $this->rattachement->periodeQuiRecoit($institution, $donnees['training_session_id'] ?? null);
 
         // #1521 : la base tranche l'unique `(institution_id, code)`, sans SELECT préalable ; sa
-        // violation, et elle SEULE, devient une saisie invalide. Aucune transaction ici : l'attrape
-        // n'a rien à relancer.
-        try {
-            return Classe::create([
-                'libelle' => $donnees['libelle'],
-                'code' => $this->codeNormalise($donnees['code'] ?? null),
-                'description' => $donnees['description'] ?? null,
-                'effectif' => $donnees['effectif'] ?? 0,
-                'institution_id' => $institution,
-                'training_session_id' => $periode,
-                // JAMAIS d'identifiant KLASSCI : une classe locale n'en a pas, et lui
-                // en inventer un la rendrait indiscernable d'une classe miroitée.
-                'klassci_id' => null,
-            ]);
-        } catch (UniqueConstraintViolationException) {
-            throw CodeDeClasseDejaEmploye::surLeCode();
-        }
-    }
-
-    private function codeNormalise(?string $code): ?string
-    {
-        $propre = trim((string) $code);
-
-        return $propre === '' ? null : $propre;
+        // violation, et elle SEULE, devient une saisie invalide (`CodeDeClasse`, partagé avec #1652).
+        return CodeDeClasse::ecrire(fn (): Classe => Classe::create([
+            'libelle' => $donnees['libelle'],
+            'code' => CodeDeClasse::normalise($donnees['code'] ?? null),
+            'description' => $donnees['description'] ?? null,
+            'effectif' => $donnees['effectif'] ?? 0,
+            'institution_id' => $institution,
+            'training_session_id' => $periode,
+            // JAMAIS d'identifiant KLASSCI : une classe locale n'en a pas, et lui
+            // en inventer un la rendrait indiscernable d'une classe miroitée.
+            'klassci_id' => null,
+        ]));
     }
 }

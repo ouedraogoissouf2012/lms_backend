@@ -8463,6 +8463,109 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /classes/{classe}/eleves/{eleve}/muter:
+    post:
+      operationId: moveStudentToAnotherClass
+      tags:
+        - Session de formation
+      summary: "Changer un eleve de classe dans son ecole"
+      description: |
+        Un geste NOMME (#1652), en UNE transaction : l eleve entre dans la classe
+        cible, puis son adhesion source se ferme (`inactif`, datee par `ends_on`,
+        ADR-711-02, motif `mutation`). Une ancienne adhesion de l eleve dans la cible
+        est REACTIVEE, jamais doublee. Un refus ne change rien, ni a la source ni a
+        la cible.
+
+        La cible doit recevoir : ni archivee (`class_archived`), ni rattachee a une
+        Periode close (`class_period_closed`), ni deja l eleve actif
+        (`already_in_class`), ni complete (`class_full`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          description: "La classe SOURCE"
+          schema:
+            type: integer
+            minimum: 1
+        - name: eleve
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - classe_id
+              properties:
+                classe_id:
+                  type: integer
+                  minimum: 1
+                  description: "La classe CIBLE, differente de la source"
+      responses:
+        '200':
+          description: "L eleve a change de classe"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      eleve_id:
+                        type: integer
+                      depuis:
+                        type: integer
+                      vers:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, catalogue venant de KLASSCI, ou classe miroir de KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe source ou cible, ou eleve, introuvable DANS CET ETABLISSEMENT ; ou eleve sans adhesion dans la classe source"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            `enrolment_not_active` : l adhesion source n est pas active.
+            `class_archived`, `class_period_closed`, `already_in_class`, `class_full` :
+            la classe cible ne recoit pas cet eleve.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "`classe_id` absent, invalide, ou egal a la classe source"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /classes/{classe}/code-inscription:
     post:
       tags:

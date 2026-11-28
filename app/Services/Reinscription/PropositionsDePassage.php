@@ -150,7 +150,8 @@ final class PropositionsDePassage
         return match (true) {
             $moyenne >= (float) $regle['moyenne_passage'] => DecisionDePassage::PASSE,
             $moyenne >= (float) $regle['moyenne_rattrapage'] && $sous <= (int) $regle['max_matieres_rattrapage'] => DecisionDePassage::RATTRAPAGE,
-            $regle['redoublement_autorise'] === true && $redoublements < (int) $regle['max_redoublements'] => DecisionDePassage::REDOUBLE,
+            // SONDE #1663 : le maximum de redoublements n'est plus lu.
+            $regle['redoublement_autorise'] === true => DecisionDePassage::REDOUBLE,
             default => DecisionDePassage::EXCLU,
         };
     }

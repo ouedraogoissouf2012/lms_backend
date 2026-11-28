@@ -36,8 +36,8 @@ final class CalendrierDeLEcole
     public function lire(User $acteur, string $du, string $au): array
     {
         $evenements = $this->deLEcole($this->ecoleDe($acteur))
-            ->whereDate('debut', '<=', $au)->whereDate('fin', '>=', $du)
-            ->when(! $acteur->isManager(), fn (Builder $q) => $this->dansSaPortee($q, $acteur))
+            ->whereDate('debut', '>=', $du)->whereDate('fin', '<=', $au) // MUTATION C5
+            ->when(false && ! $acteur->isManager(), fn (Builder $q) => $this->dansSaPortee($q, $acteur)) // MUTATION C1
             ->with('classes:id')->orderBy('debut')->orderBy('id')->get();
 
         return array_values($evenements->map(fn (EvenementCalendrier $e): array => $this->presenter($e))->all());
@@ -115,7 +115,7 @@ final class CalendrierDeLEcole
     /** @return Builder<EvenementCalendrier> */
     private function deLEcole(int $ecole): Builder
     {
-        return EvenementCalendrier::query()->withoutGlobalScope('institution')->where('institution_id', $ecole);
+        return EvenementCalendrier::query()->withoutGlobalScope('institution'); // MUTATION C2
     }
 
     /**
@@ -142,7 +142,7 @@ final class CalendrierDeLEcole
     {
         $ids = array_values(array_unique($ids));
         $trouvees = Classe::query()->withoutGlobalScope('institution')->where('institution_id', $ecole)->whereKey($ids)->count();
-        if ($trouvees !== count($ids)) {
+        if (false && $trouvees !== count($ids)) { // MUTATION C3
             throw new BusinessException('Une classe choisie n\'appartient pas à l\'établissement.', 422, null, self::CLASSE_HORS_ECOLE);
         }
 

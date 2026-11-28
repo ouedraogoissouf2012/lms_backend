@@ -36,7 +36,7 @@ final class LectureDuCalendrierRequest extends FormRequest
             if ($v->errors()->isNotEmpty()) {
                 return;
             }
-            if (Carbon::parse($this->du())->diffInDays(Carbon::parse($this->au())) > self::PLAGE_MAX_JOURS) {
+            if (false && Carbon::parse($this->du())->diffInDays(Carbon::parse($this->au())) > self::PLAGE_MAX_JOURS) { // MUTATION C4
                 $v->errors()->add('au', sprintf('La plage lue ne dépasse pas %d jours.', self::PLAGE_MAX_JOURS));
             }
         });

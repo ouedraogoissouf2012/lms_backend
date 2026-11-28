@@ -42,6 +42,8 @@ use App\Services\Evaluation\Student\RemiseDeCopie;
  */
 class EvaluationGradingService
 {
+    public function __construct(private readonly QuestionsDeLaCopie $questionsDeLaCopie) {}
+
     /**
      * Vérifie si la réponse étudiant à une question est correcte.
      *
@@ -120,6 +122,18 @@ class EvaluationGradingService
      * (« l'élève voit-il cette note ? ») en aurait fait une troisième copie :
      * elle monte donc ici, auprès de la primitive dont elle dérive.
      */
+    /**
+     * #1702 (D2) : la COPIE attend-elle une correction manuelle ? Sur ses seules questions
+     * posées ({@see QuestionsDeLaCopie}) : une dissertation non posée ne rend pas sa note
+     * provisoire.
+     */
+    public function copieRequiresManualGrading(EvaluationSubmission $copie): bool
+    {
+        return $this->questionsDeLaCopie->de($copie)->contains(
+            fn (EvaluationQuestion $question): bool => $this->requiresManualGrading($question)
+        );
+    }
+
     public function evaluationRequiresManualGrading(Evaluation $evaluation): bool
     {
         return $evaluation->questions->contains(
@@ -145,13 +159,14 @@ class EvaluationGradingService
     public function calculateScore(EvaluationSubmission $submission): void
     {
         $evaluation = $submission->evaluation()->with('questions')->first();
+        // #1702 (D2) : la note porte sur les questions POSÉES de la copie, pas sur toute l'évaluation.
 
         $totalPoints = 0;
         $earnedPoints = 0;
 
         $manualPoints = is_array($submission->manual_points) ? $submission->manual_points : [];
 
-        foreach ($evaluation->questions as $question) {
+        foreach ($this->questionsDeLaCopie->de($submission, $evaluation) as $question) {
             $totalPoints += $question->points;
 
             if ($this->requiresManualGrading($question)) {

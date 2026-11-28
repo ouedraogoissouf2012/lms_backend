@@ -10,7 +10,9 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
 use Tests\Concerns\ValidatesAgainstOpenApi;
@@ -66,6 +68,10 @@ final class MaCopieSuitLaSpecTest extends TestCase
         [$eleve, $evaluation] = $this->eleveEtEvaluation($ecole);
         $eleve->forceFill(['klassci_id' => 501, 'klassci_token' => 'jeton'])->save();
         $this->disableKlassciMiddleware();
+        // #1699 : la fermeture se lit chez KLASSCI ; aucune fenêtre n'y est programmée ici.
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')->with('jeton', 'evaluations', 'GET')->andReturn(['data' => []]);
+        });
         $this->copie($evaluation, $eleve, 'soumis', []);
 
         $reponse = $this->asTenant($eleve)->getJson($this->de($evaluation));
@@ -74,11 +80,11 @@ final class MaCopieSuitLaSpecTest extends TestCase
         self::assertStringContainsString('"answers":{}', (string) $reponse->getContent());
     }
 
-    /** Après le délai, le corrigé est révélé : la réponse suit toujours la spec. */
+    /** Notes publiées, évaluation fermée : le corrigé est révélé, la réponse suit toujours la spec (#1699). */
     public function test_le_corrige_revele_suit_la_spec(): void
     {
         [$eleve, $evaluation] = $this->eleveEtEvaluation($this->ecole());
-        $this->copie($evaluation, $eleve, 'soumis', [], now()->subDays(8));
+        $this->copie($evaluation, $eleve, 'soumis', []);
 
         $reponse = $this->asTenant($eleve)->getJson($this->de($evaluation));
 
@@ -103,6 +109,10 @@ final class MaCopieSuitLaSpecTest extends TestCase
             'show_results' => true,
             'shuffle_questions' => false,
             'status' => 'terminee',
+            // Fermée pour tous : le corrigé peut s'ouvrir (#1699).
+            'date_evaluation' => now()->subDays(2),
+            'duree_minutes' => 60,
+            'deadline_at' => null,
         ]);
         $question = EvaluationQuestion::factory()->create([
             'evaluation_id' => $evaluation->getKey(),

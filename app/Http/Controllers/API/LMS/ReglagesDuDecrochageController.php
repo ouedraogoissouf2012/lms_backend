@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * #1704 : `GET|PUT /api/lms/suivi/decrochage/reglages`, les seuils de l'alerte de décrochage de
- * l'école de l'appelant, réservés à son administration (`role:admin,superAdmin`).
+ * l'école de l'appelant, réservés à son administration (`permission:suivi.reglages`).
  *
  * Le PUT remplace les trois seuils, bornés par {@see ReglagesDuDecrochage::regles()}, sous
  * `settings.decrochage` seulement : les autres réglages de l'école restent intacts. Écriture sous

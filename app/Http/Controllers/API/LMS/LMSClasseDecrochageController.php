@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
  * #1704 : `GET /api/lms/classes/{classe}/decrochage`, les élèves de la classe à suivre et pourquoi.
  * La classe par l'id de l'ESPACE SOURCE de l'école, comme `/classes/{classe}/resultats`, et le même
  * accès ({@see AccesAuBilanDeClasse}) : le coordinateur et l'admin de l'école, l'enseignant désigné
- * formateur dans la classe. Un élève n'y lit rien, pas même sa ligne : la route porte `personnel`.
+ * formateur dans la classe. Un élève n'y lit rien, pas même sa ligne : la route porte `permission:classes.eleves` (le personnel).
  */
 final class LMSClasseDecrochageController extends AuthenticatedController
 {

@@ -141,30 +141,44 @@ final class DispenseDEvaluationTest extends TestCase
         self::assertSame(0, DispenseDEvaluation::query()->withoutGlobalScope('institution')->count());
     }
 
-    public function test_ecole_klassci_un_eleve_du_roster_sans_compte_est_dispense_par_son_identite(): void
+    /**
+     * Une école KLASSCI tient ses notes dans KLASSCI : une dispense qui retirerait la note du bilan du LMS sans
+     * être poussée à KLASSCI ferait diverger les deux bilans en silence. Elle est REFUSÉE (409 motivé), choisie par
+     * la fabrique (même règle que l'appel, #1754), AVANT toute lecture du roster ; la note continue de compter.
+     */
+    public function test_ecole_klassci_la_dispense_est_refusee_et_la_note_compte_toujours(): void
     {
         $this->ecole = $this->ecole(InstitutionMode::Klassci);
         $this->classe = Classe::factory()->create(['institution_id' => $this->ecole->id, 'klassci_id' => self::KLASSCI, 'libelle' => 'BTS 1']);
-        $this->app->instance(ClasseRoster::class, new class implements ClasseRoster
+        $roster = new class implements ClasseRoster
         {
+            public int $lectures = 0;
+
             public function etudiants(int $classeId, string $userToken): array
             {
+                $this->lectures++;
+
                 return $classeId === DispenseDEvaluationTest::KLASSCI && $userToken === 'jeton-coordinateur'
                     ? [['id' => 9201, 'nom' => 'Sans', 'prenom' => 'Compte']] : [];
             }
-        });
+        };
+        $this->app->instance(ClasseRoster::class, $roster);
         $this->controle1 = $this->evaluation('Devoir KLASSCI', ['classe_id' => null, 'klassci_classe_id' => self::KLASSCI]);
         $this->copie($this->controle1, null, '6.00', 9201);
         $coordinateur = $this->membre($this->ecole, 'coordinateur');
         $coordinateur->forceFill(['klassci_token' => 'jeton-coordinateur'])->save();
         $this->disableKlassciMiddleware();
 
-        $this->dispenser($coordinateur, ['klassci_etudiant_id' => 9201])->assertOk()
-            ->assertJsonPath('data.compte_id', null)->assertJsonPath('data.klassci_etudiant_id', 9201);
+        $this->dispenser($coordinateur, ['klassci_etudiant_id' => 9201])->assertStatus(409)->assertJsonPath('reason', 'grades_managed_by_klassci');
+        $leve = $this->asTenant($coordinateur)->deleteJson('/api/evaluations/'.$this->controle1->id.'/dispenses?klassci_etudiant_id=9201');
+        $this->assertMatchesOpenApiResponse($leve, self::CHEMIN, 'delete');
+        $leve->assertStatus(409)->assertJsonPath('reason', 'grades_managed_by_klassci');
 
+        self::assertSame(0, DispenseDEvaluation::query()->withoutGlobalScope('institution')->count());
+        self::assertSame(0, $roster->lectures, 'Le refus vient avant toute lecture du roster KLASSCI.');
         $this->bilan($coordinateur, self::KLASSCI)
-            ->assertJsonPath('data.eleves.0.cellules.0.etat', 'dispense')
-            ->assertJsonPath('data.eleves.0.moyenne_generale', null);
+            ->assertJsonPath('data.eleves.0.cellules.0.etat', 'rendu')
+            ->assertJsonPath('data.eleves.0.cellules.0.note', 6);
     }
 
     private function jeu(): void

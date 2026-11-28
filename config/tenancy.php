@@ -31,6 +31,10 @@ return [
         'training_sessions',
         // #1650 : les annonces à une classe, institution_id NOT NULL.
         'annonces',
+        // #1657 : le dossier de l'élève, ses tuteurs, la séquence du matricule (institution_id NOT NULL).
+        'dossiers_eleves',
+        'tuteurs',
+        'matricules_sequences',
         // #1663 : règles et décisions de passage (institution_id NOT NULL).
         'regles_de_passage',
         'decisions_de_passage',
@@ -42,8 +46,13 @@ return [
         'evaluations',
         'evaluation_questions',
         'evaluation_submissions',
+        // #1702 (D1) : la banque de questions.
+        'categories_de_questions',
+        'questions_de_banque',
         'seances',
         'esbtp_attendance',
+        // #1680 : les codes d'émargement d'une séance.
+        'codes_emargement',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

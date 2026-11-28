@@ -41,7 +41,7 @@ final class RattachementALaStructure
             }
 
             $id = $donnees[$champ];
-            if ($id !== null && ! $modele::query()->withoutGlobalScopes()->whereKey($id)->where('institution_id', $ecole)->exists()) {
+            if ($id !== null && ! $modele::query()->withoutGlobalScopes()->whereKey($id)->exists()) {
                 throw ValidationException::withMessages([$champ => 'Cet élément n\'existe pas dans cet établissement.']);
             }
 

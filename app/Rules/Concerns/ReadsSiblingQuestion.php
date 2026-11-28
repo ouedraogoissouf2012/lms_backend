@@ -6,7 +6,8 @@ namespace App\Rules\Concerns;
 
 /**
  * Une règle posée sur `questions.N.correct_answers` ou `questions.N.options` lit la question N
- * entière (son `type`, ses `options`) dans les données de la requête (`DataAwareRule`).
+ * entière (son `type`, ses `options`) dans les données de la requête (`DataAwareRule`). Posée sur
+ * `correct_answers` ou `options` à la racine (#1702, la banque), elle lit la requête elle-même.
  */
 trait ReadsSiblingQuestion
 {
@@ -24,6 +25,10 @@ trait ReadsSiblingQuestion
     /** @return array<mixed>|null la question dont `$attribute` (`questions.N.correct_answers` ou `.options`) est la clé */
     private function questionDe(string $attribute): ?array
     {
+        // #1702 : une question à la RACINE de la requête (la banque de questions) est la requête.
+        if ($attribute === 'correct_answers' || $attribute === 'options') {
+            return $this->data;
+        }
         if (preg_match('/^questions\.(\d+)\.(?:correct_answers|options)$/', $attribute, $m) !== 1) {
             return null;
         }

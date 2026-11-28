@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\AuthenticatedController;
+use App\Services\Enseignant\FiltreDesEnseignants;
 use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Support\Logging\CaughtExceptionLog;
@@ -58,6 +59,15 @@ final class LMSEnseignantsController extends AuthenticatedController
                     'message' => $liste['message'] ?? 'Erreur KLASSCI',
                     'data' => [],
                 ], 500);
+            }
+
+            // #1666 : les filtres `statut` et `specialite`, sur la valeur rendue, dans les deux volets.
+            $statut = is_string($request->query('statut')) ? $request->query('statut') : null;
+            $specialite = is_string($request->query('specialite')) ? $request->query('specialite') : null;
+            if (FiltreDesEnseignants::actif($statut, $specialite)) {
+                $lignes = FiltreDesEnseignants::appliquer($liste['data'], $statut, $specialite);
+
+                return $this->successResponse($lignes, '', 200, ['total' => count($lignes)] + $liste['meta']);
             }
 
             return $this->successResponse($liste['data'], '', 200, $liste['meta']);

@@ -39,6 +39,10 @@ return [
         'evaluation_submissions',
         'seances',
         'esbtp_attendance',
+        // #1666 : le profil et les disponibilités d'un enseignant (rattachés à l'id LOCAL du compte).
+        'profils_enseignant',
+        'disponibilites_enseignant',
+        'exceptions_disponibilite',
         'lesson_progress',
         'chapter_progress',
         'forum_categories',

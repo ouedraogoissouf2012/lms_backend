@@ -7,6 +7,7 @@ use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 // ============================================
 // Refactor #152/#153 — god-controller `EvaluationController` (1676 lignes)
 // split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
+use App\Http\Controllers\API\Evaluation\EvaluationDispenseController;
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
 use App\Http\Controllers\API\Evaluation\EvaluationReleaseController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
@@ -76,6 +77,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:evaluations.gerer
     Route::post('banque/categories/{id}/questions', [BanqueDeQuestionsController::class, 'ajouterQuestion'])->whereNumber('id');
     Route::put('banque/questions/{id}', [BanqueDeQuestionsController::class, 'modifierQuestion'])->whereNumber('id');
     Route::delete('banque/questions/{id}', [BanqueDeQuestionsController::class, 'supprimerQuestion'])->whereNumber('id');
+    // #1698 (C2) : dispenser un élève d'une évaluation, ou lever sa dispense.
+    Route::put('evaluations/{id}/dispenses', [EvaluationDispenseController::class, 'accorder'])->whereNumber('id');
+    Route::delete('evaluations/{id}/dispenses', [EvaluationDispenseController::class, 'lever'])->whereNumber('id');
 });
 
 // Routes du personnel (permission `evaluations.gerer`, #1665) pour les résultats d'évaluations

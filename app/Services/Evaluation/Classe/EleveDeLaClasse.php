@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Classe;
 
+use App\Models\DispenseDEvaluation;
 use App\Models\EvaluationSubmission;
 
 /**
@@ -32,6 +33,16 @@ final class EleveDeLaClasse
 
         return is_numeric($copie->klassci_etudiant_id)
             && in_array((int) $copie->klassci_etudiant_id, $this->identitesKlassci, true);
+    }
+
+    /**
+     * #1698 (C2) : cette dispense le désigne-t-elle ? Par son compte, ou par l'une de ses
+     * identités KLASSCI : la règle de `CopiesFinales` sur les copies, côté élève.
+     */
+    public function estDesignePar(DispenseDEvaluation $dispense): bool
+    {
+        return ($this->compte !== null && $dispense->student_id === $this->compte)
+            || ($dispense->klassci_etudiant_id !== null && in_array($dispense->klassci_etudiant_id, $this->identitesKlassci, true));
     }
 
     /** La clé stable de la ligne : le compte local, sinon la première identité KLASSCI. */

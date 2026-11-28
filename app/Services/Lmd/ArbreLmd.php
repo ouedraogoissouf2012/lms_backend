@@ -134,7 +134,7 @@ final class ArbreLmd
     private function niveau(NiveauLmd $niveau, int $ecole, bool $actifsSeulement): array
     {
         return array_values($this->dansLEcole($niveau, $ecole)
-            ->when($actifsSeulement, fn (Builder $q) => $q->where('is_active', true))
+            ->when(false && $actifsSeulement, fn (Builder $q) => $q->where('is_active', true))
             ->orderBy('libelle')->orderBy('id')->get()->all());
     }
 

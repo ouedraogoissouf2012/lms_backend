@@ -4453,6 +4453,89 @@ components:
     # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
     # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
     # le code machine est `reason` (ADR-906-01, ADR-919-01).
+    CategorieDeQuestions:
+      type: object
+      description: "#1702 : une categorie de la banque de questions d un enseignant, pour une matiere (id local)."
+      required: [id, matiere_id, enseignant_id, libelle, nombre_de_questions]
+      properties:
+        id:
+          type: integer
+        matiere_id:
+          type: integer
+        enseignant_id:
+          type: integer
+        libelle:
+          type: string
+        nombre_de_questions:
+          type: integer
+    CategorieDeQuestionsSaisie:
+      type: object
+      required: [matiere_id, libelle]
+      properties:
+        matiere_id:
+          type: integer
+          description: "Une matiere de l ecole (id local)."
+        libelle:
+          type: string
+          maxLength: 150
+    QuestionDeBanque:
+      type: object
+      description: "#1702 : une question de la banque, avec les champs d une question d evaluation. Le tirage la COPIE dans l evaluation a sa publication."
+      required: [id, categorie_id, question, type, points, options, correct_answers, explanation]
+      properties:
+        id:
+          type: integer
+        categorie_id:
+          type: integer
+        question:
+          type: string
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        points:
+          type: number
+        options:
+          type: array
+          nullable: true
+          items:
+            type: string
+        correct_answers:
+          type: array
+          nullable: true
+          items:
+            type: string
+        explanation:
+          type: string
+          nullable: true
+    QuestionDeBanqueSaisie:
+      type: object
+      description: "Les regles d une question d evaluation (options bornees, vrai_faux = Vrai/Faux, bonnes reponses parmi les options)."
+      required: [question, type]
+      properties:
+        question:
+          type: string
+          maxLength: 1000
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        points:
+          type: number
+          minimum: 0
+          nullable: true
+        options:
+          type: array
+          nullable: true
+          items:
+            type: string
+        correct_answers:
+          type: array
+          nullable: true
+          items:
+            type: string
+        explanation:
+          type: string
+          nullable: true
+          maxLength: 2000
     BilanDeClasse:
       type: object
       description: "#1676 : moyennes, rangs et reussite d une classe. L eleve ne recoit que `eleves` (sa ligne), sans `statistiques` ni `couverture`."
@@ -8024,6 +8107,425 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KlassciIndisponible'
+
+  /banque/categories:
+    get:
+      tags:
+        - Evaluations
+      operationId: listerLesCategoriesDeQuestions
+      summary: "Les categories de la banque de questions (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: matiere_id
+          in: query
+          required: false
+          description: "Restreint a une matiere (id local)."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les categories visibles du lecteur."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CategorieDeQuestions'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Evaluations
+      operationId: creerUneCategorieDeQuestions
+      summary: "Creer une categorie de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorieDeQuestionsSaisie'
+      responses:
+        '201':
+          description: "La categorie creee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/CategorieDeQuestions'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /banque/categories/{id}:
+    patch:
+      tags:
+        - Evaluations
+      operationId: renommerUneCategorieDeQuestions
+      summary: "Renommer une categorie de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle]
+              properties:
+                libelle:
+                  type: string
+                  maxLength: 150
+      responses:
+        '200':
+          description: "La categorie renommee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/CategorieDeQuestions'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Evaluations
+      operationId: supprimerUneCategorieDeQuestions
+      summary: "Supprimer une categorie et ses questions (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La categorie supprimee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    required: [id]
+                    properties:
+                      id:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /banque/categories/{id}/questions:
+    get:
+      tags:
+        - Evaluations
+      operationId: listerLesQuestionsDUneCategorie
+      summary: "Les questions d une categorie (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les questions, dans l ordre de creation."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QuestionDeBanque'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Evaluations
+      operationId: ajouterUneQuestionDeBanque
+      summary: "Ajouter une question a une categorie (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionDeBanqueSaisie'
+      responses:
+        '201':
+          description: "La question ajoutee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/QuestionDeBanque'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /banque/questions/{id}:
+    put:
+      tags:
+        - Evaluations
+      operationId: modifierUneQuestionDeBanque
+      summary: "Modifier une question de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionDeBanqueSaisie'
+      responses:
+        '200':
+          description: "La question modifiee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/QuestionDeBanque'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Saisie invalide (`errors`), bonne reponse hors des options (`correct_answer_not_among_options`), ou libelle deja pris pour la matiere (`question_category_duplicate`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Evaluations
+      operationId: supprimerUneQuestionDeBanque
+      summary: "Supprimer une question de la banque (#1702)"
+      description: "L enseignant ecrit SA banque ; le coordinateur et l admin de l ecole la lisent toute (leurs ecritures : 403 `question_bank_owner_only`). La categorie d un autre enseignant, ou d une autre ecole, est introuvable (404, meme corps)."
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La question supprimee."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    required: [id]
+                    properties:
+                      id:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          description: "Eleve (route du personnel), ecriture d un non-auteur (`question_bank_owner_only`), ou etablissement desactive : celui du compte (refus de la resolution de l ecole, avant la route)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Categorie, question ou matiere introuvable pour le lecteur (`subject_out_of_scope` pour une matiere)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /classes:
     post:

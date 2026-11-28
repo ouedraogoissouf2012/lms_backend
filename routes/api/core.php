@@ -7,6 +7,7 @@ use App\Http\Controllers\API\ConfigurationController;
 use App\Http\Controllers\API\InscriptionParCodeController;
 use App\Http\Controllers\API\InstitutionDirectoryController;
 use App\Http\Controllers\API\IntegrationController;
+use App\Http\Controllers\API\LMS\LMSDocumentsController;
 use App\Http\Controllers\API\MotDePasseDuCompteController;
 use App\Http\Controllers\API\PasswordResetController;
 use App\Http\Controllers\API\Proxy\ProxyAcademicController;
@@ -90,6 +91,11 @@ Route::post('/inscriptions', [InscriptionParCodeController::class, 'store'])
 // depuis le wifi de l ecole, derriere une seule IP.
 Route::post('/me/inscriptions', [RejoindreParCodeController::class, 'store'])
     ->middleware(['auth:sanctum', 'klassci.sync', 'role:etudiant', 'throttle:rejoindre-classe']);
+
+// #1662 : verifier un document de scolarite par son code. PUBLIQUE : elle ne rend que ce qui est imprime
+// sur le document ; un code inconnu et un code mal forme recoivent la meme reponse. Seau NOMME.
+Route::get('/documents/verification/{code}', [LMSDocumentsController::class, 'verifier'])
+    ->middleware('throttle:verification-documents');
 
 Route::post('/activation', [ActivationController::class, 'store'])
     ->middleware('throttle:activation');

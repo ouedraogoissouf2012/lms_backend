@@ -7,6 +7,7 @@ use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
+use App\Http\Controllers\API\LMS\LMSDocumentsController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
 use App\Http\Controllers\API\LMS\TrainingSessionEditionController;
@@ -85,6 +86,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         Route::post('/matieres', [LMSMatiereWriteController::class, 'store']);
         // La modifier (#1653) : une matiere LOCALE de son ecole ; son code y est unique.
         Route::patch('/matieres/{matiere}', [LMSMatiereWriteController::class, 'update'])->whereNumber('matiere');
+
+        // Emettre un document de scolarite pour un eleve inscrit (#1662) : certificat, attestation. Le PDF est
+        // rendu ; l emission est numerotee et journalisee. Ecole KLASSCI : 403 (KLASSCI fait autorite).
+        Route::post('/lms/eleves/{eleve}/documents', [LMSDocumentsController::class, 'store'])->whereNumber('eleve');
 
         // Composer le programme d une classe (#848) : rattacher une matiere, et
         // y designer un formateur. Ecrit `classe_matiere`, le pivot LOCAL que

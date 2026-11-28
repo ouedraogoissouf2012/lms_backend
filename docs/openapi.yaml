@@ -4997,6 +4997,130 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /lms/eleves/{eleve}/documents:
+    post:
+      tags:
+        - Session de formation
+      summary: "Emettre un document de scolarite (certificat, attestation) en PDF"
+      description: |
+        #1662. Pour un eleve de l ecole ayant une inscription ACTIVE. Le document recoit un numero par
+        ecole, par type et par annee (`CS-2026-0001`, `AF-2026-0001`, tire sous le verrou de l ecole),
+        un code de verification, et l emission est inscrite au journal d audit. Le PDF est rendu.
+
+        L attestation ne porte pas encore de taux de presence (dette tracee : la regle vit dans le lot 6).
+        Ecole KLASSCI : 403, les documents officiels relevent de KLASSCI.
+      security:
+        - sanctum: []
+      parameters:
+        - name: eleve
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [certificat_scolarite, attestation_frequentation]
+      responses:
+        '200':
+          description: "Le document, en piece jointe (`<numero>.pdf`)"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant (garde `gestion`), ou ecole KLASSCI (`catalogue_managed_by_klassci`). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Eleve introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "`student_not_enrolled` : l eleve n a aucune inscription active dans l ecole"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '422':
+          description: "`type` absent ou inconnu"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /documents/verification/{code}:
+    get:
+      tags:
+        - Session de formation
+      summary: "Verifier un document de scolarite par son code (public)"
+      description: |
+        #1662. PUBLIQUE et bornee en debit. Ne rend que ce qui est imprime sur le document : type, numero,
+        date d emission, ecole, titulaire. Un code inconnu et un code mal forme recoivent le meme 404.
+      security: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Le document existe"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: [certificat_scolarite, attestation_frequentation]
+                      numero:
+                        type: string
+                      emis_le:
+                        type: string
+                        format: date
+                      ecole:
+                        type: string
+                      titulaire:
+                        type: string
+        '404':
+          description: "Aucun document ne porte ce code"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /lms/classes/{classeId}:
     get:
       tags:

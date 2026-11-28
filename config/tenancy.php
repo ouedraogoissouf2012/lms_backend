@@ -30,6 +30,8 @@ return [
         'programs',
         'training_sessions',
         'creneaux',
+        // #1662 — les documents de scolarité émis ; table neuve, NOT NULL.
+        'documents_emis',
         'classes',
         'matieres',
         'lessons',

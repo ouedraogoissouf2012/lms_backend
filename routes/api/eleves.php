@@ -23,7 +23,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function (): void {
     Route::get('eleves/{eleve}/photo', [PhotoEleveController::class, 'show'])->whereNumber('eleve');
 });
 
-Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'permission:eleves.dossiers'])->group(function (): void {
     Route::put('eleves/{eleve}/dossier', [DossierEleveController::class, 'update'])->whereNumber('eleve');
     Route::post('eleves/{eleve}/photo', [PhotoEleveController::class, 'store'])->whereNumber('eleve');
     Route::delete('eleves/{eleve}/photo', [PhotoEleveController::class, 'destroy'])->whereNumber('eleve');

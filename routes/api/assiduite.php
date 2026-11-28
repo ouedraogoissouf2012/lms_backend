@@ -25,24 +25,24 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function (): void {
     Route::get('/mes-absences', [LMSJustificatifController::class, 'mesAbsences'])
         ->name('lms.mes-absences')
-        ->middleware('role:etudiant');
+        ->middleware('permission:absences.justifier');
     Route::get('/mes-justificatifs', [LMSJustificatifController::class, 'mesJustificatifs'])
         ->name('lms.mes-justificatifs')
-        ->middleware('role:etudiant');
+        ->middleware('permission:absences.justifier');
     Route::post('/justificatifs', [LMSJustificatifController::class, 'store'])
         ->name('lms.justificatifs.store')
-        ->middleware('role:etudiant');
+        ->middleware('permission:absences.justifier');
     Route::get('/justificatifs', [LMSJustificatifController::class, 'index'])
         ->name('lms.justificatifs.index')
-        ->middleware('gestion');
+        ->middleware('permission:absences.traiter');
     Route::post('/justificatifs/{justificatifId}/valider', [LMSJustificatifController::class, 'valider'])
         ->whereNumber('justificatifId')
         ->name('lms.justificatifs.valider')
-        ->middleware('gestion');
+        ->middleware('permission:absences.traiter');
     Route::post('/justificatifs/{justificatifId}/rejeter', [LMSJustificatifController::class, 'rejeter'])
         ->whereNumber('justificatifId')
         ->name('lms.justificatifs.rejeter')
-        ->middleware('gestion');
+        ->middleware('permission:absences.traiter');
     // La pièce : l'élève déposant ou la gestion de son école ; la source refuse tout autre lecteur (404).
     Route::get('/justificatifs/{justificatifId}/piece', [LMSJustificatifController::class, 'piece'])
         ->whereNumber('justificatifId')

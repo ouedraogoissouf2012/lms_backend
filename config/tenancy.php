@@ -88,7 +88,7 @@ return [
         'classe_etudiant',
         'classe_matiere',
         // #1868 : les tables neuves, chacune dans son fragment (database/tenancy/).
-        // M1 (#1868) : les fragments ne sont plus ajoutes.
+        ...$tablesDesFragments,
     ],
 
     /*

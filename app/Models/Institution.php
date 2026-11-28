@@ -32,7 +32,6 @@ class Institution extends Model
         'primary_color',
         'is_active',
         'settings',
-        // #1658 : une inscription par code attend la validation de l ecole.
         'inscriptions_a_valider',
     ];
 

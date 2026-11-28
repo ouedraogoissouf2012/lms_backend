@@ -81,7 +81,7 @@ final class RemisesManquees
         }
         $ids = $eleves->map(static fn (User $eleve): int => (int) $eleve->id)->all();
 
-        $copies = EvaluationSubmission::query()->whereIn('status', ['soumis', 'corrige'])
+        $copies = EvaluationSubmission::query()->aSynchroniser()
             ->where('institution_id', $institutionId)
             ->whereIn('evaluation_id', $attendues)
             ->where(fn (Builder $q) => $q->whereIn('student_id', $ids)

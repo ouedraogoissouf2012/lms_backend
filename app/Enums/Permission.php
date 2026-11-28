@@ -60,6 +60,9 @@ enum Permission: string
     case VisioEnregistrements = 'visio.enregistrements';
     // #1823 : traiter les justificatifs d'absence (lire, valider, rejeter).
     case AbsencesTraiter = 'absences.traiter';
+    // #1682 : l'enseignant lit SES heures ; la gestion, le rapport des heures de l'école.
+    case HeuresConsulter = 'heures.consulter';
+    case HeuresRapport = 'heures.rapport';
 
     // ─── L'élève
     case InscriptionRejoindre = 'inscription.rejoindre';

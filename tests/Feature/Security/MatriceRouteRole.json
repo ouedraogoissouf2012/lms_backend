@@ -581,6 +581,14 @@
         "supradmin"
     ],
     "GET api/lms/enseignants": "*",
+    "GET api/lms/heures-enseignants": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/lms/imports/{id}": [
         "enseignant",
         "teacher",
@@ -605,6 +613,12 @@
         "etudiant",
         "student",
         "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/lms/mes-heures": [
+        "enseignant",
+        "teacher",
         "superAdmin",
         "supradmin"
     ],
@@ -1039,6 +1053,14 @@
         "supradmin"
     ],
     "GET api/v1/lms/enseignants": "*",
+    "GET api/v1/lms/heures-enseignants": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/v1/lms/imports/{id}": [
         "enseignant",
         "teacher",
@@ -1063,6 +1085,12 @@
         "etudiant",
         "student",
         "étudiant",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/lms/mes-heures": [
+        "enseignant",
+        "teacher",
         "superAdmin",
         "supradmin"
     ],

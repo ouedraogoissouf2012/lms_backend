@@ -29,6 +29,7 @@ final class PermissionsDuRole
         Permission::PresencesDepuisVisio,
         Permission::AbsencesTraiter,
         Permission::ElevesDossiers,
+        Permission::HeuresRapport,
     ];
 
     /** `personnel` : enseignant, coordinateur et administrateurs. */
@@ -75,7 +76,7 @@ final class PermissionsDuRole
                 Permission::NotificationsDiffuser,
                 Permission::KlassciTesterConnexion,
             ],
-            Role::Enseignant => [...self::PERSONNEL, ...self::ENSEIGNEMENT, Permission::VisioEnregistrements],
+            Role::Enseignant => [...self::PERSONNEL, ...self::ENSEIGNEMENT, Permission::VisioEnregistrements, Permission::HeuresConsulter],
             Role::Etudiant => self::ELEVE,
             null => [],
         };

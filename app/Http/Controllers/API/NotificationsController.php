@@ -12,6 +12,7 @@ use App\Http\Requests\ListNotificationsRequest;
 use App\Http\Requests\MarkAllAsReadRequest;
 use App\Http\Requests\MarkAsReadRequest;
 use App\Http\Requests\RecentNotificationsRequest;
+use App\Models\Notification;
 use App\Models\User;
 use App\Services\Notification\NotificationMutationService;
 use App\Services\Notification\NotificationQueryService;
@@ -58,10 +59,19 @@ final class NotificationsController extends AuthenticatedController
         $perPage = $request->integer('per_page', 10);
         $unreadOnly = $request->boolean('unread_only', false);
         $page = $request->integer('page', 1);
+        // front#690 : un type connu (validé), ou aucun filtre.
+        $type = $request->filled('type') ? $request->string('type')->toString() : null;
 
-        $notifications = $this->queryService->paginate($user, $perPage, $unreadOnly, $page);
+        $notifications = $this->queryService->paginate($user, $perPage, $unreadOnly, $page, $type);
 
-        return $this->successResponse($notifications->items(), '', 200, [
+        // `data` sort TOUJOURS en objet JSON, `{}` quand il est vide : un tableau PHP vide s'encodait `[]`, contre la
+        // spec (front#690, même règle que `answers` de « ma copie »).
+        $items = array_map(
+            static fn (Notification $notification): array => ['data' => (object) ($notification->data ?? [])] + $notification->toArray(),
+            $notifications->items(),
+        );
+
+        return $this->successResponse($items, '', 200, [
             'current_page' => $notifications->currentPage(),
             'last_page' => $notifications->lastPage(),
             'per_page' => $notifications->perPage(),

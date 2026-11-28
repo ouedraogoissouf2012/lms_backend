@@ -15,14 +15,16 @@ use Illuminate\Support\Facades\Route;
 // La porte de TOUTES les routes API : un compte sans établissement n'atteint
 // que les routes marquées `plateforme` (EnsureSchoolMemberOrPlatformRoute).
 // Une route nouvelle, ajoutée ici ou dans un fichier requis, naît fermée.
+//
+// #1868 : CHAQUE fichier de routes/api/ est chargé, par ordre alphabétique. Un
+// domaine neuf est un fichier neuf, sans ligne à ajouter ici : plus de liste
+// partagée qui rouvre les conflits des PR. L'ordre des fichiers ne compte pas, et
+// la garde `LOrdreDesFichiersDeRoutesNeCompteTest` le maintient : une route d'un
+// fichier qui en capturerait une d'un autre selon l'ordre de chargement rougit.
 Route::middleware('etablissement.requis')->group(function (): void {
-    require __DIR__.'/api/core.php';
-    require __DIR__.'/api/content.php';
-    require __DIR__.'/api/classes.php';
-    require __DIR__.'/api/imports.php';
-    require __DIR__.'/api/sessions.php';
-    require __DIR__.'/api/lms.php';
-    require __DIR__.'/api/enseignants-profil.php';
-    require __DIR__.'/api/evaluation.php';
-    require __DIR__.'/api/admin.php';
+    $fichiersDeRoutes = glob(__DIR__.'/api/*.php') ?: [];
+    sort($fichiersDeRoutes);
+    foreach ($fichiersDeRoutes as $fichierDeRoutes) {
+        require $fichierDeRoutes;
+    }
 });

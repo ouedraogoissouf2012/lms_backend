@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Http\Controllers\API\LMS\LMSClasseArchiveController;
 use App\Http\Controllers\API\LMS\LMSClasseCapaciteController;
+use App\Http\Controllers\API\LMS\LMSClasseEleveMutationController;
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
+use App\Http\Controllers\API\LMS\LMSSousPeriodeController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
 use App\Http\Controllers\API\LMS\TrainingSessionEditionController;
 use App\Http\Controllers\API\LMS\TrainingSessionTransitionController;
@@ -66,6 +68,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         Route::put('/training-sessions/{trainingSession}', [TrainingSessionEditionController::class, 'update']);
         Route::delete('/training-sessions/{trainingSession}', [TrainingSessionEditionController::class, 'destroy']);
         Route::post('/training-sessions/{trainingSession}/en-cours', [TrainingSessionEditionController::class, 'enCours']);
+
+        // Les sous-periodes d une Periode (#1806) : semestres, trimestres. Dans les dates de la periode, sans
+        // chevauchement entre soeurs, verifie sous le verrou de la periode.
+        Route::get('/training-sessions/{trainingSession}/sous-periodes', [LMSSousPeriodeController::class, 'index'])
+            ->whereNumber('trainingSession');
+        Route::post('/training-sessions/{trainingSession}/sous-periodes', [LMSSousPeriodeController::class, 'store'])
+            ->whereNumber('trainingSession');
+        Route::patch('/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}', [LMSSousPeriodeController::class, 'update'])
+            ->whereNumber(['trainingSession', 'sousPeriode']);
+        Route::delete('/training-sessions/{trainingSession}/sous-periodes/{sousPeriode}', [LMSSousPeriodeController::class, 'destroy'])
+            ->whereNumber(['trainingSession', 'sousPeriode']);
 
         // Creer une classe SANS KLASSCI (#848). Le seul createur d une Classe
         // etait jusqu ici la synchronisation : une ecole autonome n en avait
@@ -127,4 +140,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
             ->whereNumber('classe');
         Route::post('/classes/{classe}/desarchiver', [LMSClasseArchiveController::class, 'desarchiver'])
             ->whereNumber('classe');
+
+        // Changer un eleve de classe dans son ecole (#1652) : en une transaction, l ancienne
+        // adhesion se ferme (inactif, datee, motif mutation) et la nouvelle s ouvre.
+        Route::post('/classes/{classe}/eleves/{eleve}/muter', [LMSClasseEleveMutationController::class, 'store'])
+            ->whereNumber(['classe', 'eleve']);
     });

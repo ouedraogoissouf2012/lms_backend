@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\Evaluation\BanqueDeQuestionsController;
 use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 // ============================================
 // EVALUATIONS - Routes protégées
@@ -7,6 +8,7 @@ use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 // Refactor #152/#153 — god-controller `EvaluationController` (1676 lignes)
 // split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
+use App\Http\Controllers\API\Evaluation\EvaluationReleaseController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentListController;
@@ -52,6 +54,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function
     // Publication
     Route::post('evaluations/{id}/publish', [EvaluationCrudController::class, 'publish']);
 
+    // Publication des notes et ouverture du corrigé, permises après les remises (#1699)
+    Route::patch('evaluations/{id}/release', [EvaluationReleaseController::class, 'update']);
+
     // Prévisualisation enseignant (avant publication)
     Route::get('evaluations/{id}/preview', [EvaluationTeacherController::class, 'preview']);
 
@@ -61,6 +66,16 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function
 
     // Synchronisation vers KLASSCI
     Route::post('evaluations/{id}/sync-klassci', [EvaluationKlassciSyncController::class, 'syncToKlassci']);
+
+    // #1702 (D1) : la banque de questions (l'enseignant écrit, le coordinateur et l'admin lisent).
+    Route::get('banque/categories', [BanqueDeQuestionsController::class, 'categories']);
+    Route::post('banque/categories', [BanqueDeQuestionsController::class, 'creerCategorie']);
+    Route::patch('banque/categories/{id}', [BanqueDeQuestionsController::class, 'renommerCategorie'])->whereNumber('id');
+    Route::delete('banque/categories/{id}', [BanqueDeQuestionsController::class, 'supprimerCategorie'])->whereNumber('id');
+    Route::get('banque/categories/{id}/questions', [BanqueDeQuestionsController::class, 'questions'])->whereNumber('id');
+    Route::post('banque/categories/{id}/questions', [BanqueDeQuestionsController::class, 'ajouterQuestion'])->whereNumber('id');
+    Route::put('banque/questions/{id}', [BanqueDeQuestionsController::class, 'modifierQuestion'])->whereNumber('id');
+    Route::delete('banque/questions/{id}', [BanqueDeQuestionsController::class, 'supprimerQuestion'])->whereNumber('id');
 });
 
 // Routes du personnel (garde `personnel`) pour les résultats d'évaluations

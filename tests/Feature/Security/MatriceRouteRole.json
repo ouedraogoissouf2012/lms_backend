@@ -472,6 +472,22 @@
         "superAdmin",
         "supradmin"
     ],
+    "GET api/demandes-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/demandes-inscription/{demande}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
     "GET api/documentation": "*",
     "GET api/eleves/{eleve}/dossier": "*",
     "GET api/eleves/{eleve}/photo": "*",
@@ -950,6 +966,22 @@
         "teacher",
         "coordinateur",
         "coordinator",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/demandes-inscription": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "GET api/v1/demandes-inscription/{demande}": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
         "superAdmin",
         "supradmin"
     ],
@@ -1537,6 +1569,23 @@
         "supradmin"
     ],
     "POST api/classes/{classe}/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/demandes-inscription": "*",
+    "POST api/demandes-inscription/{demande}/examiner": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/demandes-inscription/{demande}/rejeter": [
         "coordinateur",
         "coordinator",
         "admin",
@@ -2150,6 +2199,23 @@
         "supradmin"
     ],
     "POST api/v1/classes/{classe}/matieres": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/demandes-inscription": "*",
+    "POST api/v1/demandes-inscription/{demande}/examiner": [
+        "coordinateur",
+        "coordinator",
+        "admin",
+        "administrateur",
+        "superAdmin",
+        "supradmin"
+    ],
+    "POST api/v1/demandes-inscription/{demande}/rejeter": [
         "coordinateur",
         "coordinator",
         "admin",

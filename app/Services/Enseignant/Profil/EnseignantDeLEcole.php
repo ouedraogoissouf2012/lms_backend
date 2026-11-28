@@ -26,7 +26,7 @@ final class EnseignantDeLEcole
             ->whereIn('role', Role::Enseignant->aliases())
             ->whereKey($id)
             ->first();
-        $permis = $acteur->isManager() || $acteur->getKey() === $id;
+        $permis = $acteur->isManager() || $acteur->isTeacher(); // MUTATION Q1 : un enseignant atteint tout enseignant
         if (! $enseignant instanceof User || ! $permis) {
             throw new BusinessException('Enseignant introuvable', 404);
         }

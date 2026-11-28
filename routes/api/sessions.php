@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\API\LMS\LMSClasseArchiveController;
 use App\Http\Controllers\API\LMS\LMSClasseCapaciteController;
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
@@ -118,5 +119,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // Regler la capacite d une classe (#1358) : celle que l inscription par code
         // respecte (#1115). Un geste NOMME, comme la Periode ; null ou 0 = sans limite.
         Route::put('/classes/{classe}/capacite', [LMSClasseCapaciteController::class, 'update'])
+            ->whereNumber('classe');
+
+        // Archiver une classe, ou la desarchiver (#1652) : deux gestes NOMMES. Archiver ferme
+        // son code et refuse toute nouvelle inscription ; ses eleves et ses traces demeurent.
+        Route::post('/classes/{classe}/archiver', [LMSClasseArchiveController::class, 'archiver'])
+            ->whereNumber('classe');
+        Route::post('/classes/{classe}/desarchiver', [LMSClasseArchiveController::class, 'desarchiver'])
             ->whereNumber('classe');
     });
